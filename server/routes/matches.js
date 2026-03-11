@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getDb } from '../db.js';
+import { matchSchema, validate } from '../validation.js';
 
 const router = Router();
 
@@ -46,19 +47,27 @@ router.get('/:id', (req, res) => {
   res.json(rowToMatch(row));
 });
 
-router.post('/', (req, res) => {
-  const r = matchToRow(req.body);
-  getDb().prepare(`INSERT OR REPLACE INTO matches (id, date, opponent, result, minutes_played, goals, assists, shots, passes_completed, rating, notes)
-    VALUES (@id, @date, @opponent, @result, @minutes_played, @goals, @assists, @shots, @passes_completed, @rating, @notes)`).run(r);
-  res.status(201).json(rowToMatch(getDb().prepare('SELECT * FROM matches WHERE id = ?').get(r.id)));
+router.post('/', validate(matchSchema), (req, res) => {
+  try {
+    const r = matchToRow(req.body);
+    getDb().prepare(`INSERT OR REPLACE INTO matches (id, date, opponent, result, minutes_played, goals, assists, shots, passes_completed, rating, notes)
+      VALUES (@id, @date, @opponent, @result, @minutes_played, @goals, @assists, @shots, @passes_completed, @rating, @notes)`).run(r);
+    res.status(201).json(rowToMatch(getDb().prepare('SELECT * FROM matches WHERE id = ?').get(r.id)));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-router.put('/:id', (req, res) => {
-  const r = matchToRow({ ...req.body, id: req.params.id });
-  getDb().prepare(`UPDATE matches SET date=@date, opponent=@opponent, result=@result, minutes_played=@minutes_played, goals=@goals, assists=@assists, shots=@shots, passes_completed=@passes_completed, rating=@rating, notes=@notes, updated_at=datetime('now') WHERE id=@id`).run(r);
-  const row = getDb().prepare('SELECT * FROM matches WHERE id = ?').get(req.params.id);
-  if (!row) return res.status(404).json({ error: 'Not found' });
-  res.json(rowToMatch(row));
+router.put('/:id', validate(matchSchema), (req, res) => {
+  try {
+    const r = matchToRow({ ...req.body, id: req.params.id });
+    getDb().prepare(`UPDATE matches SET date=@date, opponent=@opponent, result=@result, minutes_played=@minutes_played, goals=@goals, assists=@assists, shots=@shots, passes_completed=@passes_completed, rating=@rating, notes=@notes, updated_at=datetime('now') WHERE id=@id`).run(r);
+    const row = getDb().prepare('SELECT * FROM matches WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    res.json(rowToMatch(row));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.delete('/:id', (req, res) => {

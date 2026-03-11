@@ -1,20 +1,40 @@
+import 'dotenv/config';
 import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = path.join(__dirname, 'data', 'nxtply.db');
 
 let db;
 
+function resolveDbPath() {
+  return process.env.DB_PATH === ':memory:'
+    ? ':memory:'
+    : process.env.DB_PATH
+      ? path.resolve(process.env.DB_PATH)
+      : path.join(__dirname, 'data', 'nxtply.db');
+}
+
 export function getDb() {
   if (!db) {
-    db = new Database(DB_PATH);
+    const dbPath = resolveDbPath();
+    if (dbPath !== ':memory:') {
+      fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+    }
+    db = new Database(dbPath);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     initSchema(db);
   }
   return db;
+}
+
+export function resetDb() {
+  if (db) {
+    db.close();
+    db = null;
+  }
 }
 
 function initSchema(db) {
@@ -127,6 +147,13 @@ function initSchema(db) {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       data TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
       created_at TEXT DEFAULT (datetime('now'))
     );
   `);

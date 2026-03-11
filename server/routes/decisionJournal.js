@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getDb } from '../db.js';
+import { decisionJournalSchema, validate } from '../validation.js';
 
 const router = Router();
 
@@ -18,20 +19,28 @@ router.get('/', (req, res) => {
   res.json(rows.map(rowToEntry));
 });
 
-router.post('/', (req, res) => {
-  const e = req.body;
-  getDb().prepare(`INSERT OR REPLACE INTO decision_journal (id, date, match_id, match_label, decisions) VALUES (?, ?, ?, ?, ?)`)
-    .run(e.id, e.date, e.matchId || null, e.matchLabel || null, JSON.stringify(e.decisions || []));
-  res.status(201).json(rowToEntry(getDb().prepare('SELECT * FROM decision_journal WHERE id = ?').get(e.id)));
+router.post('/', validate(decisionJournalSchema), (req, res) => {
+  try {
+    const e = req.body;
+    getDb().prepare(`INSERT OR REPLACE INTO decision_journal (id, date, match_id, match_label, decisions) VALUES (?, ?, ?, ?, ?)`)
+      .run(e.id, e.date, e.matchId || null, e.matchLabel || null, JSON.stringify(e.decisions || []));
+    res.status(201).json(rowToEntry(getDb().prepare('SELECT * FROM decision_journal WHERE id = ?').get(e.id)));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-router.put('/:id', (req, res) => {
-  const e = req.body;
-  getDb().prepare(`UPDATE decision_journal SET date=?, match_id=?, match_label=?, decisions=?, updated_at=datetime('now') WHERE id=?`)
-    .run(e.date, e.matchId || null, e.matchLabel || null, JSON.stringify(e.decisions || []), req.params.id);
-  const row = getDb().prepare('SELECT * FROM decision_journal WHERE id = ?').get(req.params.id);
-  if (!row) return res.status(404).json({ error: 'Not found' });
-  res.json(rowToEntry(row));
+router.put('/:id', validate(decisionJournalSchema), (req, res) => {
+  try {
+    const e = req.body;
+    getDb().prepare(`UPDATE decision_journal SET date=?, match_id=?, match_label=?, decisions=?, updated_at=datetime('now') WHERE id=?`)
+      .run(e.date, e.matchId || null, e.matchLabel || null, JSON.stringify(e.decisions || []), req.params.id);
+    const row = getDb().prepare('SELECT * FROM decision_journal WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    res.json(rowToEntry(row));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.delete('/:id', (req, res) => {

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getDb } from '../db.js';
+import { sessionSchema, validate } from '../validation.js';
 
 const router = Router();
 
@@ -59,7 +60,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/sessions
-router.post('/', (req, res) => {
+router.post('/', validate(sessionSchema), (req, res) => {
   try {
     const r = sessionToRow(req.body);
     getDb().prepare(`INSERT OR REPLACE INTO sessions (id, date, duration, drills, notes, intention, session_type, position, quick_rating, body_check, shooting, passing, fitness, delivery, attacking, reflection)
@@ -72,7 +73,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/sessions/:id
-router.put('/:id', (req, res) => {
+router.put('/:id', validate(sessionSchema), (req, res) => {
   try {
     const r = sessionToRow({ ...req.body, id: req.params.id });
     getDb().prepare(`UPDATE sessions SET date=@date, duration=@duration, drills=@drills, notes=@notes, intention=@intention, session_type=@session_type, position=@position, quick_rating=@quick_rating, body_check=@body_check, shooting=@shooting, passing=@passing, fitness=@fitness, delivery=@delivery, attacking=@attacking, reflection=@reflection, updated_at=datetime('now') WHERE id=@id`).run(r);

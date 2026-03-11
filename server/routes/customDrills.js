@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getDb } from '../db.js';
+import { customDrillSchema, validate } from '../validation.js';
 
 const router = Router();
 
@@ -8,11 +9,14 @@ router.get('/', (req, res) => {
   res.json(rows.map(r => r.name));
 });
 
-router.post('/', (req, res) => {
-  const { name } = req.body;
-  if (!name) return res.status(400).json({ error: 'Name required' });
-  getDb().prepare('INSERT OR IGNORE INTO custom_drills (name) VALUES (?)').run(name);
-  res.status(201).json({ ok: true });
+router.post('/', validate(customDrillSchema), (req, res) => {
+  try {
+    const { name } = req.body;
+    getDb().prepare('INSERT OR IGNORE INTO custom_drills (name) VALUES (?)').run(name);
+    res.status(201).json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.delete('/:name', (req, res) => {

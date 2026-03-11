@@ -29,3 +29,9 @@ server/data
 
 # PWA dev artifacts
 dev-dist/
+
+# Environment
+.env
+
+# Database backups
+server/data/backups/

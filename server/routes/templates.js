@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getDb } from '../db.js';
+import { templateSchema, validate } from '../validation.js';
 
 const router = Router();
 
@@ -13,10 +14,14 @@ router.get('/', (req, res) => {
   res.json(rows.map(rowToTemplate));
 });
 
-router.post('/', (req, res) => {
-  const { id, name, ...rest } = req.body;
-  getDb().prepare('INSERT OR REPLACE INTO templates (id, name, data) VALUES (?, ?, ?)').run(id, name, JSON.stringify(rest));
-  res.status(201).json(rowToTemplate(getDb().prepare('SELECT * FROM templates WHERE id = ?').get(id)));
+router.post('/', validate(templateSchema), (req, res) => {
+  try {
+    const { id, name, ...rest } = req.body;
+    getDb().prepare('INSERT OR REPLACE INTO templates (id, name, data) VALUES (?, ?, ?)').run(id, name, JSON.stringify(rest));
+    res.status(201).json(rowToTemplate(getDb().prepare('SELECT * FROM templates WHERE id = ?').get(id)));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.delete('/:id', (req, res) => {
