@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 
@@ -21,7 +21,7 @@ function getDeadlineBadge(targetDate) {
   return { label: `${daysLeft}d left`, className: 'bg-green-100 text-green-700' };
 }
 
-export function IDPModule({ goals, onSaveGoals }) {
+export function IDPModule({ goals, onSaveGoals, sessions = [] }) {
   const [expandedCorner, setExpandedCorner] = useState(null);
   const [addingCorner, setAddingCorner] = useState(null);
   const [editingGoal, setEditingGoal] = useState(null);
@@ -94,6 +94,15 @@ export function IDPModule({ goals, onSaveGoals }) {
     setEditingGoal(null);
     resetForm();
   };
+
+  // Count sessions linked to each goal
+  const goalSessionCounts = useMemo(() => {
+    const counts = {};
+    for (const g of goals) {
+      counts[g.id] = sessions.filter(s => s.idpGoals?.includes(g.id)).length;
+    }
+    return counts;
+  }, [goals, sessions]);
 
   const cornerGoals = (cornerId) => goals.filter(g => g.corner === cornerId);
   const activeGoals = goals.filter(g => g.status === 'active');
@@ -232,6 +241,11 @@ export function IDPModule({ goals, onSaveGoals }) {
                               {goal.text}
                             </p>
                             <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              {goalSessionCounts[goal.id] > 0 && (
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-accent/10 text-accent">
+                                  {goalSessionCounts[goal.id]} session{goalSessionCounts[goal.id] !== 1 ? 's' : ''}
+                                </span>
+                              )}
                               {badge && (
                                 <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${badge.className}`}>
                                   {badge.label}

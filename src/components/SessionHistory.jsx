@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { Button } from './ui/Button';
 import { ConfirmModal, Modal } from './ui/Modal';
 import { Card } from './ui/Card';
@@ -15,6 +15,15 @@ export function SessionHistory({ sessions, customDrills, onEdit, onDelete, onVie
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [compareMode, setCompareMode] = useState(false);
   const [compareSelections, setCompareSelections] = useState([]);
+  const [searchText, setSearchText] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const debounceRef = useRef(null);
+
+  const handleSearch = useCallback((value) => {
+    setSearchText(value);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearchQuery(value), 300);
+  }, []);
 
   const allDrills = [...PRESET_DRILLS, ...customDrills];
 
@@ -24,6 +33,16 @@ export function SessionHistory({ sessions, customDrills, onEdit, onDelete, onVie
     if (filterType) result = result.filter(s => s.sessionType === filterType);
     if (filterDateFrom) result = result.filter(s => s.date >= filterDateFrom);
     if (filterDateTo) result = result.filter(s => s.date <= filterDateTo);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(s =>
+        (s.notes || '').toLowerCase().includes(q) ||
+        (s.intention || '').toLowerCase().includes(q) ||
+        (s.reflection?.notes || '').toLowerCase().includes(q) ||
+        (s.sessionType || '').toLowerCase().includes(q) ||
+        s.drills.some(d => d.toLowerCase().includes(q))
+      );
+    }
 
     result.sort((a, b) => {
       let aVal, bVal;
@@ -45,7 +64,7 @@ export function SessionHistory({ sessions, customDrills, onEdit, onDelete, onVie
       return 0;
     });
     return result;
-  }, [sessions, filterDrill, filterType, filterDateFrom, filterDateTo, sortField, sortDir]);
+  }, [sessions, filterDrill, filterType, filterDateFrom, filterDateTo, searchQuery, sortField, sortDir]);
 
   const toggleSort = (field) => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -85,6 +104,20 @@ export function SessionHistory({ sessions, customDrills, onEdit, onDelete, onVie
     <div className="space-y-4 max-w-3xl mx-auto">
       <h2 className="text-xl font-bold text-gray-900">Session History</h2>
 
+      {/* Search */}
+      <div className="relative">
+        <input
+          type="text"
+          value={searchText}
+          onChange={e => handleSearch(e.target.value)}
+          placeholder="Search notes, drills, intentions..."
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+        />
+        <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </div>
+
       {/* Filters */}
       <Card>
         <div className="flex flex-wrap gap-3 items-end">
@@ -120,8 +153,8 @@ export function SessionHistory({ sessions, customDrills, onEdit, onDelete, onVie
             <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)}
               className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30" />
           </div>
-          {(filterDrill || filterType || filterDateFrom || filterDateTo) && (
-            <Button variant="ghost" onClick={() => { setFilterDrill(''); setFilterType(''); setFilterDateFrom(''); setFilterDateTo(''); }}>Clear</Button>
+          {(filterDrill || filterType || filterDateFrom || filterDateTo || searchText) && (
+            <Button variant="ghost" onClick={() => { setFilterDrill(''); setFilterType(''); setFilterDateFrom(''); setFilterDateTo(''); handleSearch(''); }}>Clear</Button>
           )}
         </div>
       </Card>

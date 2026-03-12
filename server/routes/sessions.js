@@ -22,6 +22,7 @@ function rowToSession(row) {
     delivery: JSON.parse(row.delivery || 'null'),
     attacking: JSON.parse(row.attacking || 'null'),
     reflection: JSON.parse(row.reflection || 'null'),
+    idpGoals: JSON.parse(row.idp_goals || '[]'),
   };
 }
 
@@ -43,6 +44,7 @@ function sessionToRow(s) {
     delivery: s.delivery ? JSON.stringify(s.delivery) : null,
     attacking: s.attacking ? JSON.stringify(s.attacking) : null,
     reflection: s.reflection ? JSON.stringify(s.reflection) : null,
+    idp_goals: JSON.stringify(s.idpGoals || []),
   };
 }
 
@@ -63,8 +65,8 @@ router.get('/:id', (req, res) => {
 router.post('/', validate(sessionSchema), (req, res) => {
   try {
     const r = sessionToRow(req.body);
-    getDb().prepare(`INSERT OR REPLACE INTO sessions (id, date, duration, drills, notes, intention, session_type, position, quick_rating, body_check, shooting, passing, fitness, delivery, attacking, reflection)
-      VALUES (@id, @date, @duration, @drills, @notes, @intention, @session_type, @position, @quick_rating, @body_check, @shooting, @passing, @fitness, @delivery, @attacking, @reflection)`).run(r);
+    getDb().prepare(`INSERT OR REPLACE INTO sessions (id, date, duration, drills, notes, intention, session_type, position, quick_rating, body_check, shooting, passing, fitness, delivery, attacking, reflection, idp_goals)
+      VALUES (@id, @date, @duration, @drills, @notes, @intention, @session_type, @position, @quick_rating, @body_check, @shooting, @passing, @fitness, @delivery, @attacking, @reflection, @idp_goals)`).run(r);
     res.status(201).json(rowToSession(getDb().prepare('SELECT * FROM sessions WHERE id = ?').get(r.id)));
   } catch (err) {
     console.error('POST /api/sessions error:', err.message, 'body:', JSON.stringify(req.body).slice(0, 500));
@@ -76,7 +78,7 @@ router.post('/', validate(sessionSchema), (req, res) => {
 router.put('/:id', validate(sessionSchema), (req, res) => {
   try {
     const r = sessionToRow({ ...req.body, id: req.params.id });
-    getDb().prepare(`UPDATE sessions SET date=@date, duration=@duration, drills=@drills, notes=@notes, intention=@intention, session_type=@session_type, position=@position, quick_rating=@quick_rating, body_check=@body_check, shooting=@shooting, passing=@passing, fitness=@fitness, delivery=@delivery, attacking=@attacking, reflection=@reflection, updated_at=datetime('now') WHERE id=@id`).run(r);
+    getDb().prepare(`UPDATE sessions SET date=@date, duration=@duration, drills=@drills, notes=@notes, intention=@intention, session_type=@session_type, position=@position, quick_rating=@quick_rating, body_check=@body_check, shooting=@shooting, passing=@passing, fitness=@fitness, delivery=@delivery, attacking=@attacking, reflection=@reflection, idp_goals=@idp_goals, updated_at=datetime('now') WHERE id=@id`).run(r);
     const row = getDb().prepare('SELECT * FROM sessions WHERE id = ?').get(req.params.id);
     if (!row) return res.status(404).json({ error: 'Not found' });
     res.json(rowToSession(row));

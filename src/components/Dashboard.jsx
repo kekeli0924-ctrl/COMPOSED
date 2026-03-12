@@ -150,6 +150,60 @@ export function Dashboard({ sessions, matches, personalRecords, onViewSession, d
   // Development gap (weakest shooting approach)
   const devGap = useMemo(() => getWeakestApproach(sessions), [sessions]);
 
+  // Weekly Load Gauge
+  const weeklyLoad = useMemo(() => {
+    const weeks = getWeeklyLoads(sessions, 2);
+    const thisWeek = weeks.length > 0 ? weeks[weeks.length - 1] : { totalLoad: 0, sessionCount: 0 };
+    const lastWeek = weeks.length > 1 ? weeks[weeks.length - 2] : { totalLoad: 0, sessionCount: 0 };
+    const currentCount = getCurrentWeekSessionCount(sessions);
+    const pctChange = lastWeek.totalLoad > 0 ? Math.round(((thisWeek.totalLoad - lastWeek.totalLoad) / lastWeek.totalLoad) * 100) : null;
+    return { thisWeek, lastWeek, currentCount, pctChange };
+  }, [sessions]);
+
+  // Quick Compare: last session vs 5-session average
+  const quickCompare = useMemo(() => {
+    if (sessions.length < 2) return null;
+    const sorted = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
+    const last = sorted[0];
+    const prev5 = sorted.slice(1, 6);
+    if (!prev5.length) return null;
+    const metrics = [];
+    metrics.push({
+      label: 'Duration',
+      last: last.duration,
+      avg: Math.round(prev5.reduce((s, x) => s + x.duration, 0) / prev5.length),
+      unit: 'min',
+    });
+    metrics.push({
+      label: 'Rating',
+      last: last.quickRating,
+      avg: Math.round(prev5.reduce((s, x) => s + (x.quickRating || 3), 0) / prev5.length * 10) / 10,
+      unit: '/10',
+    });
+    const lastShot = getShotPercentage(last);
+    const avgShot5 = getAverageStat(prev5, getShotPercentage);
+    if (lastShot !== null && avgShot5 !== null) {
+      metrics.push({ label: 'Shot %', last: lastShot, avg: avgShot5, unit: '%' });
+    }
+    const lastPass = getPassPercentage(last);
+    const avgPass5 = getAverageStat(prev5, getPassPercentage);
+    if (lastPass !== null && avgPass5 !== null) {
+      metrics.push({ label: 'Pass %', last: lastPass, avg: avgPass5, unit: '%' });
+    }
+    return { lastDate: last.date, metrics };
+  }, [sessions]);
+
+  // IDP Activity: sessions this week linked to IDP goals
+  const idpActivity = useMemo(() => {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7));
+    const mondayStr = monday.toISOString().split('T')[0];
+    const linked = sessions.filter(s => s.date >= mondayStr && s.idpGoals?.length > 0);
+    return { count: linked.length, total: getCurrentWeekSessionCount(sessions) };
+  }, [sessions]);
+
   // Onboarding: show welcome card for new users
   if (sessions.length === 0) {
     return (
@@ -236,6 +290,86 @@ export function Dashboard({ sessions, matches, personalRecords, onViewSession, d
         <StatCard label="Avg Shot %" value={avgShot !== null ? `${avgShot}%` : '\u2014'} sub="Last 7 sessions" />
         <StatCard label="Avg Pass %" value={avgPass !== null ? `${avgPass}%` : '\u2014'} sub="Last 7 sessions" />
       </div>
+
+      {/* Weekly Load Gauge */}
+      {sessions.length >= 2 && (
+        <div className="bg-surface rounded-xl border border-gray-100 shadow-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-700">Weekly Load</h3>
+            {weeklyLoad.pctChange !== null && (
+              <span className={`text-xs font-medium ${weeklyLoad.pctChange > 0 ? 'text-green-600' : weeklyLoad.pctChange < 0 ? 'text-amber-600' : 'text-gray-400'}`}>
+                {weeklyLoad.pctChange > 0 ? '+' : ''}{weeklyLoad.pctChange}% vs last week
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
+                <span>Sessions: {weeklyLoad.currentCount} / {weeklyGoal}</span>
+                <span>Load: {weeklyLoad.thisWeek.totalLoad}</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-gray-100">
+                <div
+                  className={`h-2.5 rounded-full transition-all ${
+                    weeklyLoad.currentCount >= weeklyGoal ? 'bg-green-500' :
+                    weeklyLoad.currentCount >= weeklyGoal * 0.5 ? 'bg-accent' : 'bg-amber-400'
+                  }`}
+                  style={{ width: `${Math.min((weeklyLoad.currentCount / Math.max(weeklyGoal, 1)) * 100, 100)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-2">
+            {weeklyLoad.currentCount >= weeklyGoal
+              ? 'Goal reached! Consider a recovery day.'
+              : weeklyLoad.currentCount >= weeklyGoal - 1
+                ? 'Almost there — one more session to hit your goal.'
+                : `${weeklyGoal - weeklyLoad.currentCount} sessions to go this week.`}
+          </p>
+        </div>
+      )}
+
+      {/* Quick Compare */}
+      {quickCompare && (
+        <div className="bg-surface rounded-xl border border-gray-100 shadow-card p-5">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Last Session vs Average</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {quickCompare.metrics.map(m => {
+              const diff = m.last - m.avg;
+              const pct = m.avg ? Math.abs(Math.round((diff / m.avg) * 100)) : 0;
+              const trend = pct <= 5 ? 'neutral' : diff > 0 ? 'up' : 'down';
+              const arrow = trend === 'up' ? '\u2197' : trend === 'down' ? '\u2198' : '\u2192';
+              const color = trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-500' : 'text-gray-400';
+              return (
+                <div key={m.label} className="text-center">
+                  <p className="text-[10px] text-gray-400">{m.label}</p>
+                  <p className="text-lg font-bold text-accent">{m.last}{m.unit}</p>
+                  <p className={`text-xs ${color}`}>
+                    {arrow} avg {m.avg}{m.unit}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* IDP Activity */}
+      {idpGoals.filter(g => g.status === 'active').length > 0 && (
+        <div className="bg-surface rounded-xl border border-gray-100 shadow-card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">IDP Activity</p>
+              <p className="text-sm text-gray-700 mt-1">
+                <span className="font-bold text-accent">{idpActivity.count}</span> of {idpActivity.total} session{idpActivity.total !== 1 ? 's' : ''} this week linked to IDP goals
+              </p>
+            </div>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${idpActivity.count > 0 ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+              {idpActivity.count > 0 ? '\u2713' : '\u2014'}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Attacking Intelligence */}
       {(avgFOE !== null || deliveryAcc !== null || avgEndProduct !== null) && (

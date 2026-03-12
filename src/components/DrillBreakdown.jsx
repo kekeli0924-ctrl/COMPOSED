@@ -40,6 +40,23 @@ export function DrillBreakdown({ sessions, customDrills }) {
   const isShooting = selectedDrill ? hasShootingDrill([selectedDrill]) : false;
   const isPassing = selectedDrill ? hasPassingDrill([selectedDrill]) : false;
 
+  // Drill effectiveness ranking
+  const effectivenessRanking = useMemo(() => {
+    if (!drillsUsed.length) return [];
+    return drillsUsed.map(drill => {
+      const drillSessions = sessions.filter(s => s.drills.includes(drill));
+      const avgRating = drillSessions.length > 0
+        ? Math.round(drillSessions.reduce((sum, s) => sum + (s.quickRating || 3), 0) / drillSessions.length * 10) / 10
+        : 0;
+      return { drill, count: drillSessions.length, avgRating };
+    }).sort((a, b) => b.avgRating - a.avgRating);
+  }, [sessions, drillsUsed]);
+
+  const mostPracticed = effectivenessRanking.length > 0
+    ? [...effectivenessRanking].sort((a, b) => b.count - a.count)[0].drill
+    : null;
+  const highestRated = effectivenessRanking.length > 0 ? effectivenessRanking[0].drill : null;
+
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
       <h2 className="text-xl font-bold text-gray-900">Drill Breakdown</h2>
@@ -69,6 +86,38 @@ export function DrillBreakdown({ sessions, customDrills }) {
           </div>
         )}
       </Card>
+
+      {/* Effectiveness Ranking */}
+      {effectivenessRanking.length > 0 && (
+        <Card>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Drill Effectiveness</h3>
+          <div className="space-y-2">
+            {effectivenessRanking.map((item, i) => (
+              <div key={item.drill} className="flex items-center justify-between py-1.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                    i < 3 ? 'bg-accent text-white' : 'bg-gray-100 text-gray-500'
+                  }`}>{i + 1}</span>
+                  <span className="text-sm text-gray-700 truncate">{item.drill}</span>
+                  {item.drill === mostPracticed && (
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 flex-shrink-0">Most practiced</span>
+                  )}
+                  {item.drill === highestRated && item.drill !== mostPracticed && (
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-green-50 text-green-600 flex-shrink-0">Highest rated</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0 ml-2">
+                  <span className="text-xs text-gray-400">{item.count}x</span>
+                  <span className={`text-sm font-semibold ${item.avgRating >= 7 ? 'text-green-600' : item.avgRating >= 5 ? 'text-accent' : 'text-amber-600'}`}>
+                    {item.avgRating}/10
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-gray-400 mt-2">Ranked by average session rating when drill is performed</p>
+        </Card>
+      )}
 
       {selectedDrill && (
         <>

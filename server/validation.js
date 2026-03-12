@@ -24,6 +24,7 @@ export const sessionSchema = z.object({
   delivery: jsonObj,
   attacking: jsonObj,
   reflection: jsonObj,
+  idpGoals: z.array(z.string().max(100)).max(20).default([]),
 }).strict();
 
 // Matches

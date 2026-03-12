@@ -99,6 +99,7 @@ function emptyForm() {
     delivery: { entries: [] },
     attacking: { duels: { attempts: '', successes: '', endProducts: '', insideCount: '' }, takeOns: { attempts: '', endProducts: '' } },
     reflection: { confidence: 3, focus: 3, enjoyment: 3, notes: '' },
+    idpGoals: [],
   };
 }
 
@@ -152,10 +153,11 @@ function sessionToForm(session) {
     },
     notes: session.notes || '',
     quickRating: session.quickRating ?? 3,
+    idpGoals: session.idpGoals ? [...session.idpGoals] : [],
   };
 }
 
-export function SessionLogger({ onSave, editSession, customDrills, onAddCustomDrill, distanceUnit, templates = [], setTemplates }) {
+export function SessionLogger({ onSave, editSession, customDrills, onAddCustomDrill, distanceUnit, templates = [], setTemplates, idpGoals = [] }) {
   const [form, setForm] = useState(emptyForm);
   const [newDrill, setNewDrill] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -249,6 +251,7 @@ export function SessionLogger({ onSave, editSession, customDrills, onAddCustomDr
       duration: Number(form.duration),
       drills: form.drills,
       notes: form.notes,
+      idpGoals: form.idpGoals || [],
     };
 
     if (hasShootingDrill(form.drills) && num(form.shooting.shotsTaken)) {
@@ -578,6 +581,36 @@ export function SessionLogger({ onSave, editSession, customDrills, onAddCustomDr
           </button>
         )}
       </Card>
+
+      {/* IDP Goal Selector */}
+      {idpGoals.filter(g => g.status === 'active').length > 0 && (
+        <Card>
+          <label className="block text-xs font-medium text-gray-500 mb-3">Link IDP Goals (optional)</label>
+          <div className="flex flex-wrap gap-2">
+            {idpGoals.filter(g => g.status === 'active').map(goal => (
+              <button
+                key={goal.id}
+                type="button"
+                onClick={() => {
+                  setForm(prev => ({
+                    ...prev,
+                    idpGoals: prev.idpGoals.includes(goal.id)
+                      ? prev.idpGoals.filter(id => id !== goal.id)
+                      : [...prev.idpGoals, goal.id],
+                  }));
+                }}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  form.idpGoals.includes(goal.id)
+                    ? 'bg-accent text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {goal.text.length > 40 ? goal.text.slice(0, 40) + '...' : goal.text}
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Shooting Stats */}
       {showShooting && (

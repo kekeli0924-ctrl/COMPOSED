@@ -167,7 +167,7 @@ function initSchema(db) {
 
 // Migration system — add new migrations to the array
 const migrations = [
-  // { version: 1, up: (db) => db.exec('ALTER TABLE ...') },
+  { version: 1, up: (db) => db.exec("ALTER TABLE sessions ADD COLUMN idp_goals TEXT DEFAULT '[]'") },
 ];
 
 function runMigrations(db) {

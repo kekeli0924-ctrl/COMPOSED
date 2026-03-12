@@ -270,7 +270,7 @@ function App() {
           <Dashboard sessions={sessions} matches={matches} personalRecords={personalRecords} onViewSession={handleViewSession} decisionJournal={decisionJournal} idpGoals={idpGoals} weeklyGoal={settings.weeklyGoal ?? 3} ageGroup={settings.ageGroup} skillLevel={settings.skillLevel} onOpenSettings={() => setShowSettings(true)} onNavigateToLog={() => setActiveTab('log')} />
         </div>
         <div className={activeTab === 'log' ? '' : 'hidden'}>
-          <SessionLogger onSave={handleSaveSession} editSession={editSession} customDrills={customDrills} onAddCustomDrill={handleAddCustomDrill} distanceUnit={settings.distanceUnit} templates={templates} setTemplates={setTemplates} />
+          <SessionLogger onSave={handleSaveSession} editSession={editSession} customDrills={customDrills} onAddCustomDrill={handleAddCustomDrill} distanceUnit={settings.distanceUnit} templates={templates} setTemplates={setTemplates} idpGoals={idpGoals} />
         </div>
         <div className={activeTab === 'history' ? '' : 'hidden'}>
           <SessionHistory sessions={sessions} customDrills={customDrills} onEdit={handleEditSession} onDelete={handleDeleteSession} onView={handleViewSession} />
@@ -315,7 +315,7 @@ function App() {
           )}
         </div>
         <div className={activeTab === 'idp' ? '' : 'hidden'}>
-          <IDPModule goals={idpGoals} onSaveGoals={setIdpGoals} />
+          <IDPModule goals={idpGoals} onSaveGoals={setIdpGoals} sessions={sessions} />
         </div>
       </main>
 
