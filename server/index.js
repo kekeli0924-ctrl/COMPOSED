@@ -27,6 +27,7 @@ import friendsRouter from './routes/friends.js';
 import drillsRouter from './routes/drills.js';
 import messagingRouter from './routes/messaging.js';
 import programsRouter from './routes/programs.js';
+import aiChatRouter from './routes/aiChat.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -185,6 +186,7 @@ app.use('/api/friends', friendsRouter);
 app.use('/api/drills', drillsRouter);
 app.use('/api/messages', messagingRouter);
 app.use('/api/programs', programsRouter);
+app.use('/api/ai', aiChatRouter);
 
 // ── API 404 ─────────────────────────────────────────────
 app.use('/api', (req, res) => {

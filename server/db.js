@@ -534,6 +534,10 @@ const migrations = [
 
     COMMIT;`);
   }},
+  { version: 13, up: (db) => {
+    db.exec("ALTER TABLE idp_goals ADD COLUMN target_metric TEXT");
+    db.exec("ALTER TABLE idp_goals ADD COLUMN target_value REAL");
+  }},
 ];
 
 function runMigrations(db) {

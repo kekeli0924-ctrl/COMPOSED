@@ -81,6 +81,8 @@ export const idpGoalSchema = z.object({
   targetDate: z.string().max(20).default(''),
   progress: z.coerce.number().int().min(0).max(100).default(0),
   status: z.enum(['active', 'completed']).default('active'),
+  targetMetric: z.string().max(50).optional(),
+  targetValue: z.coerce.number().optional(),
 }).strict();
 
 // Decision journal

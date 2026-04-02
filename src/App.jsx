@@ -17,6 +17,7 @@ import { StreakXPCard } from './components/StreakXPCard';
 import { LiveSessionMode } from './components/LiveSessionMode';
 import { ReadinessCheck, AdaptedPlanConfirm } from './components/ReadinessCheck';
 import { ProgramsSection } from './components/ProgramsSection';
+import { AskComposed } from './components/AskComposed';
 import { SessionCompleteScreen } from './components/SessionCompleteScreen';
 import { SessionComments } from './components/SessionComments';
 import { Toast } from './components/ui/Toast';
@@ -271,7 +272,8 @@ function App() {
   }, [setSettings]);
 
   const [livePlan, setLivePlan] = useState(null); // Active live session plan
-  const [completedSession, setCompletedSession] = useState(null); // Session just saved, show complete screen
+  const [completedSession, setCompletedSession] = useState(null);
+  const [showAIChat, setShowAIChat] = useState(false); // Session just saved, show complete screen
   const [completedBadge, setCompletedBadge] = useState(null);
   const [readinessCheckPlan, setReadinessCheckPlan] = useState(null); // Plan awaiting readiness check
   const [adaptedPlan, setAdaptedPlan] = useState(null); // Plan after readiness adaptation
@@ -630,6 +632,23 @@ function App() {
         title="Are you absolutely sure?" message="All sessions, matches, plans, IDP goals, decision journal, and settings will be permanently deleted." confirmText="Delete Everything" danger />
 
       <Toast message={toast.message} show={toast.show} onHide={hideToast} variant={toast.variant} />
+
+      {/* AI Chat floating button */}
+      {userRole !== 'coach' && (
+        <button
+          onClick={() => setShowAIChat(true)}
+          className="fixed bottom-24 right-4 md:bottom-8 md:right-8 w-12 h-12 bg-accent text-white rounded-full shadow-lg flex items-center justify-center text-lg hover:bg-accent-light transition-colors z-20"
+          aria-label="Ask Composed"
+        >
+          🧠
+        </button>
+      )}
+      <AskComposed
+        open={showAIChat}
+        onClose={() => setShowAIChat(false)}
+        sessionCount={sessions.length}
+        hasProgram={!!activeProgram}
+      />
     </div>
   );
 }
