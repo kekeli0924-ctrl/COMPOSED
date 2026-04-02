@@ -181,11 +181,11 @@ export function ProgramsSection({ onProgramChange }) {
             </div>
 
             {/* Week-by-week breakdown */}
-            {programDetail.weeks?.map((week, wi) => (
-              <div key={wi}>
-                <p className="text-xs font-semibold text-gray-700 mb-1">Week {week.week}</p>
+            {Object.entries(programDetail.weeks || {}).map(([weekNum, sessions]) => (
+              <div key={weekNum}>
+                <p className="text-xs font-semibold text-gray-700 mb-1">Week {weekNum}</p>
                 <div className="space-y-1">
-                  {week.sessions.map((s, si) => (
+                  {sessions.map((s, si) => (
                     <div key={si} className="bg-gray-50 rounded-lg px-3 py-2">
                       <div className="flex justify-between">
                         <span className="text-xs font-medium text-gray-700">{s.title}</span>
