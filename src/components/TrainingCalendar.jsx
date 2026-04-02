@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
@@ -187,10 +187,35 @@ function PlanEditorModal({ plan, allDrills, onSave, onClose }) {
   const [drills, setDrills] = useState(plan.drills || []);
   const [targetDuration, setTargetDuration] = useState(plan.targetDuration || '');
   const [notes, setNotes] = useState(plan.notes || '');
+  const [dbDrills, setDbDrills] = useState([]);
+  const [search, setSearch] = useState('');
+  const [collapsed, setCollapsed] = useState({});
+
+  useEffect(() => {
+    const role = window.__COMPOSED_ROLE__ || 'player';
+    fetch(`/api/drills?_role=${role}`, { headers: { 'X-Dev-Role': role } })
+      .then(r => r.ok ? r.json() : [])
+      .then(setDbDrills)
+      .catch(() => {});
+  }, []);
 
   const toggleDrill = (drill) => {
     setDrills(prev => prev.includes(drill) ? prev.filter(d => d !== drill) : [...prev, drill]);
   };
+
+  const categories = useMemo(() => {
+    const map = {};
+    for (const d of dbDrills) {
+      const cat = d.category || 'Other';
+      if (!map[cat]) map[cat] = [];
+      map[cat].push(d);
+    }
+    return map;
+  }, [dbDrills]);
+
+  const filteredDrills = search.trim()
+    ? dbDrills.filter(d => d.name.toLowerCase().includes(search.toLowerCase()))
+    : null;
 
   const handleSave = () => {
     onSave({
@@ -217,20 +242,67 @@ function PlanEditorModal({ plan, allDrills, onSave, onClose }) {
       <div className="space-y-4">
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-2">Drills</label>
-          <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
-            {allDrills.map(d => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => toggleDrill(d)}
-                className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-                  drills.includes(d) ? 'bg-accent text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {d}
-              </button>
-            ))}
-          </div>
+
+          {/* Selected drills */}
+          {drills.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {drills.map(d => (
+                <span key={d} className="inline-flex items-center gap-1 bg-accent text-white text-xs px-2.5 py-1 rounded-full">
+                  {d}
+                  <button type="button" onClick={() => toggleDrill(d)} className="text-white/60 hover:text-white">&times;</button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Search */}
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search drills..."
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs mb-3 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+
+          {/* Filtered results */}
+          {filteredDrills ? (
+            <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
+              {filteredDrills.map(d => (
+                <button key={d.id} type="button" onClick={() => toggleDrill(d.name)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                    drills.includes(d.name) ? 'bg-accent text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}>
+                  {d.name}
+                </button>
+              ))}
+              {filteredDrills.length === 0 && <p className="text-xs text-gray-400">No drills found</p>}
+            </div>
+          ) : (
+            /* Categorized drills */
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {Object.entries(categories).map(([cat, catDrills]) => (
+                <div key={cat}>
+                  <button type="button" onClick={() => setCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }))}
+                    className="flex items-center gap-1 text-xs font-semibold text-gray-600 mb-1 hover:text-gray-800">
+                    <span className="text-[10px]">{collapsed[cat] ? '▶' : '▼'}</span>
+                    {cat} ({catDrills.length})
+                  </button>
+                  {!collapsed[cat] && (
+                    <div className="flex flex-wrap gap-1.5 ml-3 mb-2">
+                      {catDrills.map(d => (
+                        <button key={d.id} type="button" onClick={() => toggleDrill(d.name)}
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${
+                            drills.includes(d.name) ? 'bg-accent text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}>
+                          {d.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Target Duration (min)</label>
