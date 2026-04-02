@@ -15,6 +15,7 @@ import { SocialFeed } from './components/SocialFeed';
 import { CoachChat } from './components/CoachChat';
 import { StreakXPCard } from './components/StreakXPCard';
 import { LiveSessionMode } from './components/LiveSessionMode';
+import { ReadinessCheck, AdaptedPlanConfirm } from './components/ReadinessCheck';
 import { SessionComments } from './components/SessionComments';
 import { Toast } from './components/ui/Toast';
 import { Button } from './components/ui/Button';
@@ -246,11 +247,37 @@ function App() {
   }, [setSettings]);
 
   const [livePlan, setLivePlan] = useState(null); // Active live session plan
+  const [readinessCheckPlan, setReadinessCheckPlan] = useState(null); // Plan awaiting readiness check
+  const [adaptedPlan, setAdaptedPlan] = useState(null); // Plan after readiness adaptation
 
   const handleStartPlan = useCallback((plan) => {
-    // Launch Live Session Mode
-    setLivePlan(plan);
+    // Start readiness check flow → adapted confirmation → live mode
+    setReadinessCheckPlan(plan);
   }, []);
+
+  const handleReadinessComplete = useCallback((adapted, answers) => {
+    setReadinessCheckPlan(null);
+    setAdaptedPlan(adapted);
+  }, []);
+
+  const handleReadinessSkip = useCallback(() => {
+    // Skip readiness → go straight to live mode with original plan
+    const plan = readinessCheckPlan;
+    setReadinessCheckPlan(null);
+    setLivePlan(plan);
+  }, [readinessCheckPlan]);
+
+  const handleAdaptedStart = useCallback(() => {
+    const plan = adaptedPlan;
+    setAdaptedPlan(null);
+    setLivePlan(plan);
+  }, [adaptedPlan]);
+
+  const handleAdaptedChange = useCallback(() => {
+    // Go back to readiness check
+    setAdaptedPlan(null);
+    setReadinessCheckPlan(adaptedPlan);
+  }, [adaptedPlan]);
 
   const handleStartManual = useCallback((plan) => {
     setEditSession(null);
@@ -288,7 +315,13 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 md:pb-4">
-      {/* Live Session Mode (full-screen overlay) */}
+      {/* Readiness Check → Adapted Plan → Live Session Mode */}
+      {readinessCheckPlan && (
+        <ReadinessCheck plan={readinessCheckPlan} onComplete={handleReadinessComplete} onSkip={handleReadinessSkip} />
+      )}
+      {adaptedPlan && (
+        <AdaptedPlanConfirm plan={adaptedPlan} onStart={handleAdaptedStart} onChange={handleAdaptedChange} />
+      )}
       {livePlan && (
         <LiveSessionMode plan={livePlan} onComplete={handleLiveComplete} onExit={handleLiveExit} />
       )}
