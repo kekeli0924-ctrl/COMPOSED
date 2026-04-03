@@ -108,9 +108,7 @@ export function OnboardingFlow({ settings, onComplete }) {
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
-          <div className="text-4xl mb-3">⚽</div>
-          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight font-heading">Welcome to Composed</h2>
-          <p className="text-sm text-gray-500 mt-2">Your personal soccer development tracker. Let's set up your profile.</p>
+          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight font-heading italic">stay composed</h2>
         </div>
 
         <Card>
@@ -143,8 +141,7 @@ export function OnboardingFlow({ settings, onComplete }) {
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
-          <h2 className="text-lg font-bold text-gray-900">Your Profile</h2>
-          <p className="text-sm text-gray-500 mt-1">This helps us compare your stats to players like you.</p>
+          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight font-heading italic">stay composed</h2>
         </div>
 
         <Card className="mb-4">
@@ -175,8 +172,7 @@ export function OnboardingFlow({ settings, onComplete }) {
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
-          <h2 className="text-lg font-bold text-gray-900">Weekly Goal</h2>
-          <p className="text-sm text-gray-500 mt-1">How many sessions do you want to train per week?</p>
+          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight font-heading italic">stay composed</h2>
         </div>
 
         <Card>
@@ -239,9 +235,7 @@ export function OnboardingFlow({ settings, onComplete }) {
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
-          <div className="text-3xl mb-3">📹</div>
-          <h2 className="text-xl font-semibold text-gray-900 tracking-tight font-heading">Get the Best Results</h2>
-          <p className="text-sm text-gray-500 mt-1">Tips for recording training videos that AI can analyze accurately.</p>
+          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight font-heading italic">stay composed</h2>
         </div>
 
         <div className="space-y-3">
@@ -269,10 +263,7 @@ export function OnboardingFlow({ settings, onComplete }) {
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 tracking-tight font-heading">You're All Set!</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {isCoach ? "Here's how Composed helps you manage players." : "Here's how Composed helps you develop."}
-          </p>
+          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight font-heading italic">stay composed</h2>
         </div>
 
         <div className="space-y-3">
