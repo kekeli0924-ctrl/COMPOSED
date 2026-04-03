@@ -82,7 +82,7 @@ export function ProgramsSection({ onProgramChange }) {
   return (
     <div className="space-y-4">
       {/* Active Program */}
-      {activeProgram && (
+      {activeProgram?.program && (
         <Card>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
