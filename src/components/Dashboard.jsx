@@ -12,6 +12,8 @@ import { GapSuggestionsCard } from './GapSuggestionsCard';
 import { ComparisonCard } from './ComparisonCard';
 import { DailyPlanCard } from './DailyPlanCard';
 import { GettingStartedChecklist } from './GettingStartedChecklist';
+import { ProgressCharts } from './ProgressCharts';
+import { WelcomeBack } from './WelcomeBack';
 import { DateBrowser } from './DateBrowser';
 import { SessionLoadChart } from './SessionLoadChart';
 import { MentalTrendChart } from './MentalTrendChart';
@@ -283,9 +285,14 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
         );
       })()}
 
+      {/* Welcome Back (3+ days inactive) */}
+      <WelcomeBack sessions={sessions} playerName={settings.playerName} onStartSession={onStartPlan} />
+
       {/* Daily Plan */}
       <DailyPlanCard sessions={sessions} idpGoals={idpGoals} onStartPlan={onStartPlan} onStartManual={onStartManual} assignedPlans={assignedPlans} activeProgram={activeProgram} />
 
+      {/* Progress Charts */}
+      <ProgressCharts sessions={sessions} />
 
       {/* Streak + XP */}
 

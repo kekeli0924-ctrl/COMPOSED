@@ -25,12 +25,13 @@ function buildTimeline(drillNames) {
   const timeline = [];
   let elapsed = 0;
 
-  // Warm-up always first
+  // Context-aware warm-up
+  const warmup = getWarmupForFocus(drillNames);
   timeline.push({
-    name: 'Warm-up',
-    reps: '5 min',
-    duration: 5,
-    instruction: 'Light jog, dynamic stretches, ball rolls.',
+    name: warmup.name,
+    reps: warmup.reps,
+    duration: warmup.duration,
+    instruction: warmup.instruction,
     startMin: 0,
     isWarmup: true,
   });
@@ -77,6 +78,90 @@ const PILLAR_DRILLS = {
   mentality: ['Free Kicks', 'Finishing Drill', 'Shooting (Outside Box)'],
 };
 
+// Position-specific drill weightings (40/20/20/20)
+const POSITION_WEIGHTS = {
+  Striker:  { shooting: 0.4, passing: 0.2, dribbling: 0.2, physical: 0.2 },
+  Winger:   { dribbling: 0.4, crossing: 0.2, shooting: 0.2, physical: 0.2 },
+  CAM:      { passing: 0.4, shooting: 0.2, dribbling: 0.2, physical: 0.2 },
+  CDM:      { passing: 0.4, physical: 0.2, tactical: 0.2, dribbling: 0.2 },
+  CB:       { physical: 0.4, passing: 0.2, tactical: 0.2, heading: 0.2 },
+  GK:       { physical: 0.4, agility: 0.3, shooting: 0.2, mental: 0.1 },
+  General:  { shooting: 0.25, passing: 0.25, dribbling: 0.25, physical: 0.25 },
+};
+
+const CATEGORY_DRILLS = {
+  shooting: ['Finishing Drill', 'Shooting (Inside Box)', 'Shooting (Outside Box)', 'Free Kicks', 'Weak Foot Finishing', 'Power Shooting', 'Placement Shooting'],
+  passing: ['Wall Passes (1-touch)', 'Wall Passes (2-touch)', 'Short Passing Combos', 'Long Passing', 'Rondo', 'Through Ball Practice'],
+  dribbling: ['Dribbling Circuit', 'Cone Weave Dribbling', 'Ball Mastery Routine', '1v1 Moves Practice', 'Speed Dribbling', 'Close Control Box'],
+  crossing: ['Crossing & Finishing', 'Driven Cross Practice', 'Whipped Cross Technique', 'Set Piece Delivery'],
+  physical: ['Sprint Intervals', 'Ladder Footwork', 'T-Drill', 'Cone Shuttle Runs', 'Zig-Zag Agility', 'Bodyweight Circuit'],
+  tactical: ['Positional Shadow Play', 'Scanning Practice', 'Decision-Making Cones', 'Off-The-Ball Movement'],
+  agility: ['Ladder Footwork', 'T-Drill', 'Zig-Zag Agility', 'Deceleration Training', 'Reaction Sprints'],
+  mental: ['Pre-Match Visualization', 'Pressure Finishing', 'Breathing & Focus Reset'],
+};
+
+// Warm-up variants matched to session focus
+const WARMUP_VARIANTS = {
+  shooting: { name: 'Shooting Warm-up', reps: '5 min', duration: 5, instruction: 'Light passing, then 5 easy shots from close range. Build up to match pace.' },
+  passing: { name: 'Passing Warm-up', reps: '5 min', duration: 5, instruction: 'Short passes against wall, 2-touch rhythm. Gradually increase pace.' },
+  physical: { name: 'Dynamic Warm-up', reps: '5 min', duration: 5, instruction: 'High knees, butt kicks, lateral shuffles, leg swings. Get the blood flowing.' },
+  default: { name: 'Warm-up', reps: '5 min', duration: 5, instruction: 'Light jog, dynamic stretches, ball rolls.' },
+};
+
+function getWarmupForFocus(focusDrills) {
+  const shootingDrills = CATEGORY_DRILLS.shooting || [];
+  const passingDrills = CATEGORY_DRILLS.passing || [];
+  const physicalDrills = [...(CATEGORY_DRILLS.physical || []), ...(CATEGORY_DRILLS.agility || [])];
+
+  const shootCount = focusDrills.filter(d => shootingDrills.includes(d)).length;
+  const passCount = focusDrills.filter(d => passingDrills.includes(d)).length;
+  const physCount = focusDrills.filter(d => physicalDrills.includes(d)).length;
+
+  if (physCount > shootCount && physCount > passCount) return WARMUP_VARIANTS.physical;
+  if (shootCount >= passCount) return WARMUP_VARIANTS.shooting;
+  if (passCount > 0) return WARMUP_VARIANTS.passing;
+  return WARMUP_VARIANTS.default;
+}
+
+function selectDrillsByPosition(position, count = 4, exclude = []) {
+  const weights = POSITION_WEIGHTS[position] || POSITION_WEIGHTS.General;
+  const drills = [];
+  const used = new Set(exclude);
+
+  // Pick drills proportionally by weight
+  const categories = Object.entries(weights).sort((a, b) => b[1] - a[1]);
+  for (const [cat, weight] of categories) {
+    const numFromCat = Math.max(1, Math.round(count * weight));
+    const available = (CATEGORY_DRILLS[cat] || []).filter(d => !used.has(d));
+    const picked = available.sort(() => Math.random() - 0.5).slice(0, numFromCat);
+    picked.forEach(d => { drills.push(d); used.add(d); });
+    if (drills.length >= count) break;
+  }
+
+  return drills.slice(0, count);
+}
+
+function getIdpBoostArea(idpGoals) {
+  const active = (idpGoals || []).filter(g => g.status === 'active');
+  if (active.length === 0) return null;
+
+  // Map IDP corners to drill categories
+  const cornerToCategory = {
+    technical: ['shooting', 'passing', 'dribbling'],
+    tactical: ['tactical'],
+    physical: ['physical', 'agility'],
+    psychological: ['mental'],
+  };
+
+  // Find the most common corner among active goals
+  const counts = {};
+  for (const g of active) {
+    counts[g.corner] = (counts[g.corner] || 0) + 1;
+  }
+  const topCorner = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+  return topCorner ? cornerToCategory[topCorner] : null;
+}
+
 const MOTIVATIONS = [
   'Small daily improvements lead to stunning results.',
   'The best never take a day off from getting better.',
@@ -92,7 +177,7 @@ function pickMotivation() {
   return MOTIVATIONS[Math.floor(Math.random() * MOTIVATIONS.length)];
 }
 
-export function generateDailyPlan(sessions, idpGoals = []) {
+export function generateDailyPlan(sessions, idpGoals = [], position = 'General') {
   const today = new Date().toISOString().split('T')[0];
   const streak = getStreak(sessions);
 
@@ -151,18 +236,32 @@ export function generateDailyPlan(sessions, idpGoals = []) {
     }
   }
 
-  // Gap-based plan
+  // IDP boost — find areas to prioritize
+  const idpBoostCategories = getIdpBoostArea(idpGoals);
+
+  // Gap-based plan with IDP boost
   const gaps = analyzeGaps(sessions);
   if (gaps.length > 0) {
     const topGap = gaps[0];
-    const drills = topGap.miniSession.drills.slice(0, 4);
+    const drills = topGap.miniSession.drills.slice(0, 3);
 
-    const pillars = computeFourPillars(sessions);
-    if (pillars) {
-      const weakest = pillars.reduce((min, p) => p.score < min.score ? p : min, pillars[0]);
-      const pillarKey = weakest.label.toLowerCase();
-      const extra = (PILLAR_DRILLS[pillarKey] || []).filter(d => !drills.includes(d));
-      if (drills.length < 4 && extra.length > 0) drills.push(extra[0]);
+    // IDP boost: add a drill from the IDP focus area (+30% weight)
+    if (idpBoostCategories && drills.length < 5) {
+      for (const cat of idpBoostCategories) {
+        const idpDrills = (CATEGORY_DRILLS[cat] || []).filter(d => !drills.includes(d));
+        if (idpDrills.length > 0) {
+          drills.push(idpDrills[Math.floor(Math.random() * idpDrills.length)]);
+          break;
+        }
+      }
+    }
+
+    // Position weighting: fill remaining slots from position-relevant drills
+    if (drills.length < 4) {
+      const positionDrills = selectDrillsByPosition(position, 2, drills);
+      for (const d of positionDrills) {
+        if (drills.length < 4 && !drills.includes(d)) drills.push(d);
+      }
     }
 
     const { timeline, totalDuration } = buildTimeline(drills);
@@ -181,17 +280,37 @@ export function generateDailyPlan(sessions, idpGoals = []) {
     };
   }
 
-  // Pillar-based fallback
-  const pillars = computeFourPillars(sessions);
-  if (pillars) {
-    const weakest = pillars.reduce((min, p) => p.score < min.score ? p : min, pillars[0]);
-    const pillarKey = weakest.label.toLowerCase();
-    const drills = (PILLAR_DRILLS[pillarKey] || PILLAR_DRILLS.technique).slice(0, 4);
+  // Position-based plan (no gaps detected)
+  const drills = selectDrillsByPosition(position, 4);
+
+  // IDP boost: swap one drill for IDP-relevant drill
+  if (idpBoostCategories && drills.length >= 3) {
+    for (const cat of idpBoostCategories) {
+      const idpDrills = (CATEGORY_DRILLS[cat] || []).filter(d => !drills.includes(d));
+      if (idpDrills.length > 0) {
+        drills[drills.length - 1] = idpDrills[Math.floor(Math.random() * idpDrills.length)];
+        break;
+      }
+    }
+  }
+
+  // Pillar-based fallback (if no position drills selected)
+  if (drills.length < 3) {
+    const pillars = computeFourPillars(sessions);
+    if (pillars) {
+      const weakest = pillars.reduce((min, p) => p.score < min.score ? p : min, pillars[0]);
+      const pillarKey = weakest.label.toLowerCase();
+      const extra = (PILLAR_DRILLS[pillarKey] || PILLAR_DRILLS.technique).filter(d => !drills.includes(d));
+      while (drills.length < 4 && extra.length > 0) drills.push(extra.shift());
+    }
+  }
+
+  if (drills.length >= 2) {
     const { timeline, totalDuration } = buildTimeline(drills);
 
     return {
-      type: 'pillar',
-      focus: `${weakest.label} Development`,
+      type: 'position',
+      focus: `${position} Training`,
       drills,
       timeline,
       totalDuration,
@@ -202,15 +321,17 @@ export function generateDailyPlan(sessions, idpGoals = []) {
   }
 
   // General fallback
-  const drills = ['Finishing Drill', 'Wall Passes (1-touch)', 'Sprint Intervals', 'Dribbling Circuit'];
-  const { timeline, totalDuration } = buildTimeline(drills);
+  const fallbackDrills = selectDrillsByPosition(position, 4);
+  if (fallbackDrills.length < 4) fallbackDrills.push('Finishing Drill', 'Wall Passes (1-touch)', 'Sprint Intervals', 'Dribbling Circuit');
+  const finalDrills = [...new Set(fallbackDrills)].slice(0, 4);
+  const { timeline: fbTimeline, totalDuration: fbDuration } = buildTimeline(finalDrills);
   return {
     type: 'general',
     focus: 'Complete Training',
-    drills,
-    timeline,
-    totalDuration,
-    targetDuration: totalDuration,
+    drills: finalDrills,
+    timeline: fbTimeline,
+    totalDuration: fbDuration,
+    targetDuration: fbDuration,
     motivation: pickMotivation(),
     xpReward: 50,
   };

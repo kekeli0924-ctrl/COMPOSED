@@ -101,7 +101,7 @@ export function DailyPlanCard({ sessions, idpGoals, onStartPlan, onStartManual, 
         xpReward: 50,
       };
     }
-    return generateDailyPlan(sessions, idpGoals);
+    return generateDailyPlan(sessions, idpGoals, 'General');
   }, [coachPlanToday, sessions, idpGoals]);
 
   if (!plan) return null;
