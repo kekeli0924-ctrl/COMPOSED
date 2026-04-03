@@ -78,15 +78,13 @@ export function OnboardingFlow({ settings, onComplete }) {
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
-          <div className="text-4xl mb-3">⚽</div>
-          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight font-heading">Welcome to Composed</h2>
-          <p className="text-sm text-gray-500 mt-2">How will you be using the app?</p>
+          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight font-heading">stay composed</h2>
         </div>
 
         <div className="space-y-3">
           {[
-            { role: 'player', icon: '🏃', title: "I'm a Player", desc: 'Track my training, log sessions, improve my game' },
-            { role: 'coach', icon: '📋', title: "I'm a Coach", desc: 'Manage players, assign plans, track progress' },
+            { role: 'player', icon: '', title: "I'm a Player", desc: 'Track my training, log sessions, improve my game' },
+            { role: 'coach', icon: '', title: "I'm a Coach", desc: 'Manage players, assign plans, track progress' },
           ].map(opt => (
             <button
               key={opt.role}
@@ -99,7 +97,6 @@ export function OnboardingFlow({ settings, onComplete }) {
               }`}
             >
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{opt.icon}</span>
                 <div>
                   <p className="text-sm font-semibold text-gray-900">{opt.title}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
