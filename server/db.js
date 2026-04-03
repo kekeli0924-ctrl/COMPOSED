@@ -539,6 +539,9 @@ const migrations = [
     db.exec("ALTER TABLE idp_goals ADD COLUMN target_value REAL");
   }},
   { version: 14, up: (db) => {
+    db.exec("ALTER TABLE settings ADD COLUMN position TEXT DEFAULT 'General'");
+  }},
+  { version: 15, up: (db) => {
     db.exec(`
       -- Update position_relevance to match app positions: Striker, Winger, CAM, CDM, CB, GK, All
       -- Shooting drills → Striker, Winger, CAM

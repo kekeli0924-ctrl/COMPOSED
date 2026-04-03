@@ -502,7 +502,7 @@ function App() {
             </div>
             <h2 className="text-lg font-bold text-gray-900 mt-3">{settings.playerName || 'Player'}</h2>
             <p className="text-xs text-gray-400">
-              {settings.ageGroup && `${settings.ageGroup} · `}{settings.skillLevel || 'Set your profile'}
+              {settings.position && settings.position !== 'General' ? `${settings.position} · ` : ''}{settings.ageGroup && `${settings.ageGroup} · `}{settings.skillLevel || 'Set your profile'}
             </p>
             <div className="flex items-center justify-center gap-1 mt-2 bg-gray-100 rounded-lg p-0.5 w-fit mx-auto">
               {['player', 'coach'].map(r => (
@@ -575,6 +575,22 @@ function App() {
               <option value="Academy">Academy</option>
               <option value="Semi-Pro">Semi-Pro</option>
               <option value="Professional">Professional</option>
+            </select>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-700">Position</span>
+            <select
+              value={settings.position || 'General'}
+              onChange={e => setSettings(prev => ({ ...prev, position: e.target.value }))}
+              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+            >
+              <option value="General">General</option>
+              <option value="Striker">Striker</option>
+              <option value="Winger">Winger</option>
+              <option value="CAM">CAM</option>
+              <option value="CDM">CDM</option>
+              <option value="CB">CB</option>
+              <option value="GK">GK</option>
             </select>
           </div>
           </div>

@@ -13,6 +13,7 @@ function rowToSettings(row) {
     playerName: row.player_name || '',
     onboardingComplete: row.onboarding_complete ?? 0,
     gettingStartedComplete: row.getting_started_complete ?? 0,
+    position: row.position || 'General',
     equipment: JSON.parse(row.equipment || '["ball","wall"]'),
   };
 }
@@ -33,6 +34,7 @@ router.put('/', validate(settingsSchema), (req, res) => {
       player_name = COALESCE(@player_name, player_name),
       onboarding_complete = COALESCE(@onboarding_complete, onboarding_complete),
       getting_started_complete = COALESCE(@getting_started_complete, getting_started_complete),
+      position = COALESCE(@position, position),
       equipment = COALESCE(@equipment, equipment),
       updated_at = datetime('now')
       WHERE id = 1`).run({
@@ -43,6 +45,7 @@ router.put('/', validate(settingsSchema), (req, res) => {
       player_name: s.playerName ?? null,
       onboarding_complete: s.onboardingComplete ?? null,
       getting_started_complete: s.gettingStartedComplete ?? null,
+      position: s.position ?? null,
       equipment: s.equipment ? JSON.stringify(s.equipment) : null,
     });
     const row = getDb().prepare('SELECT * FROM settings WHERE id = 1').get();
