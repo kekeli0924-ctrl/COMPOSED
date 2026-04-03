@@ -61,6 +61,7 @@ body {
   margin: 0;
   background-color: #FAFAF8;
   color: #292524;
+  font-weight: 400;
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;
 }
@@ -71,7 +72,8 @@ body {
 
 /* ── Serif heading class ─────────────────────── */
 .font-heading {
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 300;
 }
 
 input, select, textarea {
