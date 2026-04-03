@@ -214,7 +214,7 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
     return (
       <div className="space-y-5 max-w-3xl mx-auto">
         <h1 className="text-2xl font-semibold text-accent tracking-tight text-center font-heading">Composed</h1>
-        <DateBrowser assignedPlans={assignedPlans} trainingPlans={trainingPlans} sessions={sessions} />
+        <DateBrowser assignedPlans={assignedPlans} trainingPlans={trainingPlans} sessions={sessions} idpGoals={idpGoals} />
         <GettingStartedChecklist sessions={sessions} idpGoals={idpGoals} myCoach={myCoach} settings={settings} onNavigate={onNavigate} onDismiss={onDismissGettingStarted} />
         <DailyPlanCard sessions={sessions} idpGoals={idpGoals} onStartPlan={onStartPlan} onStartManual={onStartManual} assignedPlans={assignedPlans} activeProgram={activeProgram} />
       </div>
@@ -236,7 +236,7 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
       <h1 className="text-2xl font-semibold text-accent tracking-tight text-center font-heading">Composed</h1>
 
       {/* Date Browser */}
-      <DateBrowser assignedPlans={assignedPlans} trainingPlans={trainingPlans} sessions={sessions} />
+      <DateBrowser assignedPlans={assignedPlans} trainingPlans={trainingPlans} sessions={sessions} idpGoals={idpGoals} />
 
       {/* Getting Started */}
       <GettingStartedChecklist sessions={sessions} idpGoals={idpGoals} myCoach={myCoach} settings={settings} onNavigate={onNavigate} onDismiss={onDismissGettingStarted} />

@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { generateDailyPlan } from '../utils/dailyPlan';
 
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -14,7 +15,7 @@ function formatDateLabel(dateStr) {
   return { day: DAY_SHORT[d.getDay()], date: d.getDate(), month: MONTH_SHORT[d.getMonth()] };
 }
 
-export function DateBrowser({ assignedPlans = [], trainingPlans = [], sessions = [], onSelectDate }) {
+export function DateBrowser({ assignedPlans = [], trainingPlans = [], sessions = [], idpGoals = [], onSelectDate }) {
   const today = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(today);
   const scrollRef = useRef(null);
@@ -101,8 +102,10 @@ export function DateBrowser({ assignedPlans = [], trainingPlans = [], sessions =
                 <p className="text-[9px] font-medium">{label.day}</p>
                 <p className={`text-sm font-bold ${isSelected ? 'text-white' : ''}`}>{label.date}</p>
                 {/* Dots indicating activity */}
-                {(hasAssigned || hasSession) && (
-                  <span className={`block mx-auto mt-0.5 w-1 h-1 rounded-full ${hasSession ? 'bg-green-400' : 'bg-blue-400'}`} />
+                {(hasAssigned || hasSession || (!isPast && !isToday)) && (
+                  <span className={`block mx-auto mt-0.5 w-1 h-1 rounded-full ${
+                    hasSession ? 'bg-green-400' : hasAssigned ? 'bg-blue-400' : hasPlanned ? 'bg-accent/50' : !isPast && !isToday ? 'bg-gray-300' : ''
+                  }`} />
                 )}
               </button>
             );
@@ -152,14 +155,46 @@ export function DateBrowser({ assignedPlans = [], trainingPlans = [], sessions =
                 {selected.session.duration} min — {(selected.session.drills || []).slice(0, 3).join(', ')}
               </p>
             </div>
+          ) : selected.date > today ? (
+            /* Future date with no plan — show AI-generated preview */
+            <FuturePlanPreview sessions={sessions} idpGoals={idpGoals} />
           ) : (
             <p className="text-[10px] text-gray-300 text-center py-2">
-              {selected.date < today ? 'No session logged' : 'No plan scheduled'}
+              No session logged
             </p>
           )}
         </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function FuturePlanPreview({ sessions, idpGoals }) {
+  const preview = useMemo(() => {
+    const plan = generateDailyPlan(sessions, idpGoals, 'General');
+    if (!plan || plan.type === 'completed') return null;
+    return plan;
+  }, [sessions, idpGoals]);
+
+  if (!preview) return null;
+
+  const drills = preview.drills || preview.timeline?.filter(t => !t.isWarmup && !t.isCooldown).map(t => t.name) || [];
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-gray-700">{preview.focus}</p>
+        <span className="text-[9px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">Preview</span>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {drills.slice(0, 4).map(d => (
+          <span key={d} className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full">{d}</span>
+        ))}
+      </div>
+      {preview.totalDuration > 0 && (
+        <p className="text-[10px] text-gray-400">{preview.totalDuration} min · {drills.length} drills</p>
+      )}
     </div>
   );
 }
