@@ -88,7 +88,7 @@ export function AskComposed({ open, onClose, sessionCount = 0, hasProgram = fals
           {messages.length === 0 && (
             <div className="py-8 space-y-4">
               <div className="text-center">
-                <div className="text-3xl mb-2 font-heading font-bold text-accent">C</div>
+                <div className="text-2xl mb-2 font-heading font-semibold text-gray-900 italic">stay composed</div>
                 <p className="text-xs text-gray-400">Ask me anything about your training</p>
               </div>
               <div className="space-y-2">
