@@ -121,7 +121,7 @@ ${context.recentSessions.map(s => {
     res.json({ reply });
   } catch (err) {
     logger.error('AI chat error', { error: err.message });
-    res.status(500).json({ error: 'Composed is thinking... try again in a moment.' });
+    res.status(500).json({ error: 'Composing... try again in a moment.' });
   }
 });
 

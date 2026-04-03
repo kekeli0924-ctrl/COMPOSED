@@ -88,7 +88,7 @@ export function AskComposed({ open, onClose, sessionCount = 0, hasProgram = fals
           {messages.length === 0 && (
             <div className="py-8 space-y-4">
               <div className="text-center">
-                <div className="text-3xl mb-2">🧠</div>
+                <div className="text-3xl mb-2 font-heading font-bold text-accent">C</div>
                 <p className="text-xs text-gray-400">Ask me anything about your training</p>
               </div>
               <div className="space-y-2">
@@ -120,7 +120,7 @@ export function AskComposed({ open, onClose, sessionCount = 0, hasProgram = fals
           {loading && (
             <div className="flex justify-start">
               <div className="bg-gray-50 rounded-2xl rounded-bl-sm px-4 py-2.5">
-                <p className="text-xs text-gray-400 animate-pulse">Composed is thinking...</p>
+                <p className="text-xs text-gray-400 animate-pulse">Composing...</p>
               </div>
             </div>
           )}
