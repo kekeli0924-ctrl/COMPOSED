@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
+import { DrillDiagram } from './DrillDiagram';
 
 const CATEGORIES = ['All', 'Technical', 'Tactical', 'Physical', 'Psychological', 'Warm-Up & Cool-Down'];
 const DIFFICULTIES = ['All', 'Beginner', 'Intermediate', 'Advanced'];
@@ -65,6 +66,9 @@ function DrillDetailModal({ drill, open, onClose, onAddToPlan }) {
       }
     >
       <div className="space-y-4">
+        {/* Drill Diagram */}
+        <DrillDiagram drill={drill} />
+
         {/* Badges */}
         <div className="flex flex-wrap gap-1.5">
           <Badge text={drill.category} colorClass={CATEGORY_COLORS[drill.category] || 'bg-gray-200 text-gray-600'} />
