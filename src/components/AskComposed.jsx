@@ -74,11 +74,7 @@ export function AskComposed({ open, onClose, sessionCount = 0, hasProgram = fals
       <div className="flex flex-col h-[70vh] -m-5">
         {/* Header */}
         <div className="px-5 py-3 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-bold text-gray-900 font-heading">Ask Composed</h2>
-              <p className="text-[10px] text-gray-400">Your personal training analyst</p>
-            </div>
+          <div className="flex items-center justify-end">
             <button onClick={onClose} className="text-gray-300 hover:text-gray-500 text-lg">&times;</button>
           </div>
         </div>
