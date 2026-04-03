@@ -356,8 +356,8 @@ function App() {
         <LiveSessionMode plan={livePlan} onComplete={handleLiveComplete} onExit={handleLiveExit} />
       )}
       <OfflineIndicator />
-      {/* Header — hidden during onboarding */}
-      {!isOnboarding && <header className="bg-white border-b border-gray-100 shadow-card sticky top-0 z-30" role="banner">
+      {/* Header */}
+      <header className={`bg-white border-b border-gray-100 shadow-card sticky top-0 z-30 ${isOnboarding ? 'hidden' : ''}`} role="banner">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="w-5" />
           <button onClick={() => setShowSettings(true)} aria-label="Profile" className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-sm font-bold text-accent">
@@ -378,7 +378,7 @@ function App() {
             </button>
           ))}
         </nav>
-      </header>}
+      </header>
 
       {/* Content */}
       <main className="max-w-3xl mx-auto px-4 py-6">
@@ -448,8 +448,8 @@ function App() {
         )}
       </main>
 
-      {/* Mobile bottom nav — hidden during onboarding */}
-      {!isOnboarding && <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-card z-30" aria-label="Main navigation">
+      {/* Mobile bottom nav */}
+      <nav className={`md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-card z-30 ${isOnboarding ? 'hidden' : ''}`} aria-label="Main navigation">
         <div className="flex">
           {(userRole === 'coach' ? COACH_TABS : PLAYER_TABS).map(tab => (
             <button
@@ -464,7 +464,7 @@ function App() {
             </button>
           ))}
         </div>
-      </nav>}
+      </nav>
 
       {/* Session Detail Modal */}
       <Modal
