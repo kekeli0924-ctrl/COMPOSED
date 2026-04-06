@@ -54,13 +54,13 @@ function sessionToRow(s) {
 
 // GET /api/sessions
 router.get('/', (req, res) => {
-  const rows = getDb().prepare('SELECT * FROM sessions ORDER BY date DESC').all();
+  const rows = getDb().prepare('SELECT * FROM sessions WHERE user_id = ? ORDER BY date DESC').all(req.userId);
   res.json(rows.map(rowToSession));
 });
 
 // GET /api/sessions/:id
 router.get('/:id', (req, res) => {
-  const row = getDb().prepare('SELECT * FROM sessions WHERE id = ?').get(req.params.id);
+  const row = getDb().prepare('SELECT * FROM sessions WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!row) return res.status(404).json({ error: 'Not found' });
   res.json(rowToSession(row));
 });
@@ -69,18 +69,19 @@ router.get('/:id', (req, res) => {
 router.post('/', validate(sessionSchema), (req, res) => {
   try {
     const r = sessionToRow(req.body);
-    getDb().prepare(`INSERT OR REPLACE INTO sessions (id, date, duration, drills, notes, intention, session_type, position, quick_rating, body_check, shooting, passing, fitness, delivery, attacking, reflection, idp_goals, media_links)
-      VALUES (@id, @date, @duration, @drills, @notes, @intention, @session_type, @position, @quick_rating, @body_check, @shooting, @passing, @fitness, @delivery, @attacking, @reflection, @idp_goals, @media_links)`).run(r);
+    r.user_id = req.userId;
+    getDb().prepare(`INSERT OR REPLACE INTO sessions (id, date, duration, drills, notes, intention, session_type, position, quick_rating, body_check, shooting, passing, fitness, delivery, attacking, reflection, idp_goals, media_links, user_id)
+      VALUES (@id, @date, @duration, @drills, @notes, @intention, @session_type, @position, @quick_rating, @body_check, @shooting, @passing, @fitness, @delivery, @attacking, @reflection, @idp_goals, @media_links, @user_id)`).run(r);
 
     // Generate AI insights
     try {
       const insights = generateSessionInsights(r.id);
       if (insights.length > 0) {
-        getDb().prepare('UPDATE sessions SET session_insights = ? WHERE id = ?').run(JSON.stringify(insights), r.id);
+        getDb().prepare('UPDATE sessions SET session_insights = ? WHERE id = ? AND user_id = ?').run(JSON.stringify(insights), r.id, req.userId);
       }
     } catch { /* insights are optional */ }
 
-    res.status(201).json(rowToSession(getDb().prepare('SELECT * FROM sessions WHERE id = ?').get(r.id)));
+    res.status(201).json(rowToSession(getDb().prepare('SELECT * FROM sessions WHERE id = ? AND user_id = ?').get(r.id, req.userId)));
   } catch (err) {
     console.error('POST /api/sessions error:', err.message, 'body:', JSON.stringify(req.body).slice(0, 500));
     res.status(500).json({ error: err.message });
@@ -91,8 +92,9 @@ router.post('/', validate(sessionSchema), (req, res) => {
 router.put('/:id', validate(sessionSchema), (req, res) => {
   try {
     const r = sessionToRow({ ...req.body, id: req.params.id });
-    getDb().prepare(`UPDATE sessions SET date=@date, duration=@duration, drills=@drills, notes=@notes, intention=@intention, session_type=@session_type, position=@position, quick_rating=@quick_rating, body_check=@body_check, shooting=@shooting, passing=@passing, fitness=@fitness, delivery=@delivery, attacking=@attacking, reflection=@reflection, idp_goals=@idp_goals, media_links=@media_links, updated_at=datetime('now') WHERE id=@id`).run(r);
-    const row = getDb().prepare('SELECT * FROM sessions WHERE id = ?').get(req.params.id);
+    r.user_id = req.userId;
+    getDb().prepare(`UPDATE sessions SET date=@date, duration=@duration, drills=@drills, notes=@notes, intention=@intention, session_type=@session_type, position=@position, quick_rating=@quick_rating, body_check=@body_check, shooting=@shooting, passing=@passing, fitness=@fitness, delivery=@delivery, attacking=@attacking, reflection=@reflection, idp_goals=@idp_goals, media_links=@media_links, updated_at=datetime('now') WHERE id=@id AND user_id=@user_id`).run(r);
+    const row = getDb().prepare('SELECT * FROM sessions WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!row) return res.status(404).json({ error: 'Not found' });
     res.json(rowToSession(row));
   } catch (err) {
@@ -103,7 +105,7 @@ router.put('/:id', validate(sessionSchema), (req, res) => {
 
 // DELETE /api/sessions/:id
 router.delete('/:id', (req, res) => {
-  getDb().prepare('DELETE FROM sessions WHERE id = ?').run(req.params.id);
+  getDb().prepare('DELETE FROM sessions WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
   res.json({ ok: true });
 });
 

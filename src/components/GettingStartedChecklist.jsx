@@ -23,7 +23,7 @@ export function GettingStartedChecklist({ sessions, idpGoals, friends, myCoach, 
         id: 'idp',
         label: 'Create your first IDP goal',
         done: (idpGoals || []).length > 0,
-        action: () => onNavigate?.('idp'),
+        action: () => onNavigate?.('profile'),
       },
       {
         id: 'friend',

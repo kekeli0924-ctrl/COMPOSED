@@ -19,14 +19,25 @@ function rowToSettings(row) {
 }
 
 router.get('/', (req, res) => {
-  const row = getDb().prepare('SELECT * FROM settings WHERE id = 1').get();
+  const db = getDb();
+  let row = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.userId);
+  if (!row) {
+    db.prepare(`INSERT INTO settings (user_id) VALUES (?)`).run(req.userId);
+    row = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.userId);
+  }
   res.json(rowToSettings(row));
 });
 
 router.put('/', validate(settingsSchema), (req, res) => {
   try {
+    const db = getDb();
     const s = req.body;
-    getDb().prepare(`UPDATE settings SET
+    // Ensure a row exists for this user before updating
+    let row = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.userId);
+    if (!row) {
+      db.prepare(`INSERT INTO settings (user_id) VALUES (?)`).run(req.userId);
+    }
+    db.prepare(`UPDATE settings SET
       distance_unit = COALESCE(@distance_unit, distance_unit),
       weekly_goal = COALESCE(@weekly_goal, weekly_goal),
       age_group = COALESCE(@age_group, age_group),
@@ -37,7 +48,7 @@ router.put('/', validate(settingsSchema), (req, res) => {
       position = COALESCE(@position, position),
       equipment = COALESCE(@equipment, equipment),
       updated_at = datetime('now')
-      WHERE id = 1`).run({
+      WHERE user_id = @user_id`).run({
       distance_unit: s.distanceUnit ?? null,
       weekly_goal: s.weeklyGoal ?? null,
       age_group: s.ageGroup ?? null,
@@ -47,8 +58,9 @@ router.put('/', validate(settingsSchema), (req, res) => {
       getting_started_complete: s.gettingStartedComplete ?? null,
       position: s.position ?? null,
       equipment: s.equipment ? JSON.stringify(s.equipment) : null,
+      user_id: req.userId,
     });
-    const row = getDb().prepare('SELECT * FROM settings WHERE id = 1').get();
+    row = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.userId);
     res.json(rowToSettings(row));
   } catch (err) {
     res.status(500).json({ error: err.message });

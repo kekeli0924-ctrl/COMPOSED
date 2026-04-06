@@ -60,6 +60,46 @@ IMPORTANT: Return ONLY valid JSON in this exact format, no other text:
   "overallConfidence": "high|medium|low"
 }`;
 
+const FRAME_ANALYSIS_PROMPT = `You are an expert soccer coach analyzing a series of key frames extracted from a solo training video. These frames are evenly sampled from the full video.
+
+Analyze ALL frames together to understand what the player was doing during the session.
+
+CLASSIFICATION RULES (same as video analysis):
+- SHOT: Ball kicked toward a GOAL (net/frame). goal=true if ball enters net.
+- PASS: Ball kicked at a WALL/REBOUNDER (flat surface). successful=true if ball returns to player.
+- Count deliberate kicks only, not dribbling touches or setup touches.
+
+Based on the frames, estimate the session metrics. Be conservative — if you can't clearly see something, mark confidence as "low".
+
+IMPORTANT: Return ONLY valid JSON in this exact format, no other text:
+{
+  "duration": <estimated session duration in minutes>,
+  "drills": [<detected drill names from: "Finishing Drill", "Shooting (Inside Box)", "Shooting (Outside Box)", "Wall Passes (1-touch)", "Wall Passes (2-touch)", "Long Passing", "Short Passing Combos", "Crossing & Finishing", "Free Kicks", "Rondo", "Dribbling Circuit", "Sprint Intervals">],
+  "quickRating": <overall session quality 1-10>,
+  "shooting": {
+    "shotsTaken": <number>,
+    "goals": <number>,
+    "leftFoot": { "shots": <number>, "goals": <number> },
+    "rightFoot": { "shots": <number>, "goals": <number> },
+    "confidence": "high|medium|low"
+  },
+  "passing": {
+    "attempts": <number>,
+    "completed": <number>,
+    "keyPasses": 0,
+    "confidence": "high|medium|low"
+  },
+  "fitness": {
+    "rpe": <estimated exertion 1-10>,
+    "sprints": 0,
+    "distance": 0,
+    "confidence": "low"
+  },
+  "sessionType": "Free",
+  "notes": "<2-3 sentence summary>",
+  "overallConfidence": "high|medium|low"
+}`;
+
 export function isConfigured() {
   return !!process.env.GEMINI_API_KEY;
 }
@@ -156,6 +196,98 @@ export async function analyzeVideo(videoPath) {
     return result;
   } catch {
     logger.error('Failed to parse Gemini response as JSON', { text: text.slice(0, 500) });
+    throw new Error('AI returned invalid JSON. Please try again.');
+  }
+}
+
+/**
+ * Analyze pre-extracted frames using Gemini multimodal API.
+ * Sends JPEG images instead of full video — much faster.
+ */
+export async function analyzeWithFrames(framesDir) {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY not set.');
+  }
+
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+  // Read all JPEG frames from directory
+  const frameFiles = fs.readdirSync(framesDir)
+    .filter(f => f.endsWith('.jpg'))
+    .sort();
+
+  if (frameFiles.length === 0) {
+    throw new Error('No frames found for analysis');
+  }
+
+  logger.info(`Analyzing ${frameFiles.length} pre-extracted frames...`);
+
+  // Build image parts for Gemini
+  const imageParts = frameFiles.map(f => {
+    const data = fs.readFileSync(path.join(framesDir, f));
+    return {
+      inlineData: {
+        mimeType: 'image/jpeg',
+        data: data.toString('base64'),
+      },
+    };
+  });
+
+  // Try pro first, fall back to flash
+  const models = ['gemini-2.5-pro', 'gemini-2.5-flash'];
+  let response = null;
+  let lastError = null;
+
+  for (const model of models) {
+    try {
+      logger.info(`Trying model: ${model} with ${imageParts.length} frames`);
+      response = await ai.models.generateContent({
+        model,
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              ...imageParts,
+              { text: FRAME_ANALYSIS_PROMPT },
+            ],
+          },
+        ],
+      });
+      break;
+    } catch (err) {
+      lastError = err;
+      if (String(err).includes('RESOURCE_EXHAUSTED') || String(err).includes('429')) {
+        logger.info(`${model} quota exceeded, trying fallback...`);
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  if (!response) {
+    throw new Error(`All models failed. Last error: ${lastError?.message || lastError}`);
+  }
+
+  // Parse response
+  const text = response.text?.trim() || '';
+  let jsonStr = text;
+  const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    jsonStr = codeBlockMatch[1].trim();
+  } else {
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}') + 1;
+    if (start >= 0 && end > start) {
+      jsonStr = text.slice(start, end);
+    }
+  }
+
+  try {
+    const result = JSON.parse(jsonStr);
+    logger.info('Frame-based analysis complete', { confidence: result.overallConfidence, frames: frameFiles.length });
+    return result;
+  } catch {
+    logger.error('Failed to parse Gemini frame response as JSON', { text: text.slice(0, 500) });
     throw new Error('AI returned invalid JSON. Please try again.');
   }
 }

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from './ui/Button';
 import { SHOOTING_DRILLS, PASSING_DRILLS, FITNESS_DRILLS } from '../utils/stats';
+import { createRecorder } from '../utils/videoRecorder';
+import NoSleep from 'nosleep.js';
 
 // --- Audio Engine (Web Audio API, no files) ---
 let audioCtx = null;
@@ -18,7 +20,7 @@ function playTone(freq, duration, count = 1, gap = 150) {
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.frequency.value = freq;
-      gain.gain.value = 0.3;
+      gain.gain.value = 0.6;
       const start = ctx.currentTime + (i * (duration + gap)) / 1000;
       osc.start(start);
       osc.stop(start + duration / 1000);
@@ -27,25 +29,43 @@ function playTone(freq, duration, count = 1, gap = 150) {
 }
 
 const sounds = {
-  drillStart: () => playTone(880, 100, 2, 120),     // Two short ascending beeps
-  tenSeconds: () => playTone(660, 80, 3, 100),       // Three quick beeps
-  drillEnd: () => playTone(440, 400, 1),             // One long tone
-  sessionComplete: () => {                            // Ascending three-tone chime
+  drillStart: () => playTone(880, 100, 2, 120),
+  tenSeconds: () => playTone(660, 80, 3, 100),
+  drillEnd: () => playTone(440, 400, 1),
+  halfwayBeep: () => playTone(550, 60, 1),
+  sessionComplete: () => {
     try {
       const ctx = getAudioCtx();
-      [523, 659, 784].forEach((freq, i) => {
+      [523, 659, 784, 1047].forEach((freq, i) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
+        osc.connect(gain); gain.connect(ctx.destination);
         osc.frequency.value = freq;
-        gain.gain.value = 0.3;
-        osc.start(ctx.currentTime + i * 0.25);
-        osc.stop(ctx.currentTime + i * 0.25 + 0.3);
+        gain.gain.value = 0.5;
+        gain.gain.setTargetAtTime(0, ctx.currentTime + i * 0.2 + 0.3, 0.1);
+        osc.start(ctx.currentTime + i * 0.2);
+        osc.stop(ctx.currentTime + i * 0.2 + 0.4);
       });
     } catch { /* ignore */ }
   },
+  cameraShutter: () => {
+    try {
+      const ctx = getAudioCtx();
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const g = ctx.createGain(); g.gain.value = 0.4;
+      src.connect(g).connect(ctx.destination);
+      src.start();
+    } catch { /* ignore */ }
+  },
 };
+
+function vibrate(pattern) {
+  try { navigator.vibrate?.(pattern); } catch { /* ignore */ }
+}
 
 // --- Drill Category Helper ---
 function getDrillCategory(name) {
@@ -69,6 +89,11 @@ function formatTime(totalSeconds) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+function formatFileSize(bytes) {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function formatElapsed(totalSeconds) {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
@@ -78,9 +103,17 @@ function formatElapsed(totalSeconds) {
 }
 
 // --- Main Component ---
-export function LiveSessionMode({ plan, onComplete, onExit }) {
+export function LiveSessionMode({ plan, onComplete, onExit, withRecording = false, cameraStream = null }) {
   const timeline = plan?.timeline || [];
   const totalDrills = timeline.filter(t => !t.isWarmup && !t.isCooldown).length;
+
+  // Recording state
+  const recorderRef = useRef(null);
+  const cameraVideoRef = useRef(null);
+  const noSleepRef = useRef(null);
+  const [recordingElapsed, setRecordingElapsed] = useState(0);
+  const [videoBlob, setVideoBlob] = useState(null);
+  const recordingIntervalRef = useRef(null);
 
   // Build the full sequence: drill → rest → drill → rest → ...
   const sequence = useRef([]);
@@ -115,6 +148,60 @@ export function LiveSessionMode({ plan, onComplete, onExit }) {
 
   const current = sequence.current[currentIndex];
 
+  // Attach camera stream to video element via ref callback
+  const attachCameraStream = useCallback((videoEl) => {
+    if (videoEl && cameraStream) {
+      videoEl.srcObject = cameraStream;
+      cameraVideoRef.current = videoEl;
+    }
+  }, [cameraStream]);
+
+  // --- Recording lifecycle ---
+  useEffect(() => {
+    if (!withRecording || !cameraStream) return;
+
+    // Enable NoSleep
+    noSleepRef.current = new NoSleep();
+    noSleepRef.current.enable();
+
+    // Start recording
+    const rec = createRecorder(cameraStream);
+    recorderRef.current = rec;
+    rec.start();
+    if (soundOn) sounds.cameraShutter();
+    vibrate([100, 50, 100]);
+
+    // Update recording elapsed time every second
+    recordingIntervalRef.current = setInterval(() => {
+      setRecordingElapsed(Math.floor(rec.getElapsedMs() / 1000));
+    }, 1000);
+
+    return () => {
+      clearInterval(recordingIntervalRef.current);
+      noSleepRef.current?.disable();
+    };
+  }, [withRecording, cameraStream]);
+
+  // Bookmark drill transitions
+  useEffect(() => {
+    if (!withRecording || !recorderRef.current || !current) return;
+    if (current.type === 'drill') {
+      recorderRef.current.addBookmark(`drill_start:${current.name}`);
+    }
+  }, [currentIndex, withRecording]);
+
+  // Stop recording when session finishes
+  useEffect(() => {
+    if (!finished || !withRecording || !recorderRef.current) return;
+    (async () => {
+      recorderRef.current.addBookmark('session_end');
+      const blob = await recorderRef.current.stop();
+      setVideoBlob(blob);
+      clearInterval(recordingIntervalRef.current);
+      noSleepRef.current?.disable();
+    })();
+  }, [finished, withRecording]);
+
   // Initialize timer for current segment
   useEffect(() => {
     if (!current) return;
@@ -146,7 +233,13 @@ export function LiveSessionMode({ plan, onComplete, onExit }) {
         // 10-second warning
         if (next === 10 && !playedTenSecRef.current && soundOn) {
           sounds.tenSeconds();
+          vibrate([50, 30, 50, 30, 50]);
           playedTenSecRef.current = true;
+        }
+        // Halfway beep (for drills, not rest)
+        if (current?.type === 'drill' && current.duration) {
+          const half = Math.floor((current.duration * 60) / 2);
+          if (next === half && soundOn) sounds.halfwayBeep();
         }
         // Timer done
         if (next <= 0) {
@@ -226,6 +319,8 @@ export function LiveSessionMode({ plan, onComplete, onExit }) {
       focus: plan.focus || '',
       shooting: totalShots > 0 ? { shotsTaken: totalShots, goals: totalGoals } : null,
       passing: totalAttempts > 0 ? { attempts: totalAttempts, completed: totalCompleted } : null,
+      videoBlob: videoBlob || null,
+      drillBookmarks: recorderRef.current?.getBookmarks() || [],
     };
 
     onComplete?.(prefillData);
@@ -264,6 +359,33 @@ export function LiveSessionMode({ plan, onComplete, onExit }) {
               </div>
             ))}
           </div>
+        )}
+
+        {/* Video options (recording mode) */}
+        {withRecording && videoBlob && (
+          <div className="w-full max-w-xs space-y-2 mb-6">
+            <p className="text-xs text-white/40 uppercase tracking-wider text-center mb-2">Recording ({formatFileSize(videoBlob.size)})</p>
+            <button onClick={() => {
+              // Pass video blob for analysis in the log flow
+              handleLogResults();
+            }} className="w-full py-3 bg-accent text-white rounded-xl font-semibold text-sm">
+              Analyze with AI 🤖
+            </button>
+            <button onClick={() => {
+              const url = URL.createObjectURL(videoBlob);
+              const a = document.createElement('a');
+              a.href = url; a.download = `session-${Date.now()}.webm`; a.click();
+              URL.revokeObjectURL(url);
+            }} className="w-full py-2 bg-white/10 text-white/70 rounded-xl text-xs">
+              Save Video Only 💾
+            </button>
+            <button onClick={() => { setVideoBlob(null); }} className="w-full py-1 text-white/30 text-xs">
+              Discard Recording
+            </button>
+          </div>
+        )}
+        {withRecording && !videoBlob && (
+          <p className="text-xs text-white/30 mb-4">Assembling recording...</p>
         )}
 
         <div className="w-full max-w-xs space-y-3">
@@ -319,10 +441,36 @@ export function LiveSessionMode({ plan, onComplete, onExit }) {
   const circumference = 2 * Math.PI * 90;
 
   return (
-    <div className="fixed inset-0 bg-[#0F1B2D] z-50 flex flex-col text-white">
+    <div className={`fixed inset-0 z-50 ${withRecording ? 'bg-black' : 'bg-[#0F1B2D]'}`}>
+      {/* Camera background (recording mode) */}
+      {withRecording && cameraStream && (
+        <video
+          ref={attachCameraStream}
+          autoPlay playsInline muted
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ zIndex: 0 }}
+        />
+      )}
+
+      {/* Gradient overlays for text readability (recording mode) */}
+      {withRecording && (
+        <>
+          <div className="absolute top-0 left-0 right-0 h-1/4 bg-gradient-to-b from-black/70 to-transparent" style={{ zIndex: 1 }} />
+          <div className="absolute bottom-0 left-0 right-0 h-2/5 bg-gradient-to-t from-black/80 to-transparent" style={{ zIndex: 1 }} />
+        </>
+      )}
+
+      <div className={`absolute inset-0 flex flex-col text-white ${withRecording ? '' : 'bg-[#0F1B2D]'}`} style={{ zIndex: 2 }}>
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-3 bg-black/20">
         <div className="flex items-center gap-2">
+          {withRecording && (
+            <>
+              <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-xs text-white/80 font-mono">REC {formatElapsed(recordingElapsed)}</span>
+              <span className="text-white/20 mx-1">|</span>
+            </>
+          )}
           <span className="text-xs text-white/40 font-mono">{formatElapsed(totalElapsed)}</span>
         </div>
         <p className="text-xs text-white/60 uppercase tracking-wider">{phaseLabel}</p>
@@ -351,13 +499,13 @@ export function LiveSessionMode({ plan, onComplete, onExit }) {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-4xl font-bold font-mono">{formatTime(secondsLeft)}</span>
+            <span className={`font-bold font-mono ${withRecording ? 'text-6xl' : 'text-4xl'}`}>{formatTime(secondsLeft)}</span>
             <span className="text-xs text-white/40 mt-1">{current.reps}</span>
           </div>
         </div>
 
         {/* Drill name */}
-        <h1 className="text-2xl font-bold text-center mb-2 font-heading">
+        <h1 className={`font-bold text-center mb-2 font-heading ${withRecording ? 'text-4xl' : 'text-2xl'}`} style={withRecording ? { textShadow: '2px 2px 8px rgba(0,0,0,0.8)' } : undefined}>
           {current.name}
         </h1>
 
@@ -381,6 +529,7 @@ export function LiveSessionMode({ plan, onComplete, onExit }) {
         <button onClick={handleSkip} className="text-xs text-white/30">
           Skip
         </button>
+      </div>
       </div>
     </div>
   );

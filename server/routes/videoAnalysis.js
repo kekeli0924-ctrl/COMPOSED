@@ -6,7 +6,9 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { getDb } from '../db.js';
 import { logger } from '../logger.js';
-import { analyzeVideo, isConfigured } from '../services/videoAnalyzer.js';
+import { analyzeVideo, analyzeWithFrames, isConfigured } from '../services/videoAnalyzer.js';
+import { Server as TusServer } from '@tus/server';
+import { FileStore } from '@tus/file-store';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, '..', 'data', 'uploads');
@@ -31,6 +33,37 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({ storage, fileFilter, limits: { fileSize: 500 * 1024 * 1024 } });
 
 const router = Router();
+
+// GET /api/video/list — all completed analyses for the current user's timeline
+router.get('/list', (req, res) => {
+  const db = getDb();
+  const rows = db.prepare(
+    "SELECT id, original_name, clip_timestamp, analysis_result, completed_at FROM video_analyses WHERE status = 'complete' ORDER BY completed_at DESC LIMIT 20"
+  ).all();
+
+  const items = rows.map(row => {
+    let totalKicks = 0;
+    let shotPct = null;
+    try {
+      const result = JSON.parse(row.analysis_result || '{}');
+      const kicks = result.kicks_detail || result.kicks || [];
+      totalKicks = kicks.length;
+      if (result.shot_accuracy != null) shotPct = Math.round(result.shot_accuracy);
+      else if (result.accuracy != null) shotPct = Math.round(result.accuracy);
+    } catch { /* ignore */ }
+
+    return {
+      videoId: row.id,
+      originalName: row.original_name,
+      clipTimestamp: row.clip_timestamp,
+      completedAt: row.completed_at,
+      totalKicks,
+      shotPct,
+    };
+  });
+
+  res.json(items);
+});
 
 // GET /api/video/capabilities
 router.get('/capabilities', (req, res) => {
@@ -88,7 +121,18 @@ router.post('/:videoId/analyze', (req, res) => {
 
   (async () => {
     try {
-      const result = await analyzeVideo(video.video_path);
+      // Always prefer sending the full video to Gemini (even compressed) for accurate motion analysis.
+      // Static frames can't capture kicks, ball trajectory, or timing — causing undercounts.
+      // Only fall back to frame-based analysis if no video file exists.
+      const hasVideo = video.video_path && fs.existsSync(video.video_path);
+      const framesDir = path.join(UPLOADS_DIR, 'frames', video.id);
+      const hasFrames = fs.existsSync(framesDir) && fs.readdirSync(framesDir).some(f => f.endsWith('.jpg'));
+
+      const result = hasVideo
+        ? await analyzeVideo(video.video_path)
+        : hasFrames
+          ? await analyzeWithFrames(framesDir)
+          : (() => { throw new Error('No video or frames found for analysis'); })();
 
       // Auto-save highlight timestamp from first kick
       let clipTimestamp = null;
@@ -144,5 +188,155 @@ router.delete('/:videoId', (req, res) => {
   db.prepare('DELETE FROM video_analyses WHERE id = ?').run(video.id);
   res.json({ ok: true });
 });
+
+// ── Chunked upload endpoints (for client-side preprocessed videos) ──────
+
+const FRAMES_DIR = path.join(UPLOADS_DIR, 'frames');
+const CHUNKS_DIR = path.join(UPLOADS_DIR, 'chunks');
+fs.mkdirSync(FRAMES_DIR, { recursive: true });
+fs.mkdirSync(CHUNKS_DIR, { recursive: true });
+
+const frameUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const videoId = req._videoId || crypto.randomUUID();
+      req._videoId = videoId;
+      const dir = path.join(FRAMES_DIR, videoId);
+      fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => cb(null, file.originalname),
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per frame
+});
+
+const chunkUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const dir = path.join(CHUNKS_DIR, req.params.videoId);
+      fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      const idx = req.body.chunkIndex || '0';
+      cb(null, `chunk_${idx.padStart(5, '0')}`);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per chunk
+});
+
+// POST /api/video/upload-frames — receive pre-extracted JPEGs
+router.post('/upload-frames', (req, res) => {
+  frameUpload.array('frames', 60)(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+
+    const videoId = req._videoId;
+    const frameCount = parseInt(req.body.frameCount) || req.files?.length || 0;
+    const originalSize = parseInt(req.body.originalSize) || 0;
+    const compressedSize = parseInt(req.body.compressedSize) || 0;
+
+    const db = getDb();
+    db.prepare(`INSERT INTO video_analyses (id, video_path, original_name, file_size, status, frames_extracted)
+      VALUES (?, ?, ?, ?, 'uploaded', ?)`).run(
+      videoId, '', 'preprocessed.mp4', originalSize, frameCount
+    );
+
+    logger.info('Frames uploaded', { videoId, frameCount, originalSize, compressedSize });
+    res.status(201).json({ videoId, frameCount });
+  });
+});
+
+// POST /api/video/upload-chunk/:videoId — receive one chunk of compressed video
+router.post('/upload-chunk/:videoId', (req, res) => {
+  chunkUpload.single('chunk')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    res.json({ ok: true, chunkIndex: req.body.chunkIndex });
+  });
+});
+
+// POST /api/video/upload-complete/:videoId — assemble chunks + trigger analysis
+router.post('/upload-complete/:videoId', async (req, res) => {
+  const { videoId } = req.params;
+  const { totalChunks, frameCount, preprocessed } = req.body;
+
+  const db = getDb();
+  const video = db.prepare('SELECT * FROM video_analyses WHERE id = ?').get(videoId);
+  if (!video) return res.status(404).json({ error: 'Video not found' });
+
+  try {
+    // Assemble chunks into single file
+    const chunksDir = path.join(CHUNKS_DIR, videoId);
+    const outputPath = path.join(UPLOADS_DIR, `${videoId}.mp4`);
+
+    if (fs.existsSync(chunksDir)) {
+      const chunkFiles = fs.readdirSync(chunksDir).sort();
+      const writeStream = fs.createWriteStream(outputPath);
+
+      for (const chunkFile of chunkFiles) {
+        const chunkData = fs.readFileSync(path.join(chunksDir, chunkFile));
+        writeStream.write(chunkData);
+      }
+      writeStream.end();
+
+      await new Promise((resolve, reject) => {
+        writeStream.on('finish', resolve);
+        writeStream.on('error', reject);
+      });
+
+      // Cleanup chunks
+      fs.rmSync(chunksDir, { recursive: true, force: true });
+
+      // Update DB with assembled file path
+      const stats = fs.statSync(outputPath);
+      db.prepare('UPDATE video_analyses SET video_path = ?, file_size = ? WHERE id = ?')
+        .run(outputPath, stats.size, videoId);
+    }
+
+    logger.info('Video assembly complete', { videoId, preprocessed, frameCount });
+    res.json({ videoId, status: 'assembled', preprocessed: !!preprocessed });
+  } catch (err) {
+    logger.error('Video assembly failed', { videoId, error: err.message });
+    res.status(500).json({ error: 'Assembly failed' });
+  }
+});
+
+// ── Tus resumable upload endpoint (for dual-mode session recordings) ──────
+
+const TUS_DIR = path.join(UPLOADS_DIR, 'tus');
+fs.mkdirSync(TUS_DIR, { recursive: true });
+
+const tusServer = new TusServer({
+  path: '/api/video/tus',
+  datastore: new FileStore({ directory: TUS_DIR }),
+  maxSize: 500 * 1024 * 1024,
+  async onUploadFinish(req, res, upload) {
+    try {
+      const db = getDb();
+      const videoId = crypto.randomUUID();
+      const metadata = upload.metadata || {};
+      const originalName = metadata.filename || 'session-recording.webm';
+      const drillBookmarks = metadata.drillBookmarks
+        ? JSON.parse(Buffer.from(metadata.drillBookmarks, 'base64').toString())
+        : [];
+
+      const uploadPath = path.join(TUS_DIR, upload.id);
+
+      db.prepare(`INSERT INTO video_analyses (id, video_path, original_name, file_size, status, drill_bookmarks, recording_source)
+        VALUES (?, ?, ?, ?, 'uploaded', ?, 'session')`).run(
+        videoId, uploadPath, originalName, upload.size || 0, JSON.stringify(drillBookmarks)
+      );
+
+      logger.info('Tus upload complete', { videoId, uploadId: upload.id, size: upload.size, bookmarks: drillBookmarks.length });
+      res.setHeader('X-Video-Id', videoId);
+    } catch (err) {
+      logger.error('Tus onUploadFinish error', { error: err.message });
+    }
+    return res;
+  },
+});
+
+// Mount tus handler
+router.all('/tus', (req, res) => tusServer.handle(req, res));
+router.all('/tus/:uploadId', (req, res) => tusServer.handle(req, res));
 
 export default router;

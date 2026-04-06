@@ -48,12 +48,26 @@ export function requireCoach(req, res, next) {
   next();
 }
 
+export function requireParent(req, res, next) {
+  if (req.userRole !== 'parent') {
+    return res.status(403).json({ error: 'Parent access required', code: 'FORBIDDEN' });
+  }
+  next();
+}
+
+export function requirePlayer(req, res, next) {
+  if (req.userRole !== 'player') {
+    return res.status(403).json({ error: 'Player access required', code: 'FORBIDDEN' });
+  }
+  next();
+}
+
 const authRouter = Router();
 
 // POST /api/auth/register
 authRouter.post('/register', async (req, res) => {
   const { username, password, role } = req.body;
-  const userRole = role === 'coach' ? 'coach' : 'player';
+  const userRole = ['coach', 'parent'].includes(role) ? role : 'player';
   if (!username || !password) return res.status(400).json({ error: 'Username and password required', code: 'MISSING_FIELDS' });
   if (username.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters', code: 'USERNAME_SHORT' });
   if (username.length > 50) return res.status(400).json({ error: 'Username too long', code: 'USERNAME_LONG' });
@@ -134,8 +148,8 @@ authRouter.put('/role', (req, res) => {
   try {
     const payload = jwt.verify(header.slice(7), JWT_SECRET);
     const { role } = req.body;
-    if (role !== 'coach' && role !== 'player') {
-      return res.status(400).json({ error: 'Role must be coach or player', code: 'INVALID_ROLE' });
+    if (!['coach', 'player', 'parent'].includes(role)) {
+      return res.status(400).json({ error: 'Role must be coach, player, or parent', code: 'INVALID_ROLE' });
     }
     const db = getDb();
     db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, payload.userId);

@@ -85,14 +85,14 @@ function initSchema(db) {
     );
 
     CREATE TABLE IF NOT EXISTS settings (
-      id INTEGER PRIMARY KEY CHECK(id = 1) DEFAULT 1,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL DEFAULT 1 UNIQUE,
       distance_unit TEXT DEFAULT 'km',
       weekly_goal INTEGER DEFAULT 3,
       age_group TEXT,
       skill_level TEXT,
       updated_at TEXT DEFAULT (datetime('now'))
     );
-    INSERT OR IGNORE INTO settings (id) VALUES (1);
 
     CREATE TABLE IF NOT EXISTS personal_records (
       id INTEGER PRIMARY KEY CHECK(id = 1) DEFAULT 1,
@@ -572,7 +572,7 @@ const migrations = [
       UPDATE drills SET position_relevance = '["Striker","CB"]' WHERE name = 'Free Kicks';
 
       -- Add 12 new position-specific drills
-      INSERT INTO drills (name, slug, category, subcategory, difficulty, duration_minutes, reps_description, equipment_needed, space_needed, description, coaching_points, variations, position_relevance) VALUES
+      INSERT OR IGNORE INTO drills (name, slug, category, subcategory, difficulty, duration_minutes, reps_description, equipment_needed, space_needed, description, coaching_points, variations, position_relevance) VALUES
       ('Penalty Box Movement', 'penalty-box-movement', 'Tactical', 'Movement', 'intermediate', 10, '10 runs, vary starting position', 'Cones (6)', 'medium (10x10m)', 'Practice making runs inside the penalty area. Work on losing your marker, timing runs to meet crosses, and finding space in crowded areas.', '["Start your run late — arrive with the ball, not before","Check away then dart back toward goal","Use the defender body as a shield","Vary between near post, far post, and penalty spot runs"]', '["Add a crosser for live delivery","Defender shadows to add pressure"]', '["Striker"]'),
       ('Header Practice', 'header-practice', 'Technical', 'Shooting', 'intermediate', 10, '20 headers total', 'Ball, goal', 'medium (10x10m)', 'Develop heading technique for both attacking and defensive situations. Self-toss or use a wall to practice directing headers toward goal corners.', '["Eyes open, mouth closed at contact","Attack the ball — move forward into the header","Use your forehead, not the top of your head","Generate power from your core and neck, not just your head"]', '["Defensive clearance headers for height and distance","Glancing headers to redirect the ball"]', '["Striker","CB"]'),
       ('Byline Cutback Drill', 'byline-cutback-drill', 'Technical', 'Crossing', 'intermediate', 10, '10 runs each side', 'Ball, cones (4), goal', 'large (half pitch)', 'Sprint to the byline with the ball, cut back sharply, then deliver a low pass across the box or finish at the near post. Practice both sides.', '["Get your head up before the cutback","Use the outside of your foot to cut","Keep the ball moving — don not stop","Aim your cutback to the penalty spot area"]', '["Finish yourself instead of crossing","Add a defender chasing you"]', '["Winger"]'),
@@ -586,6 +586,87 @@ const migrations = [
       ('Shot Stopping Drill', 'shot-stopping-drill', 'Technical', 'Goalkeeping', 'intermediate', 15, '30 saves', 'Ball, goal', 'medium (10x10m)', 'Face shots from various angles and distances. Start with slow shots to warm up, progress to full-power strikes. Work on positioning, set position, and diving technique.', '["Get into set position before every shot","Stay on your toes, slightly forward","Make yourself big — spread your body","Push wide, not back into the goal"]', '["Add a second shooter for quick reactions","Face shots after dealing with crosses"]', '["GK"]'),
       ('Distribution Practice', 'distribution-practice', 'Technical', 'Goalkeeping', 'beginner', 10, '20 distributions', 'Ball, cones (4)', 'large (half pitch)', 'Practice goal kicks, overarm throws, and short passing under pressure. Aim for accuracy to specific zones and teammates. Work on building attacks from the back.', '["Goal kicks: strike through the ball with your laces","Throws: step forward and release at the highest point","Short passes: be brave, play out under pressure","Vary your distribution — do not be predictable"]', '["Add cones as pressing attackers","Practice with a teammate making runs"]', '["GK"]');
     `);
+  }},
+  { version: 16, up: (db) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS parent_player_links (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        parent_id INTEGER NOT NULL,
+        player_id INTEGER NOT NULL,
+        status TEXT DEFAULT 'pending' CHECK(status IN ('pending','active','revoked')),
+        invite_code TEXT,
+        invited_at TEXT DEFAULT (datetime('now')),
+        accepted_at TEXT,
+        UNIQUE(parent_id, player_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_ppl_parent ON parent_player_links(parent_id);
+      CREATE INDEX IF NOT EXISTS idx_ppl_player ON parent_player_links(player_id);
+
+      CREATE TABLE IF NOT EXISTS parent_visibility_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id INTEGER NOT NULL UNIQUE,
+        show_ratings INTEGER DEFAULT 1,
+        show_coach_feedback INTEGER DEFAULT 1,
+        show_idp_goals INTEGER DEFAULT 1
+      );
+    `);
+  }},
+  { version: 17, up: (db) => {
+    try { db.exec("ALTER TABLE video_analyses ADD COLUMN session_id TEXT"); } catch { /* exists */ }
+    try { db.exec("ALTER TABLE video_analyses ADD COLUMN drill_bookmarks TEXT DEFAULT '[]'"); } catch { /* exists */ }
+    try { db.exec("ALTER TABLE video_analyses ADD COLUMN recording_source TEXT DEFAULT 'upload'"); } catch { /* exists */ }
+  }},
+  { version: 18, up: (db) => {
+    // Add user_id to all core tables for multi-user data isolation
+    // DEFAULT 1 preserves existing data (assigned to dev player user id=1)
+    const tables = [
+      'sessions', 'matches', 'training_plans', 'idp_goals',
+      'decision_journal', 'benchmarks', 'templates', 'video_analyses',
+    ];
+    for (const table of tables) {
+      try { db.exec(`ALTER TABLE ${table} ADD COLUMN user_id INTEGER DEFAULT 1`); } catch { /* exists */ }
+    }
+
+    // personal_records: add user_id, remove single-row constraint
+    try { db.exec("ALTER TABLE personal_records ADD COLUMN user_id INTEGER DEFAULT 1"); } catch { /* exists */ }
+
+    // custom_drills: add user_id
+    try { db.exec("ALTER TABLE custom_drills ADD COLUMN user_id INTEGER DEFAULT 1"); } catch { /* exists */ }
+
+    // settings: SQLite can't drop CHECK constraints, so create a new table
+    // Check if user_id column already exists on settings
+    const cols = db.prepare("PRAGMA table_info(settings)").all();
+    if (!cols.find(c => c.name === 'user_id')) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS settings_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL DEFAULT 1 UNIQUE,
+          distance_unit TEXT DEFAULT 'km',
+          weekly_goal INTEGER DEFAULT 3,
+          age_group TEXT,
+          skill_level TEXT,
+          player_name TEXT,
+          onboarding_complete INTEGER DEFAULT 0,
+          getting_started_complete INTEGER DEFAULT 0,
+          position TEXT DEFAULT 'General',
+          equipment TEXT,
+          updated_at TEXT DEFAULT (datetime('now'))
+        );
+      `);
+      // Copy existing settings row to new table
+      try {
+        db.exec(`INSERT INTO settings_new (user_id, distance_unit, weekly_goal, age_group, skill_level, player_name, onboarding_complete, getting_started_complete, position, equipment, updated_at)
+          SELECT 1, distance_unit, weekly_goal, age_group, skill_level, player_name, onboarding_complete, getting_started_complete, position, equipment, updated_at FROM settings WHERE id = 1`);
+      } catch { /* empty or already migrated */ }
+      db.exec("DROP TABLE IF EXISTS settings");
+      db.exec("ALTER TABLE settings_new RENAME TO settings");
+    }
+
+    // Add indexes on user_id for fast lookups
+    try { db.exec("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)"); } catch { /* exists */ }
+    try { db.exec("CREATE INDEX IF NOT EXISTS idx_plans_user ON training_plans(user_id)"); } catch { /* exists */ }
+    try { db.exec("CREATE INDEX IF NOT EXISTS idx_goals_user ON idp_goals(user_id)"); } catch { /* exists */ }
+    try { db.exec("CREATE INDEX IF NOT EXISTS idx_settings_user ON settings(user_id)"); } catch { /* exists */ }
   }},
 ];
 

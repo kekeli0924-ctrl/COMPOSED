@@ -48,11 +48,15 @@ export function OnboardingFlow({ settings, onComplete }) {
     skillLevel: '',
     weeklyGoal: 3,
     equipment: ['ball'],
+    parentCode: '',
+    parentConnectError: '',
+    parentConnected: false,
   });
 
   const update = (field, value) => setData(prev => ({ ...prev, [field]: value }));
 
   const isCoach = data.role === 'coach';
+  const isParent = data.role === 'parent';
 
   const canAdvance = () => {
     if (step === 0) return true; // role selection always valid
@@ -65,12 +69,33 @@ export function OnboardingFlow({ settings, onComplete }) {
     onComplete({
       role: data.role,
       playerName: data.playerName,
-      ageGroup: isCoach ? '' : data.ageGroup,
-      skillLevel: isCoach ? '' : data.skillLevel,
-      weeklyGoal: isCoach ? 3 : data.weeklyGoal,
-      equipment: isCoach ? ['ball'] : data.equipment,
+      ageGroup: (isCoach || isParent) ? '' : data.ageGroup,
+      skillLevel: (isCoach || isParent) ? '' : data.skillLevel,
+      weeklyGoal: (isCoach || isParent) ? 3 : data.weeklyGoal,
+      equipment: (isCoach || isParent) ? ['ball'] : data.equipment,
       onboardingComplete: 1,
     });
+  };
+
+  const handleParentConnect = async () => {
+    if (!data.parentCode.trim()) return;
+    update('parentConnectError', '');
+    try {
+      const res = await fetch('/api/parent/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: data.parentCode.trim() }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        update('parentConnected', true);
+        update('parentConnectError', '');
+      } else {
+        update('parentConnectError', result.error || 'Invalid code');
+      }
+    } catch {
+      update('parentConnectError', 'Connection failed. Try again.');
+    }
   };
 
   const steps = [
@@ -78,13 +103,14 @@ export function OnboardingFlow({ settings, onComplete }) {
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight font-heading italic">stay composed</h2>
+          <h2 className="text-3xl text-gray-900 tracking-tight font-logo italic">stay composed</h2>
         </div>
 
         <div className="space-y-3">
           {[
             { role: 'player', icon: '', title: "I'm a Player", desc: 'Track my training, log sessions, improve my game' },
             { role: 'coach', icon: '', title: "I'm a Coach", desc: 'Manage players, assign plans, track progress' },
+            { role: 'parent', icon: '', title: "I'm a Parent", desc: "See your child's training progress" },
           ].map(opt => (
             <button
               key={opt.role}
@@ -108,7 +134,7 @@ export function OnboardingFlow({ settings, onComplete }) {
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight font-heading italic">stay composed</h2>
+          <h2 className="text-3xl text-gray-900 tracking-tight font-logo italic">stay composed</h2>
         </div>
 
         <Card>
@@ -141,7 +167,7 @@ export function OnboardingFlow({ settings, onComplete }) {
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight font-heading italic">stay composed</h2>
+          <h2 className="text-3xl text-gray-900 tracking-tight font-logo italic">stay composed</h2>
         </div>
 
         <Card className="mb-4">
@@ -172,7 +198,7 @@ export function OnboardingFlow({ settings, onComplete }) {
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight font-heading italic">stay composed</h2>
+          <h2 className="text-3xl text-gray-900 tracking-tight font-logo italic">stay composed</h2>
         </div>
 
         <Card>
@@ -231,31 +257,63 @@ export function OnboardingFlow({ settings, onComplete }) {
       </div>
     ),
 
-    // Recording Tips (player only — skipped for coach via activeSteps)
+    // Parent: Connect to Child (parent only — skipped for player/coach via activeSteps)
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight font-heading italic">stay composed</h2>
+          <h2 className="text-3xl text-gray-900 tracking-tight font-logo italic">stay composed</h2>
         </div>
 
-        <div className="space-y-3">
-          {[
-            { icon: '📐', title: 'Stable Camera', desc: 'Use a tripod or lean your phone against something steady. No handheld.' },
-            { icon: '🌅', title: 'Good Lighting', desc: 'Film in landscape mode. Natural daylight works best — avoid shadows on the ball.' },
-            { icon: '⏱️', title: 'Keep It Short', desc: 'Videos under 5 minutes analyze fastest. Break longer sessions into clips.' },
-            { icon: '🎯', title: 'Full View', desc: 'Make sure the goal/wall AND your full body are visible in frame.' },
-          ].map(tip => (
-            <Card key={tip.title}>
-              <div className="flex items-start gap-3">
-                <span className="text-xl shrink-0">{tip.icon}</span>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">{tip.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{tip.desc}</p>
-                </div>
+        <Card>
+          <div className="space-y-4">
+            <div className="text-center">
+              <div className="text-3xl mb-2">🔗</div>
+              <p className="text-sm font-semibold text-gray-900">Connect to your child's account</p>
+              <p className="text-xs text-gray-500 mt-1">Ask your child to generate a parent invite code from their settings.</p>
+            </div>
+
+            {data.parentConnected ? (
+              <div className="text-center py-2">
+                <div className="text-2xl mb-1">✅</div>
+                <p className="text-sm font-semibold text-green-700">Connected!</p>
+                <p className="text-xs text-gray-400 mt-1">You can connect more children later from your dashboard.</p>
               </div>
-            </Card>
-          ))}
-        </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={data.parentCode}
+                    onChange={e => update('parentCode', e.target.value.toUpperCase())}
+                    placeholder="Enter 6-character code"
+                    maxLength={6}
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-center uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  />
+                  <Button onClick={handleParentConnect} disabled={data.parentCode.length < 4}>
+                    Connect
+                  </Button>
+                </div>
+                {data.parentConnectError && (
+                  <p className="text-xs text-red-500 text-center">{data.parentConnectError}</p>
+                )}
+              </>
+            )}
+
+            <div className="space-y-2 pt-2 border-t border-gray-100">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium text-center">How it works</p>
+              {[
+                { num: '1', text: 'Your child opens Settings → Parent Access' },
+                { num: '2', text: "They tap 'Generate Parent Code'" },
+                { num: '3', text: 'You enter the code above' },
+              ].map(s => (
+                <div key={s.num} className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-accent/10 text-accent flex items-center justify-center text-[10px] font-bold shrink-0">{s.num}</span>
+                  <p className="text-xs text-gray-600">{s.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
       </div>
     ),
 
@@ -263,7 +321,7 @@ export function OnboardingFlow({ settings, onComplete }) {
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight font-heading italic">stay composed</h2>
+          <h2 className="text-3xl text-gray-900 tracking-tight font-logo italic">stay composed</h2>
         </div>
 
         <div className="space-y-3">
@@ -271,6 +329,10 @@ export function OnboardingFlow({ settings, onComplete }) {
             { num: 1, title: 'Build Your Roster', desc: 'Generate invite codes and link up with your players.' },
             { num: 2, title: 'Assign Plans', desc: 'Create training plans on specific dates for each player.' },
             { num: 3, title: 'Track Progress', desc: 'View stats, compliance, and development across your squad.' },
+          ] : isParent ? [
+            { num: 1, title: 'Stay Updated', desc: "See your child's training sessions, stats, and streaks at a glance." },
+            { num: 2, title: 'Track Progress', desc: 'Monitor development goals, shooting accuracy, and fitness trends.' },
+            { num: 3, title: 'Stay Connected', desc: 'See coach-assigned plans and training compliance.' },
           ] : [
             { num: 1, title: 'Log', desc: 'Track every session — shooting, passing, fitness, and more. Or upload a video for AI analysis.' },
             { num: 2, title: 'Track', desc: 'See trends, streaks, personal records, and peer comparisons.' },
@@ -292,7 +354,7 @@ export function OnboardingFlow({ settings, onComplete }) {
 
         <div className="mt-6">
           <Button onClick={handleFinish} className="w-full py-3 text-base">
-            {isCoach ? 'Get Started' : 'Start Training'}
+            {isCoach ? 'Get Started' : isParent ? 'View Dashboard' : 'Start Training'}
           </Button>
         </div>
       </div>
@@ -300,9 +362,14 @@ export function OnboardingFlow({ settings, onComplete }) {
   ];
 
   // Coach skips player-specific steps (age group, weekly goal)
+  // Parent skips player-specific steps, gets connect-to-child step instead
+  // steps[4] is the parent connect step — exclude it for player and coach
+  const playerSteps = steps.filter((_, i) => i !== 4); // all except parent connect
   const activeSteps = isCoach
     ? [steps[0], steps[1], steps[steps.length - 1]]  // role, name, finish
-    : steps;
+    : isParent
+    ? [steps[0], steps[4], steps[steps.length - 1]]  // role, connect, finish (skip name/position)
+    : playerSteps;
   const TOTAL_STEPS = activeSteps.length;
 
   return (

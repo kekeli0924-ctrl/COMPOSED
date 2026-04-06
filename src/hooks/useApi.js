@@ -2,20 +2,107 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 const API_BASE = '/api';
 
+// ── Token management ──────────────────────────────
+
+export function getToken() {
+  return localStorage.getItem('composed_token');
+}
+
+export function setTokens(token, refreshToken) {
+  localStorage.setItem('composed_token', token);
+  if (refreshToken) localStorage.setItem('composed_refresh', refreshToken);
+}
+
+export function clearTokens() {
+  localStorage.removeItem('composed_token');
+  localStorage.removeItem('composed_refresh');
+}
+
+function getRefreshToken() {
+  return localStorage.getItem('composed_refresh');
+}
+
+// ── Error notification ────────────────────────────
+
 function notifyError(message) {
   window.dispatchEvent(new CustomEvent('api-error', { detail: message }));
 }
 
+// Dispatch auth failure so App.jsx can redirect to login
+function notifyAuthFailure() {
+  window.dispatchEvent(new CustomEvent('auth-failure'));
+}
+
+// ── Core fetch with auth ──────────────────────────
+
+let refreshPromise = null; // Prevent concurrent refresh calls
+
+async function attemptRefresh() {
+  const refresh = getRefreshToken();
+  if (!refresh) return false;
+
+  // Deduplicate concurrent refresh attempts
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: refresh }),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem('composed_token', data.token);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
 async function apiFetch(path, options = {}) {
-  // In dev mode, include role so backend knows which user to use
-  const role = window.__COMPOSED_ROLE__ || 'player';
-  const separator = path.includes('?') ? '&' : '?';
-  const url = `${API_BASE}${path}${separator}_role=${role}`;
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', 'X-Dev-Role': role },
+  const token = getToken();
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const url = `${API_BASE}${path}`;
+  let res = await fetch(url, {
+    headers,
     ...options,
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
+
+  // On 401, try refreshing the token once
+  if (res.status === 401 && token) {
+    const refreshed = await attemptRefresh();
+    if (refreshed) {
+      // Retry with new token
+      const newToken = getToken();
+      const retryHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${newToken}` };
+      res = await fetch(url, {
+        headers: retryHeaders,
+        ...options,
+        body: options.body ? JSON.stringify(options.body) : undefined,
+      });
+    }
+
+    if (res.status === 401) {
+      // Refresh failed — clear tokens and notify app
+      clearTokens();
+      notifyAuthFailure();
+      throw new Error('Session expired. Please log in again.');
+    }
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `API ${res.status}: ${res.statusText}`);
@@ -25,20 +112,12 @@ async function apiFetch(path, options = {}) {
 
 /**
  * Drop-in replacement for useLocalStorage for array-based collections.
- * Returns [items, setItems] with the same interface.
- *
- * setItems supports:
- *   - Direct value: setItems(newArray)
- *   - Functional update: setItems(prev => newArray)
- *
- * Automatically detects create/update/delete and fires API calls.
  */
 export function useApiCollection(endpoint, initialValue = []) {
   const [items, setItemsInternal] = useState(initialValue);
   const [loaded, setLoaded] = useState(false);
   const prevRef = useRef(initialValue);
 
-  // Fetch on mount
   useEffect(() => {
     let cancelled = false;
     apiFetch(endpoint)
@@ -64,7 +143,6 @@ export function useApiCollection(endpoint, initialValue = []) {
     const next = typeof updater === 'function' ? updater(prev) : updater;
     prevRef.current = next;
     setItemsInternal(next);
-    // Sync diff to API in background (outside state updater to avoid StrictMode double-fire)
     syncDiff(endpoint, prev, next);
   }, [endpoint]);
 
@@ -104,7 +182,6 @@ export function useApiSingleton(endpoint, initialValue) {
     const next = typeof updater === 'function' ? updater(prev) : updater;
     prevRef.current = next;
     setValueInternal(next);
-    // PUT to API in background (outside state updater to avoid StrictMode double-fire)
     apiFetch(endpoint, { method: 'PUT', body: next })
       .catch((err) => notifyError(err.message));
   }, [endpoint]);
@@ -145,7 +222,6 @@ export function useApiStringList(endpoint, initialValue = []) {
     const next = typeof updater === 'function' ? updater(prev) : updater;
     prevRef.current = next;
     setItemsInternal(next);
-    // Sync to API (outside state updater to avoid StrictMode double-fire)
     const added = next.filter(x => !prev.includes(x));
     const removed = prev.filter(x => !next.includes(x));
     for (const name of added) {
@@ -168,7 +244,6 @@ function syncDiff(endpoint, prev, next) {
   const prevMap = new Map(prev.map(item => [item.id, item]));
   const nextMap = new Map(next.map(item => [item.id, item]));
 
-  // Deleted items
   for (const [id] of prevMap) {
     if (!nextMap.has(id)) {
       apiFetch(`${endpoint}/${id}`, { method: 'DELETE' })
@@ -176,14 +251,11 @@ function syncDiff(endpoint, prev, next) {
     }
   }
 
-  // Created or updated items
   for (const [id, item] of nextMap) {
     if (!prevMap.has(id)) {
-      // New item
       apiFetch(endpoint, { method: 'POST', body: item })
         .catch((err) => notifyError(err.message));
     } else if (JSON.stringify(prevMap.get(id)) !== JSON.stringify(item)) {
-      // Updated item
       apiFetch(`${endpoint}/${id}`, { method: 'PUT', body: item })
         .catch((err) => notifyError(err.message));
     }

@@ -15,15 +15,16 @@ function benchmarkToRow(b) {
 }
 
 router.get('/', (req, res) => {
-  const rows = getDb().prepare('SELECT * FROM benchmarks ORDER BY date DESC').all();
+  const rows = getDb().prepare('SELECT * FROM benchmarks WHERE user_id = ? ORDER BY date DESC').all(req.userId);
   res.json(rows.map(rowToBenchmark));
 });
 
 router.post('/', validate(benchmarkSchema), (req, res) => {
   try {
     const r = benchmarkToRow(req.body);
-    getDb().prepare('INSERT OR REPLACE INTO benchmarks (id, date, type, score, data) VALUES (@id, @date, @type, @score, @data)').run(r);
-    res.status(201).json(rowToBenchmark(getDb().prepare('SELECT * FROM benchmarks WHERE id = ?').get(r.id)));
+    r.user_id = req.userId;
+    getDb().prepare('INSERT OR REPLACE INTO benchmarks (id, date, type, score, data, user_id) VALUES (@id, @date, @type, @score, @data, @user_id)').run(r);
+    res.status(201).json(rowToBenchmark(getDb().prepare('SELECT * FROM benchmarks WHERE id = ? AND user_id = ?').get(r.id, req.userId)));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

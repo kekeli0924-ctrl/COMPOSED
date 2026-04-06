@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useApiCollection, useApiSingleton, useApiStringList } from './hooks/useApi';
+import { useApiCollection, useApiSingleton, useApiStringList, getToken, clearTokens } from './hooks/useApi';
+import { AuthScreen } from './components/AuthScreen';
 import { Dashboard } from './components/Dashboard';
 import { SessionLogger } from './components/SessionLogger';
 import { SessionHistory } from './components/SessionHistory';
@@ -13,33 +14,98 @@ import { CoachOverview } from './components/CoachOverview';
 import { CoachPlayerDetail } from './components/CoachPlayerDetail';
 import { SocialFeed } from './components/SocialFeed';
 import { CoachChat } from './components/CoachChat';
+import { PlanWeekView } from './components/PlanWeekView';
 import { StreakXPCard } from './components/StreakXPCard';
 import { LiveSessionMode } from './components/LiveSessionMode';
+import { CameraSetup } from './components/CameraSetup';
 import { ReadinessCheck, AdaptedPlanConfirm } from './components/ReadinessCheck';
 import { ProgramsSection } from './components/ProgramsSection';
 import { AskComposed } from './components/AskComposed';
 import { SessionCompleteScreen } from './components/SessionCompleteScreen';
 import { SessionComments } from './components/SessionComments';
+import { ParentDashboard } from './components/ParentDashboard';
 import { Toast } from './components/ui/Toast';
 import { Button } from './components/ui/Button';
 import { Modal, ConfirmModal } from './components/ui/Modal';
 import { OfflineIndicator } from './components/ui/OfflineIndicator';
 import { formatDate, formatPercentage, computePersonalRecords, detectNewPRs, PR_LABELS, getStreak } from './utils/stats';
-import { computeXP, getLevel } from './utils/gamification';
+import { computeXP, getLevel, getLevelProgress } from './utils/gamification';
 import { getNewBadges } from './utils/gamification';
 
 const PLAYER_TABS = [
   { id: 'dashboard', label: 'Home', icon: DashboardIcon },
-  { id: 'history', label: 'History', icon: ListIcon },
   { id: 'plan', label: 'Plan', icon: CalendarIcon },
-  { id: 'social', label: 'Community', icon: SocialIcon },
   { id: 'drills', label: 'Drills', icon: TargetIcon },
-  { id: 'idp', label: 'IDP', icon: BrainIcon },
+  { id: 'social', label: 'Community', icon: SocialIcon },
 ];
 
 // COACH_TABS defined after icon functions below
 
 function App() {
+  // ── Auth state ──────────────────────────────
+  const [authUser, setAuthUser] = useState(null); // { userId, username, role }
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // Check for existing token on mount
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setAuthChecked(true);
+      return;
+    }
+    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(user => {
+        if (user) {
+          setAuthUser(user);
+          setUserRole(user.role || 'player');
+        } else {
+          clearTokens();
+        }
+        setAuthChecked(true);
+      })
+      .catch(() => { clearTokens(); setAuthChecked(true); });
+  }, []);
+
+  // Listen for auth failures from useApi (expired tokens)
+  useEffect(() => {
+    const handler = () => { setAuthUser(null); clearTokens(); };
+    window.addEventListener('auth-failure', handler);
+    return () => window.removeEventListener('auth-failure', handler);
+  }, []);
+
+  const handleAuthSuccess = useCallback((user) => {
+    setAuthUser(user);
+    setUserRole(user.role || 'player');
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    clearTokens();
+    setAuthUser(null);
+    setUserRole(null);
+    window.location.reload();
+  }, []);
+
+  // Show auth screen if not authenticated
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl text-accent font-logo italic">Composed</h1>
+          <p className="text-xs text-gray-400 mt-2">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authUser) {
+    return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  return <AppMain authUser={authUser} onLogout={handleLogout} />;
+}
+
+function AppMain({ authUser, onLogout }) {
   // Persistent state (API-backed)
   const [sessions, setSessions, sessionsLoaded] = useApiCollection('/sessions', []);
   const [customDrills, setCustomDrills] = useApiStringList('/custom-drills', []);
@@ -53,26 +119,25 @@ function App() {
   const [myCoach, setMyCoach] = useState(null);
   const [activeProgram, setActiveProgram] = useState(null);
 
-  // Fetch coach info + active program for player
+  // Fetch coach info + active program
   useEffect(() => {
-    const role = window.__COMPOSED_ROLE__ || 'player';
-    fetch(`/api/programs/active?_role=${role}`, { headers: { 'X-Dev-Role': role } })
+    fetch('/api/programs/active', { headers: { Authorization: `Bearer ${getToken()}` } })
       .then(r => r.ok ? r.json() : null)
       .then(d => setActiveProgram(d?.program ? d : null))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    fetch('/api/roster/my-coach')
+    fetch('/api/roster/my-coach', { headers: { Authorization: `Bearer ${getToken()}` } })
       .then(r => r.ok ? r.json() : null)
       .then(setMyCoach)
       .catch(() => {});
   }, []);
 
   // Role state
-  const [userRole, setUserRole] = useState(null); // 'player' | 'coach' | null (loading)
+  const [userRole, setUserRole] = useState(authUser.role || 'player');
 
-  // Sync role to window for API requests
+  // Sync role to window for any legacy code that still checks it
   useEffect(() => {
     window.__COMPOSED_ROLE__ = userRole || 'player';
   }, [userRole]);
@@ -81,8 +146,7 @@ function App() {
   useEffect(() => {
     if (userRole === 'coach') return;
     const fetchPlans = () => {
-      const role = window.__COMPOSED_ROLE__ || 'player';
-      fetch(`/api/assigned-plans?_role=${role}`, { headers: { 'X-Dev-Role': role } })
+      fetch('/api/assigned-plans', { headers: { Authorization: `Bearer ${getToken()}` } })
         .then(r => r.ok ? r.json() : [])
         .then(setAssignedPlans)
         .catch(() => {});
@@ -94,15 +158,23 @@ function App() {
 
   // UI state
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [previousTab, setPreviousTab] = useState('dashboard');
   const [selectedCoachPlayer, setSelectedCoachPlayer] = useState(null);
   const [editSession, setEditSession] = useState(null);
   const [viewSession, setViewSession] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showClearDouble, setShowClearDouble] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [exporting, setExporting] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Parent-specific state
+  const [parentChildren, setParentChildren] = useState([]);
+  const [selectedChildId, setSelectedChildId] = useState(null);
+  const [parentDashboard, setParentDashboard] = useState(null);
+  const [parentAccessCode, setParentAccessCode] = useState(null);
+  const [parentConnectedList, setParentConnectedList] = useState([]);
+  const [parentVisibility, setParentVisibility] = useState({ showRatings: true, showCoachFeedback: true, showIdpGoals: true });
 
   const showToast = useCallback((message, variant = 'success') => {
     setToast({ show: true, message, variant });
@@ -118,6 +190,48 @@ function App() {
     window.addEventListener('api-error', handler);
     return () => window.removeEventListener('api-error', handler);
   }, [showToast]);
+
+  // === Parent data fetching ===
+  const isParent = userRole === 'parent';
+
+  const fetchParentChildren = useCallback(() => {
+    if (!isParent) return;
+    const role = window.__COMPOSED_ROLE__ || 'parent';
+    fetch(`/api/parent/children?_role=${role}`, { headers: { 'X-Dev-Role': role } })
+      .then(r => r.ok ? r.json() : [])
+      .then(kids => {
+        setParentChildren(kids);
+        if (kids.length > 0 && !selectedChildId) setSelectedChildId(kids[0].playerId);
+      })
+      .catch(() => {});
+  }, [isParent, selectedChildId]);
+
+  useEffect(() => { fetchParentChildren(); }, [fetchParentChildren]);
+
+  useEffect(() => {
+    if (!isParent || !selectedChildId) return;
+    const role = window.__COMPOSED_ROLE__ || 'parent';
+    fetch(`/api/parent/dashboard/${selectedChildId}?_role=${role}`, { headers: { 'X-Dev-Role': role } })
+      .then(r => r.ok ? r.json() : null)
+      .then(setParentDashboard)
+      .catch(() => {});
+  }, [isParent, selectedChildId]);
+
+  // Fetch parent access data for player profile
+  const fetchParentAccess = useCallback(() => {
+    if (isParent || userRole === 'coach') return;
+    const role = window.__COMPOSED_ROLE__ || 'player';
+    fetch(`/api/parent/my-parents?_role=${role}`, { headers: { 'X-Dev-Role': role } })
+      .then(r => r.ok ? r.json() : [])
+      .then(setParentConnectedList)
+      .catch(() => {});
+    fetch(`/api/parent/visibility-settings?_role=${role}`, { headers: { 'X-Dev-Role': role } })
+      .then(r => r.ok ? r.json() : { showRatings: true, showCoachFeedback: true, showIdpGoals: true })
+      .then(setParentVisibility)
+      .catch(() => {});
+  }, [isParent, userRole]);
+
+  useEffect(() => { fetchParentAccess(); }, [fetchParentAccess]);
 
   // === Session callbacks ===
   const handleSaveSession = useCallback((session) => {
@@ -151,12 +265,99 @@ function App() {
         else if (newPRs.length > 0) showToast(`New PR: ${PR_LABELS[newPRs[0]]}!`);
         else showToast('Session updated!');
       } else {
-        // New session — fetch with insights and show complete screen
+        // New session — fetch with insights and compute completionData
         fetch(`/api/sessions/${session.id}`)
           .then(r => r.ok ? r.json() : session)
           .then(fullSession => {
+            // Find previous training session
+            const prevTraining = prevSessions
+              .filter(s => s.session_type !== 'match' && s.id !== session.id)
+              .sort((a, b) => b.date.localeCompare(a.date))[0] || null;
+
+            const prevShot = prevTraining?.shooting;
+            const prevPass = prevTraining?.passing;
+
+            // XP breakdown
+            const streak = getStreak(newSessions);
+            const xpSession = 25;
+            const xpDailyPlan = 50; // TODO: check if this completed a daily plan
+            const xpStreak = streak > 0 ? 10 : 0;
+            const xpDuration = (session.duration || 0) >= 60 ? 10 : 0;
+            const xpPR = newPRs.length * 100;
+            const totalXP = xpSession + xpStreak + xpDuration + xpPR;
+
+            const allXP = computeXP(newSessions);
+            const level = getLevel(allXP);
+            const prevLevel = getLevel(computeXP(prevSessions));
+            const levelProgress = getLevelProgress(allXP);
+
+            // Streak milestones
+            const milestones = [30, 14, 7, 3];
+            const hitMilestone = milestones.find(m => streak >= m && getStreak(prevSessions) < m);
+
+            // Tomorrow's plan
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowStr = tomorrow.toISOString().split('T')[0];
+            const tPlan = trainingPlans.find(p => p.date === tomorrowStr)
+              || assignedPlans.find(p => p.date === tomorrowStr);
+
+            // Weekly goal
+            const now = new Date();
+            const dayOfWeek = now.getDay();
+            const mondayOff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            const monday = new Date(now);
+            monday.setDate(now.getDate() + mondayOff);
+            const mondayStr = monday.toISOString().split('T')[0];
+            const weekCompleted = newSessions.filter(s => s.date >= mondayStr).length;
+            const wGoal = settings.weeklyGoal ?? 3;
+
+            // PR details
+            const prDetails = newPRs.map(key => ({
+              metric: PR_LABELS[key] || key,
+              newValue: records[key]?.value != null ? String(records[key].value) : '—',
+              previousValue: personalRecords?.[key]?.value != null ? String(personalRecords[key].value) : null,
+            }));
+
             setCompletedSession(fullSession);
             setCompletedBadge(badge);
+            setCompletionData({
+              previousSession: prevTraining ? {
+                duration: prevTraining.duration,
+                shotAccuracy: prevShot?.shotsTaken > 0 ? Math.round((prevShot.goals / prevShot.shotsTaken) * 100) : null,
+                passAccuracy: prevPass?.attempts > 0 ? Math.round((prevPass.completed / prevPass.attempts) * 100) : null,
+                drillCount: (prevTraining.drills || []).length,
+                date: prevTraining.date,
+              } : null,
+              isFirstSession: prevSessions.length === 0,
+              xpBreakdown: {
+                sessionLogged: xpSession,
+                dailyPlan: 0,
+                streakBonus: xpStreak,
+                durationBonus: xpDuration,
+                personalRecord: xpPR,
+              },
+              totalXP,
+              newLevel: level > prevLevel ? level : null,
+              levelProgress: { ...levelProgress, level },
+              badgesUnlocked: badges,
+              personalRecords: prDetails,
+              streak: {
+                current: streak,
+                isNewMilestone: !!hitMilestone,
+                milestone: hitMilestone || null,
+              },
+              tomorrowPlan: tPlan ? {
+                exists: true,
+                drills: tPlan.drills || [],
+                duration: tPlan.targetDuration || 0,
+              } : { exists: false, drills: [], duration: 0 },
+              weeklyGoal: {
+                target: wGoal,
+                completed: weekCompleted,
+                met: weekCompleted >= wGoal,
+              },
+            });
           })
           .catch(() => {
             if (badge) showToast(`${badge.icon} Badge unlocked: ${badge.name}!`);
@@ -167,7 +368,7 @@ function App() {
 
     setEditSession(null);
     if (editSession) setActiveTab('dashboard');
-  }, [setSessions, showToast, editSession, personalRecords, setPersonalRecords]);
+  }, [setSessions, showToast, editSession, personalRecords, setPersonalRecords, trainingPlans, assignedPlans, settings.weeklyGoal]);
 
   const handleDeleteSession = useCallback((id) => {
     setSessions(prev => prev.filter(s => s.id !== id));
@@ -273,10 +474,14 @@ function App() {
 
   const [livePlan, setLivePlan] = useState(null); // Active live session plan
   const [completedSession, setCompletedSession] = useState(null);
+  const [completionData, setCompletionData] = useState(null);
   const [showAIChat, setShowAIChat] = useState(false); // Session just saved, show complete screen
   const [completedBadge, setCompletedBadge] = useState(null);
   const [readinessCheckPlan, setReadinessCheckPlan] = useState(null); // Plan awaiting readiness check
   const [adaptedPlan, setAdaptedPlan] = useState(null); // Plan after readiness adaptation
+  const [showCameraSetup, setShowCameraSetup] = useState(false);
+  const [recordingMode, setRecordingMode] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
 
   const handleStartPlan = useCallback((plan) => {
     // Start readiness check flow → adapted confirmation → live mode
@@ -289,16 +494,18 @@ function App() {
   }, []);
 
   const handleReadinessSkip = useCallback(() => {
-    // Skip readiness → go straight to live mode with original plan
+    // Skip readiness → go to camera setup with original plan
     const plan = readinessCheckPlan;
     setReadinessCheckPlan(null);
     setLivePlan(plan);
+    setShowCameraSetup(true);
   }, [readinessCheckPlan]);
 
   const handleAdaptedStart = useCallback(() => {
     const plan = adaptedPlan;
     setAdaptedPlan(null);
     setLivePlan(plan);
+    setShowCameraSetup(true); // Show camera setup before live session (recording is default)
   }, [adaptedPlan]);
 
   const handleAdaptedChange = useCallback(() => {
@@ -315,20 +522,54 @@ function App() {
     }, 100);
   }, []);
 
+  // Camera setup handlers
+  const handleCameraStart = useCallback((stream, withRecording) => {
+    setShowCameraSetup(false);
+    setRecordingMode(withRecording);
+    setCameraStream(stream);
+  }, []);
+
+  const handleCameraSkip = useCallback(() => {
+    setShowCameraSetup(false);
+    setRecordingMode(false);
+    setCameraStream(null);
+  }, []);
+
   const handleLiveComplete = useCallback((prefillData) => {
     setLivePlan(null);
+    setRecordingMode(false);
+    setShowCameraSetup(false);
+    // Release camera stream
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      setCameraStream(null);
+    }
     setEditSession(null);
     setActiveTab('log');
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('prefill-session', { detail: prefillData }));
     }, 100);
-  }, []);
+  }, [cameraStream]);
 
   const handleLiveExit = useCallback(() => {
     setLivePlan(null);
-  }, []);
+    setRecordingMode(false);
+    setShowCameraSetup(false);
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      setCameraStream(null);
+    }
+  }, [cameraStream]);
+
+  // Navigate to a pseudo-tab (history, profile) — stores previous tab for back navigation
+  const navigateToTab = useCallback((tabId) => {
+    setPreviousTab(activeTab);
+    setActiveTab(tabId);
+    if (tabId !== 'log') setEditSession(null);
+  }, [activeTab]);
 
   const handleTabClick = (tabId) => {
+    setPreviousTab(activeTab);
     setActiveTab(tabId);
     if (tabId !== 'log') setEditSession(null);
     // Refresh assigned plans when going to dashboard
@@ -352,19 +593,16 @@ function App() {
       {adaptedPlan && (
         <AdaptedPlanConfirm plan={adaptedPlan} onStart={handleAdaptedStart} onChange={handleAdaptedChange} />
       )}
-      {livePlan && (
-        <LiveSessionMode plan={livePlan} onComplete={handleLiveComplete} onExit={handleLiveExit} />
-      )}
       <OfflineIndicator />
       {/* Header */}
       <header className={`bg-white border-b border-gray-100 shadow-card sticky top-0 z-30 ${isOnboarding ? 'hidden' : ''}`} role="banner">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="w-5" />
-          <button onClick={() => setShowSettings(true)} aria-label="Profile" className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-sm font-bold text-accent">
+          <button onClick={() => navigateToTab('profile')} aria-label="Profile" className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-sm font-bold text-accent">
             {settings.playerName ? settings.playerName[0]?.toUpperCase() : '⚽'}
           </button>
         </div>
-        <nav className="hidden md:flex max-w-3xl mx-auto px-4 gap-1" aria-label="Main navigation">
+        <nav className={`hidden md:flex max-w-3xl mx-auto px-4 gap-1 ${isParent ? '!hidden' : ''}`} aria-label="Main navigation">
           {(userRole === 'coach' ? COACH_TABS : PLAYER_TABS).map(tab => (
             <button
               key={tab.id}
@@ -385,35 +623,162 @@ function App() {
         {completedSession ? (
           <SessionCompleteScreen
             session={completedSession}
-            xpEarned={25}
-            badgeUnlocked={completedBadge}
-            onDone={() => { setCompletedSession(null); setCompletedBadge(null); setActiveTab('dashboard'); }}
+            completionData={completionData}
+            onDone={() => { setCompletedSession(null); setCompletedBadge(null); setCompletionData(null); setActiveTab('dashboard'); }}
           />
         ) : sessionsLoaded && sessions.length === 0 && !settings.onboardingComplete ? (
           <OnboardingFlow
             settings={settings}
-            onComplete={(data) => {
+            onComplete={async (data) => {
               const { role, ...settingsData } = data;
-              setUserRole(role || 'player');
+              const newRole = role || 'player';
+              setUserRole(newRole);
               setSettings(prev => ({ ...prev, ...settingsData }));
-              setActiveTab(role === 'coach' ? 'roster' : 'dashboard');
+              setActiveTab(newRole === 'coach' ? 'roster' : newRole === 'parent' ? 'parent-dashboard' : 'dashboard');
+              // Update role in backend auth
+              try {
+                const token = getToken();
+                if (token) {
+                  await fetch('/api/auth/role', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ role: newRole }),
+                  });
+                }
+              } catch { /* ignore role update failure */ }
             }}
           />
+        ) : isParent ? (
+          activeTab === 'profile' ? (
+            <div className="space-y-5 max-w-3xl mx-auto">
+              {/* Back button */}
+              <button
+                onClick={() => setActiveTab(previousTab || 'parent-dashboard')}
+                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-accent transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+              </button>
+
+              {/* Parent Profile Header */}
+              <div className="text-center">
+                <div className="w-20 h-20 rounded-full bg-accent/10 mx-auto flex items-center justify-center text-3xl">
+                  {settings.playerName ? settings.playerName[0]?.toUpperCase() : '👤'}
+                </div>
+                <h2 className="text-lg font-bold text-gray-900 mt-3">{settings.playerName || 'Parent'}</h2>
+                <p className="text-xs text-gray-400">Parent Account</p>
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Connected Children */}
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Connected Children</p>
+                {parentChildren.length === 0 ? (
+                  <p className="text-xs text-gray-300">No children connected yet. Enter an invite code on your dashboard.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {parentChildren.map(child => (
+                      <div key={child.playerId} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{child.name}</p>
+                          <p className="text-[10px] text-gray-400">Connected {child.acceptedAt ? new Date(child.acceptedAt).toLocaleDateString() : ''}</p>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            const role = window.__COMPOSED_ROLE__ || 'parent';
+                            try {
+                              await fetch(`/api/parent/disconnect/${child.linkId}`, {
+                                method: 'DELETE',
+                                headers: { 'X-Dev-Role': role },
+                              });
+                              fetchParentChildren();
+                              showToast('Disconnected');
+                            } catch { showToast('Failed', 'error'); }
+                          }}
+                          className="text-xs text-red-500 hover:underline"
+                        >
+                          Disconnect
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {parentChildren.length < 3 && (
+                  <p className="text-[10px] text-gray-300">You can connect up to 3 children.</p>
+                )}
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Notification Preferences */}
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Notifications</p>
+                <label className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">Weekly training digest</span>
+                  <input
+                    type="checkbox"
+                    defaultChecked={true}
+                    className="w-4 h-4 rounded border-gray-300 text-accent focus:ring-accent"
+                  />
+                </label>
+                <p className="text-[10px] text-gray-400">Receive a weekly summary of your child's training every Sunday.</p>
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Account Settings */}
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Account</p>
+                <div className="space-y-2">
+                  <Button variant="secondary" className="w-full" onClick={() => {
+                    // TODO: Implement password change
+                    showToast('Coming soon');
+                  }}>Change Password</Button>
+                  <Button variant="secondary" className="w-full" onClick={onLogout}>Log Out</Button>
+                  <Button variant="danger" className="w-full" onClick={() => setShowClearConfirm(true)}>Delete Account</Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <ParentDashboard
+              dashboardData={parentDashboard}
+              children={parentChildren}
+              selectedChild={selectedChildId}
+              onSelectChild={(id) => { setSelectedChildId(id); setParentDashboard(null); }}
+              onConnectCode={() => { fetchParentChildren(); }}
+            />
+          )
         ) : (
         <>
         <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
-          <Dashboard sessions={sessions} personalRecords={personalRecords} onViewSession={handleViewSession} idpGoals={idpGoals} weeklyGoal={settings.weeklyGoal ?? 3} ageGroup={settings.ageGroup} skillLevel={settings.skillLevel} onOpenSettings={() => setShowSettings(true)} onNavigateToLog={() => setActiveTab('log')} onStartPlan={handleStartPlan} onStartManual={handleStartManual} assignedPlans={assignedPlans} trainingPlans={trainingPlans} settings={settings} myCoach={myCoach} onNavigate={(tab) => setActiveTab(tab)} onDismissGettingStarted={() => setSettings(prev => ({ ...prev, gettingStartedComplete: 1 }))} activeProgram={activeProgram} />
+          <Dashboard sessions={sessions} personalRecords={personalRecords} onViewSession={handleViewSession} idpGoals={idpGoals} weeklyGoal={settings.weeklyGoal ?? 3} ageGroup={settings.ageGroup} skillLevel={settings.skillLevel} onOpenSettings={() => navigateToTab('profile')} onNavigateToLog={() => setActiveTab('log')} onStartPlan={handleStartPlan} onStartManual={handleStartManual} assignedPlans={assignedPlans} trainingPlans={trainingPlans} settings={settings} myCoach={myCoach} onNavigate={navigateToTab} onDismissGettingStarted={() => setSettings(prev => ({ ...prev, gettingStartedComplete: 1 }))} activeProgram={activeProgram} />
         </div>
         <div className={activeTab === 'log' ? '' : 'hidden'}>
           <SessionLogger onSave={handleSaveSession} editSession={editSession} customDrills={customDrills} onAddCustomDrill={handleAddCustomDrill} distanceUnit={settings.distanceUnit} templates={templates} setTemplates={setTemplates} idpGoals={idpGoals} sessions={sessions} />
         </div>
         <div className={activeTab === 'history' ? '' : 'hidden'}>
-          <SessionHistory sessions={sessions} customDrills={customDrills} onEdit={handleEditSession} onDelete={handleDeleteSession} onView={handleViewSession} />
+          <SessionHistory sessions={sessions} customDrills={customDrills} onEdit={handleEditSession} onDelete={handleDeleteSession} onView={handleViewSession} onBack={() => setActiveTab(previousTab)} />
         </div>
         <div className={activeTab === 'plan' ? '' : 'hidden'}>
-          <div className="space-y-6 max-w-3xl mx-auto">
+          <PlanWeekView
+            plans={trainingPlans} sessions={sessions} assignedPlans={assignedPlans}
+            activeProgram={activeProgram} weeklyGoal={settings.weeklyGoal ?? 3}
+            onStartPlan={handleStartPlan} onStartManual={handleStartManual}
+            onSavePlan={handleSavePlan} onDeletePlan={handleDeletePlan}
+            customDrills={customDrills} onNavigatePrograms={() => navigateToTab('programs')}
+          />
+        </div>
+        <div className={activeTab === 'programs' ? '' : 'hidden'}>
+          <div className="space-y-5 max-w-3xl mx-auto">
+            <button onClick={() => setActiveTab(previousTab || 'plan')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-accent transition-colors">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+              Back
+            </button>
+            <h2 className="text-xl font-bold text-gray-900">Training Programs</h2>
             <ProgramsSection />
-            <TrainingCalendar plans={trainingPlans} sessions={sessions} customDrills={customDrills} onSavePlan={handleSavePlan} onDeletePlan={handleDeletePlan} assignedPlans={assignedPlans} />
           </div>
         </div>
         <div className={activeTab === 'social' ? '' : 'hidden'}>
@@ -426,8 +791,264 @@ function App() {
         <div className={activeTab === 'drills' ? '' : 'hidden'}>
           <DrillBreakdown sessions={sessions} customDrills={customDrills} />
         </div>
-        <div className={activeTab === 'idp' ? '' : 'hidden'}>
-          <IDPModule goals={idpGoals} onSaveGoals={setIdpGoals} sessions={sessions} />
+        <div className={activeTab === 'profile' ? '' : 'hidden'}>
+          <div className="space-y-5 max-w-3xl mx-auto">
+            {/* Back button */}
+            <button
+              onClick={() => setActiveTab(previousTab)}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-accent transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              Back
+            </button>
+
+            {/* Profile Header */}
+            <div className="text-center">
+              <div className="w-20 h-20 rounded-full bg-accent/10 mx-auto flex items-center justify-center text-3xl">
+                {settings.playerName ? settings.playerName[0]?.toUpperCase() : '⚽'}
+              </div>
+              <h2 className="text-lg font-bold text-gray-900 mt-3">{settings.playerName || 'Player'}</h2>
+              <p className="text-xs text-gray-400">
+                {settings.position && settings.position !== 'General' ? `${settings.position} · ` : ''}{settings.ageGroup && `${settings.ageGroup} · `}{settings.skillLevel || 'Set your profile'}
+              </p>
+              <div className="flex items-center justify-center gap-1 mt-2 bg-gray-100 rounded-lg p-0.5 w-fit mx-auto">
+                {['player', 'coach'].map(r => (
+                  <button
+                    key={r}
+                    onClick={() => {
+                      setUserRole(r);
+                      setActiveTab(r === 'coach' ? 'roster' : 'dashboard');
+                    }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      userRole === r ? 'bg-white text-accent shadow-sm' : 'text-gray-500'
+                    }`}
+                  >
+                    {r === 'player' ? 'Player' : 'Coach'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Streak + XP + Badges */}
+            <StreakXPCard sessions={sessions} />
+
+            <hr className="border-gray-100" />
+
+            {/* Development Plan (IDP) */}
+            <div>
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">Development Plan</p>
+              <IDPModule goals={idpGoals} onSaveGoals={setIdpGoals} sessions={sessions} />
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Profile Settings */}
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Profile</p>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-700">Distance Unit</span>
+                <Button variant="secondary" onClick={toggleUnit}>
+                  {settings.distanceUnit === 'km' ? 'Kilometers (km)' : 'Miles (mi)'}
+                </Button>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-700">Weekly Session Goal</span>
+                <div className="flex items-center gap-2">
+                  <input type="number" min="1" max="14" value={settings.weeklyGoal ?? 3}
+                    onChange={e => setSettings(prev => ({ ...prev, weeklyGoal: Number(e.target.value) || 3 }))}
+                    className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-accent/30" />
+                  <span className="text-xs text-gray-400">sessions</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-700">Age Group</span>
+                <select
+                  value={settings.ageGroup || ''}
+                  onChange={e => setSettings(prev => ({ ...prev, ageGroup: e.target.value || undefined }))}
+                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                >
+                  <option value="">Select...</option>
+                  <option value="U12">U12</option>
+                  <option value="U14">U14</option>
+                  <option value="U16">U16</option>
+                  <option value="U18">U18</option>
+                  <option value="U21">U21</option>
+                  <option value="Senior">Senior (21+)</option>
+                </select>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-700">Skill Level</span>
+                <select
+                  value={settings.skillLevel || ''}
+                  onChange={e => setSettings(prev => ({ ...prev, skillLevel: e.target.value || undefined }))}
+                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                >
+                  <option value="">Select...</option>
+                  <option value="Recreational">Recreational</option>
+                  <option value="Academy">Academy</option>
+                  <option value="Semi-Pro">Semi-Pro</option>
+                  <option value="Professional">Professional</option>
+                </select>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-700">Position</span>
+                <select
+                  value={settings.position || 'General'}
+                  onChange={e => setSettings(prev => ({ ...prev, position: e.target.value }))}
+                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                >
+                  <option value="General">General</option>
+                  <option value="Striker">Striker</option>
+                  <option value="Winger">Winger</option>
+                  <option value="CAM">CAM</option>
+                  <option value="CDM">CDM</option>
+                  <option value="CB">CB</option>
+                  <option value="GK">GK</option>
+                </select>
+              </div>
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Training Setup */}
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Training Setup</p>
+              <label className="block text-sm text-gray-700 mb-1">Available Equipment</label>
+              <div className="flex flex-wrap gap-2">
+                {['Ball only', 'Wall / rebounder', 'Cones / markers', 'Goal / net', 'Agility ladder', 'Resistance bands'].map(item => {
+                  const key = item.toLowerCase().split(' ')[0];
+                  const eq = settings.equipment || ['ball', 'wall'];
+                  const isSelected = eq.includes(key);
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => {
+                        const newEq = isSelected ? eq.filter(e => e !== key) : [...eq, key];
+                        setSettings(prev => ({ ...prev, equipment: newEq }));
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        isSelected
+                          ? 'bg-accent text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Parent Access (player only — visible when not coach/parent) */}
+            {userRole !== 'coach' && userRole !== 'parent' && (
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Parent Access</p>
+
+              {/* Generate code */}
+              <div className="space-y-2">
+                {parentAccessCode ? (
+                  <div className="bg-accent/5 rounded-lg p-3 text-center">
+                    <p className="text-[10px] text-gray-500 mb-1">Share this code with your parent</p>
+                    <p className="text-2xl font-bold text-accent tracking-widest font-mono">{parentAccessCode}</p>
+                    <p className="text-[10px] text-gray-400 mt-1">Expires in 7 days</p>
+                    <Button variant="secondary" className="mt-2 !text-xs" onClick={() => { navigator.clipboard?.writeText(parentAccessCode); showToast('Code copied!'); }}>
+                      Copy Code
+                    </Button>
+                  </div>
+                ) : (
+                  <Button variant="secondary" className="w-full" onClick={async () => {
+                    const role = window.__COMPOSED_ROLE__ || 'player';
+                    try {
+                      const res = await fetch('/api/parent/generate-code', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Dev-Role': role },
+                      });
+                      const data = await res.json();
+                      if (res.ok) setParentAccessCode(data.code);
+                      else showToast(data.error || 'Failed', 'error');
+                    } catch { showToast('Failed to generate code', 'error'); }
+                  }}>
+                    Generate Parent Code
+                  </Button>
+                )}
+              </div>
+
+              {/* Connected parents */}
+              {parentConnectedList.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-gray-500">Connected Parents</p>
+                  {parentConnectedList.map(p => (
+                    <div key={p.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                      <span className="text-xs text-gray-700">{p.parentName}</span>
+                      <button
+                        onClick={async () => {
+                          const role = window.__COMPOSED_ROLE__ || 'player';
+                          await fetch(`/api/parent/revoke/${p.id}`, { method: 'DELETE', headers: { 'X-Dev-Role': role } });
+                          fetchParentAccess();
+                          showToast('Access revoked');
+                        }}
+                        className="text-[10px] text-red-500 hover:underline"
+                      >
+                        Revoke
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Privacy toggles */}
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500">What parents can see</p>
+                {[
+                  { key: 'showRatings', label: 'Session ratings' },
+                  { key: 'showCoachFeedback', label: 'Coach feedback' },
+                  { key: 'showIdpGoals', label: 'Development goals' },
+                ].map(toggle => (
+                  <label key={toggle.key} className="flex items-center justify-between">
+                    <span className="text-xs text-gray-700">{toggle.label}</span>
+                    <input
+                      type="checkbox"
+                      checked={parentVisibility[toggle.key]}
+                      onChange={async (e) => {
+                        const newVis = { ...parentVisibility, [toggle.key]: e.target.checked };
+                        setParentVisibility(newVis);
+                        const role = window.__COMPOSED_ROLE__ || 'player';
+                        fetch('/api/parent/visibility-settings', {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json', 'X-Dev-Role': role },
+                          body: JSON.stringify(newVis),
+                        }).catch(() => {});
+                      }}
+                      className="w-4 h-4 rounded border-gray-300 text-accent focus:ring-accent"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+            )}
+
+            <hr className="border-gray-100" />
+
+            {/* Data Management */}
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Data</p>
+              <div className="space-y-2">
+                <Button variant="secondary" onClick={handleExport} className="w-full" disabled={exporting}>
+                  {exporting ? 'Exporting...' : 'Export as JSON'}
+                </Button>
+                <Button variant="secondary" onClick={() => fileInputRef.current?.click()} className="w-full">Import JSON</Button>
+                <input ref={fileInputRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
+                <Button variant="danger" onClick={() => setShowClearConfirm(true)} className="w-full">Clear All Data</Button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Coach views */}
@@ -449,7 +1070,7 @@ function App() {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className={`md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-card z-30 ${isOnboarding ? 'hidden' : ''}`} aria-label="Main navigation">
+      <nav className={`md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-card z-30 ${isOnboarding || isParent ? 'hidden' : ''}`} aria-label="Main navigation">
         <div className="flex">
           {(userRole === 'coach' ? COACH_TABS : PLAYER_TABS).map(tab => (
             <button
@@ -489,160 +1110,7 @@ function App() {
       </Modal>
 
 
-      {/* Settings Modal */}
-      <Modal
-        open={showSettings}
-        onClose={() => setShowSettings(false)}
-        title=""
-        actions={<Button variant="secondary" onClick={() => setShowSettings(false)}>Close</Button>}
-      >
-        <div className="space-y-5">
-          {/* Profile Header */}
-          <div className="text-center -mt-2">
-            <div className="w-20 h-20 rounded-full bg-accent/10 mx-auto flex items-center justify-center text-3xl">
-              {settings.playerName ? settings.playerName[0]?.toUpperCase() : '⚽'}
-            </div>
-            <h2 className="text-lg font-bold text-gray-900 mt-3">{settings.playerName || 'Player'}</h2>
-            <p className="text-xs text-gray-400">
-              {settings.position && settings.position !== 'General' ? `${settings.position} · ` : ''}{settings.ageGroup && `${settings.ageGroup} · `}{settings.skillLevel || 'Set your profile'}
-            </p>
-            <div className="flex items-center justify-center gap-1 mt-2 bg-gray-100 rounded-lg p-0.5 w-fit mx-auto">
-              {['player', 'coach'].map(r => (
-                <button
-                  key={r}
-                  onClick={() => {
-                    setUserRole(r);
-                    setActiveTab(r === 'coach' ? 'roster' : 'dashboard');
-                  }}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    userRole === r ? 'bg-white text-accent shadow-sm' : 'text-gray-500'
-                  }`}
-                >
-                  {r === 'player' ? 'Player' : 'Coach'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <hr className="border-gray-100" />
-
-          {/* Streak + XP + Badges */}
-          <StreakXPCard sessions={sessions} />
-
-          <hr className="border-gray-100" />
-
-          {/* Profile Settings */}
-          <div className="space-y-3">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Profile</p>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-700">Distance Unit</span>
-            <Button variant="secondary" onClick={toggleUnit}>
-              {settings.distanceUnit === 'km' ? 'Kilometers (km)' : 'Miles (mi)'}
-            </Button>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-700">Weekly Session Goal</span>
-            <div className="flex items-center gap-2">
-              <input type="number" min="1" max="14" value={settings.weeklyGoal ?? 3}
-                onChange={e => setSettings(prev => ({ ...prev, weeklyGoal: Number(e.target.value) || 3 }))}
-                className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-accent/30" />
-              <span className="text-xs text-gray-400">sessions</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-700">Age Group</span>
-            <select
-              value={settings.ageGroup || ''}
-              onChange={e => setSettings(prev => ({ ...prev, ageGroup: e.target.value || undefined }))}
-              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-            >
-              <option value="">Select...</option>
-              <option value="U12">U12</option>
-              <option value="U14">U14</option>
-              <option value="U16">U16</option>
-              <option value="U18">U18</option>
-              <option value="U21">U21</option>
-              <option value="Senior">Senior (21+)</option>
-            </select>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-700">Skill Level</span>
-            <select
-              value={settings.skillLevel || ''}
-              onChange={e => setSettings(prev => ({ ...prev, skillLevel: e.target.value || undefined }))}
-              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-            >
-              <option value="">Select...</option>
-              <option value="Recreational">Recreational</option>
-              <option value="Academy">Academy</option>
-              <option value="Semi-Pro">Semi-Pro</option>
-              <option value="Professional">Professional</option>
-            </select>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-700">Position</span>
-            <select
-              value={settings.position || 'General'}
-              onChange={e => setSettings(prev => ({ ...prev, position: e.target.value }))}
-              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-            >
-              <option value="General">General</option>
-              <option value="Striker">Striker</option>
-              <option value="Winger">Winger</option>
-              <option value="CAM">CAM</option>
-              <option value="CDM">CDM</option>
-              <option value="CB">CB</option>
-              <option value="GK">GK</option>
-            </select>
-          </div>
-          </div>
-
-          <hr className="border-gray-100" />
-
-          <div className="space-y-3">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Training Setup</p>
-            <label className="block text-sm text-gray-700 mb-1">Available Equipment</label>
-            <div className="flex flex-wrap gap-2">
-              {['Ball only', 'Wall / rebounder', 'Cones / markers', 'Goal / net', 'Agility ladder', 'Resistance bands'].map(item => {
-                const key = item.toLowerCase().split(' ')[0];
-                const eq = settings.equipment || ['ball', 'wall'];
-                const isSelected = eq.includes(key);
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => {
-                      const newEq = isSelected ? eq.filter(e => e !== key) : [...eq, key];
-                      setSettings(prev => ({ ...prev, equipment: newEq }));
-                    }}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                      isSelected
-                        ? 'bg-accent text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {item}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <hr className="border-gray-100" />
-
-          <div className="space-y-3">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Data</p>
-          <div className="space-y-2">
-            <Button variant="secondary" onClick={handleExport} className="w-full" disabled={exporting}>
-              {exporting ? 'Exporting...' : 'Export as JSON'}
-            </Button>
-            <Button variant="secondary" onClick={() => fileInputRef.current?.click()} className="w-full">Import JSON</Button>
-            <input ref={fileInputRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
-            <Button variant="danger" onClick={() => setShowClearConfirm(true)} className="w-full">Clear All Data</Button>
-          </div>
-          </div>
-        </div>
-      </Modal>
+      {/* Settings Modal removed — now full-page profile tab */}
 
       <ConfirmModal open={showClearConfirm} onClose={() => setShowClearConfirm(false)} onConfirm={handleClearAll}
         title="Clear All Data" message="This will permanently delete all your data. This action cannot be undone." confirmText="Continue" danger />
@@ -650,6 +1118,14 @@ function App() {
         title="Are you absolutely sure?" message="All sessions, matches, plans, IDP goals, decision journal, and settings will be permanently deleted." confirmText="Delete Everything" danger />
 
       <Toast message={toast.message} show={toast.show} onHide={hideToast} variant={toast.variant} />
+
+      {/* Camera Setup + Live Session (rendered AFTER all content for proper z-index stacking) */}
+      {showCameraSetup && livePlan && (
+        <CameraSetup onStart={handleCameraStart} onSkipRecording={handleCameraSkip} />
+      )}
+      {livePlan && !showCameraSetup && (
+        <LiveSessionMode plan={livePlan} onComplete={handleLiveComplete} onExit={handleLiveExit} withRecording={recordingMode} cameraStream={cameraStream} />
+      )}
 
       {/* AI Chat floating button — hidden during onboarding */}
       {userRole !== 'coach' && !isOnboarding && (

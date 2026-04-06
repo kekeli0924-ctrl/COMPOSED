@@ -17,6 +17,8 @@ import { WelcomeBack } from './WelcomeBack';
 import { DateBrowser } from './DateBrowser';
 import { SessionLoadChart } from './SessionLoadChart';
 import { MentalTrendChart } from './MentalTrendChart';
+import { SocialFeed } from './SocialFeed';
+import { ProgressTimeline } from './ProgressTimeline';
 import {
   getStreak, getAverageStat, getShotPercentage, getPassPercentage,
   getMatchStats, formatDate, formatPercentage, computeTrainingScore,
@@ -213,7 +215,7 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
   if (sessions.length === 0) {
     return (
       <div className="space-y-5 max-w-3xl mx-auto">
-        <h1 className="text-2xl font-semibold text-accent tracking-tight text-center font-heading">Composed</h1>
+        <h1 className="text-3xl text-accent tracking-tight text-center font-logo italic">Composed</h1>
         <DateBrowser assignedPlans={assignedPlans} trainingPlans={trainingPlans} sessions={sessions} idpGoals={idpGoals} />
         <GettingStartedChecklist sessions={sessions} idpGoals={idpGoals} myCoach={myCoach} settings={settings} onNavigate={onNavigate} onDismiss={onDismissGettingStarted} />
         <DailyPlanCard sessions={sessions} idpGoals={idpGoals} onStartPlan={onStartPlan} onStartManual={onStartManual} assignedPlans={assignedPlans} activeProgram={activeProgram} position={settings.position || 'General'} />
@@ -233,7 +235,7 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-semibold text-accent tracking-tight text-center font-heading">Composed</h1>
+      <h1 className="text-3xl text-accent tracking-tight text-center font-logo italic">Composed</h1>
 
       {/* Date Browser */}
       <DateBrowser assignedPlans={assignedPlans} trainingPlans={trainingPlans} sessions={sessions} idpGoals={idpGoals} />
@@ -291,6 +293,68 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
       {/* Daily Plan */}
       <DailyPlanCard sessions={sessions} idpGoals={idpGoals} onStartPlan={onStartPlan} onStartManual={onStartManual} assignedPlans={assignedPlans} activeProgram={activeProgram} position={settings.position || 'General'} />
 
+      {/* Recent Sessions */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-700">Recent Sessions</h3>
+          {sessions.length > 0 && (
+            <button
+              onClick={() => onNavigate?.('history')}
+              className="text-xs font-medium text-accent hover:underline"
+            >
+              View All Sessions &rarr;
+            </button>
+          )}
+        </div>
+        {recentSessions.length === 0 ? (
+          <div className="bg-surface rounded-xl border border-gray-100 shadow-card p-8 text-center text-gray-300 text-sm">
+            No sessions logged yet. Start by logging your first session!
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {recentSessions.map(session => (
+              <div
+                key={session.id}
+                onClick={() => onViewSession(session)}
+                className="bg-surface rounded-xl border border-gray-100 shadow-card p-4 cursor-pointer hover:shadow-card-hover transition-shadow"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{formatDate(session.date)}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {session.drills.slice(0, 3).join(', ')}
+                      {session.drills.length > 3 ? ` +${session.drills.length - 3} more` : ''}
+                    </p>
+                  </div>
+                  <div className="flex gap-4 text-right">
+                    {session.shooting && (
+                      <div>
+                        <p className="text-xs text-gray-400">Shot %</p>
+                        <p className="text-sm font-semibold text-accent">
+                          {formatPercentage(session.shooting.goals, session.shooting.shotsTaken)}
+                        </p>
+                      </div>
+                    )}
+                    {session.passing && (
+                      <div>
+                        <p className="text-xs text-gray-400">Pass %</p>
+                        <p className="text-sm font-semibold text-accent">
+                          {formatPercentage(session.passing.completed, session.passing.attempts)}
+                        </p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs text-gray-400">Duration</p>
+                      <p className="text-sm font-semibold text-gray-600">{session.duration}m</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Progress Charts */}
       <ProgressCharts sessions={sessions} />
 
@@ -298,6 +362,9 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
 
       {/* Social Feed */}
       <SocialFeed />
+
+      {/* Video Progress Timeline */}
+      <ProgressTimeline />
 
       {/* Quick Stats */}
       <div className="grid grid-cols-3 gap-3">
@@ -490,57 +557,6 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
         <RPEChart sessions={sessions} />
       </div>
 
-      {/* Recent Sessions */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Recent Sessions</h3>
-        {recentSessions.length === 0 ? (
-          <div className="bg-surface rounded-xl border border-gray-100 shadow-card p-8 text-center text-gray-300 text-sm">
-            No sessions logged yet. Start by logging your first session!
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {recentSessions.map(session => (
-              <div
-                key={session.id}
-                onClick={() => onViewSession(session)}
-                className="bg-surface rounded-xl border border-gray-100 shadow-card p-4 cursor-pointer hover:shadow-card-hover transition-shadow"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{formatDate(session.date)}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {session.drills.slice(0, 3).join(', ')}
-                      {session.drills.length > 3 ? ` +${session.drills.length - 3} more` : ''}
-                    </p>
-                  </div>
-                  <div className="flex gap-4 text-right">
-                    {session.shooting && (
-                      <div>
-                        <p className="text-xs text-gray-400">Shot %</p>
-                        <p className="text-sm font-semibold text-accent">
-                          {formatPercentage(session.shooting.goals, session.shooting.shotsTaken)}
-                        </p>
-                      </div>
-                    )}
-                    {session.passing && (
-                      <div>
-                        <p className="text-xs text-gray-400">Pass %</p>
-                        <p className="text-sm font-semibold text-accent">
-                          {formatPercentage(session.passing.completed, session.passing.attempts)}
-                        </p>
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-xs text-gray-400">Duration</p>
-                      <p className="text-sm font-semibold text-gray-600">{session.duration}m</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

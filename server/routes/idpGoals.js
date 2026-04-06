@@ -80,7 +80,7 @@ function computeProjection(goal) {
 }
 
 router.get('/', (req, res) => {
-  const rows = getDb().prepare('SELECT * FROM idp_goals ORDER BY created_at').all();
+  const rows = getDb().prepare('SELECT * FROM idp_goals WHERE user_id = ? ORDER BY created_at').all(req.userId);
   const goals = rows.map(row => {
     const goal = rowToGoal(row);
     goal.projection = computeProjection(goal);
@@ -92,9 +92,9 @@ router.get('/', (req, res) => {
 router.post('/', validate(idpGoalSchema), (req, res) => {
   try {
     const g = req.body;
-    getDb().prepare(`INSERT OR REPLACE INTO idp_goals (id, corner, text, target_date, progress, status, target_metric, target_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(g.id, g.corner, g.text, g.targetDate || null, g.progress || 0, g.status || 'active', g.targetMetric || null, g.targetValue || null);
-    const row = getDb().prepare('SELECT * FROM idp_goals WHERE id = ?').get(g.id);
+    getDb().prepare(`INSERT OR REPLACE INTO idp_goals (id, corner, text, target_date, progress, status, target_metric, target_value, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(g.id, g.corner, g.text, g.targetDate || null, g.progress || 0, g.status || 'active', g.targetMetric || null, g.targetValue || null, req.userId);
+    const row = getDb().prepare('SELECT * FROM idp_goals WHERE id = ? AND user_id = ?').get(g.id, req.userId);
     const goal = rowToGoal(row);
     goal.projection = computeProjection(goal);
     res.status(201).json(goal);
@@ -106,9 +106,9 @@ router.post('/', validate(idpGoalSchema), (req, res) => {
 router.put('/:id', validate(idpGoalSchema), (req, res) => {
   try {
     const g = req.body;
-    getDb().prepare(`UPDATE idp_goals SET corner=?, text=?, target_date=?, progress=?, status=?, target_metric=?, target_value=?, updated_at=datetime('now') WHERE id=?`)
-      .run(g.corner, g.text, g.targetDate || null, g.progress || 0, g.status || 'active', g.targetMetric || null, g.targetValue || null, req.params.id);
-    const row = getDb().prepare('SELECT * FROM idp_goals WHERE id = ?').get(req.params.id);
+    getDb().prepare(`UPDATE idp_goals SET corner=?, text=?, target_date=?, progress=?, status=?, target_metric=?, target_value=?, updated_at=datetime('now') WHERE id=? AND user_id=?`)
+      .run(g.corner, g.text, g.targetDate || null, g.progress || 0, g.status || 'active', g.targetMetric || null, g.targetValue || null, req.params.id, req.userId);
+    const row = getDb().prepare('SELECT * FROM idp_goals WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!row) return res.status(404).json({ error: 'Not found' });
     const goal = rowToGoal(row);
     goal.projection = computeProjection(goal);
@@ -119,7 +119,7 @@ router.put('/:id', validate(idpGoalSchema), (req, res) => {
 });
 
 router.delete('/:id', (req, res) => {
-  getDb().prepare('DELETE FROM idp_goals WHERE id = ?').run(req.params.id);
+  getDb().prepare('DELETE FROM idp_goals WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
   res.json({ ok: true });
 });
 

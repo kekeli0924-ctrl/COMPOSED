@@ -37,12 +37,12 @@ function matchToRow(m) {
 }
 
 router.get('/', (req, res) => {
-  const rows = getDb().prepare('SELECT * FROM matches ORDER BY date DESC').all();
+  const rows = getDb().prepare('SELECT * FROM matches WHERE user_id = ? ORDER BY date DESC').all(req.userId);
   res.json(rows.map(rowToMatch));
 });
 
 router.get('/:id', (req, res) => {
-  const row = getDb().prepare('SELECT * FROM matches WHERE id = ?').get(req.params.id);
+  const row = getDb().prepare('SELECT * FROM matches WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!row) return res.status(404).json({ error: 'Not found' });
   res.json(rowToMatch(row));
 });
@@ -50,9 +50,10 @@ router.get('/:id', (req, res) => {
 router.post('/', validate(matchSchema), (req, res) => {
   try {
     const r = matchToRow(req.body);
-    getDb().prepare(`INSERT OR REPLACE INTO matches (id, date, opponent, result, minutes_played, goals, assists, shots, passes_completed, rating, notes)
-      VALUES (@id, @date, @opponent, @result, @minutes_played, @goals, @assists, @shots, @passes_completed, @rating, @notes)`).run(r);
-    res.status(201).json(rowToMatch(getDb().prepare('SELECT * FROM matches WHERE id = ?').get(r.id)));
+    r.user_id = req.userId;
+    getDb().prepare(`INSERT OR REPLACE INTO matches (id, date, opponent, result, minutes_played, goals, assists, shots, passes_completed, rating, notes, user_id)
+      VALUES (@id, @date, @opponent, @result, @minutes_played, @goals, @assists, @shots, @passes_completed, @rating, @notes, @user_id)`).run(r);
+    res.status(201).json(rowToMatch(getDb().prepare('SELECT * FROM matches WHERE id = ? AND user_id = ?').get(r.id, req.userId)));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -61,8 +62,9 @@ router.post('/', validate(matchSchema), (req, res) => {
 router.put('/:id', validate(matchSchema), (req, res) => {
   try {
     const r = matchToRow({ ...req.body, id: req.params.id });
-    getDb().prepare(`UPDATE matches SET date=@date, opponent=@opponent, result=@result, minutes_played=@minutes_played, goals=@goals, assists=@assists, shots=@shots, passes_completed=@passes_completed, rating=@rating, notes=@notes, updated_at=datetime('now') WHERE id=@id`).run(r);
-    const row = getDb().prepare('SELECT * FROM matches WHERE id = ?').get(req.params.id);
+    r.user_id = req.userId;
+    getDb().prepare(`UPDATE matches SET date=@date, opponent=@opponent, result=@result, minutes_played=@minutes_played, goals=@goals, assists=@assists, shots=@shots, passes_completed=@passes_completed, rating=@rating, notes=@notes, updated_at=datetime('now') WHERE id=@id AND user_id=@user_id`).run(r);
+    const row = getDb().prepare('SELECT * FROM matches WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!row) return res.status(404).json({ error: 'Not found' });
     res.json(rowToMatch(row));
   } catch (err) {
@@ -71,7 +73,7 @@ router.put('/:id', validate(matchSchema), (req, res) => {
 });
 
 router.delete('/:id', (req, res) => {
-  getDb().prepare('DELETE FROM matches WHERE id = ?').run(req.params.id);
+  getDb().prepare('DELETE FROM matches WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
   res.json({ ok: true });
 });
 

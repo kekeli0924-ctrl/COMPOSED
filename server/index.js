@@ -10,6 +10,7 @@ import rateLimit from 'express-rate-limit';
 import { logger } from './logger.js';
 import { getDb, resetDb } from './db.js';
 import { authMiddleware, authRouter } from './auth.js';
+import jwt from 'jsonwebtoken';
 import { backupDatabase } from './backup.js';
 import sessionsRouter from './routes/sessions.js';
 import customDrillsRouter from './routes/customDrills.js';
@@ -28,6 +29,7 @@ import drillsRouter from './routes/drills.js';
 import messagingRouter from './routes/messaging.js';
 import programsRouter from './routes/programs.js';
 import aiChatRouter from './routes/aiChat.js';
+import parentRouter from './routes/parent.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -37,7 +39,7 @@ const isProd = process.env.NODE_ENV === 'production';
 if (isProd) {
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret || jwtSecret === 'change-me-to-a-random-secret') {
-    logger.warn('JWT_SECRET is not set or using insecure default — set a strong random value in .env');
+    throw new Error('FATAL: JWT_SECRET must be set to a secure random value in production. Add it to your .env file.');
   }
   if (!process.env.CORS_ORIGIN) {
     logger.warn('CORS_ORIGIN not set — defaulting to http://localhost:5173');
@@ -151,18 +153,29 @@ app.use('/api/auth', authLimiter, authRouter);
 if (isProd) {
   app.use('/api', authMiddleware);
 } else {
-  // Dev mode: provide default user identity so routes always have req.userId/req.userRole
-  // userId 1 = player, userId 2 = coach (so invite codes work between them)
-  // Role is determined by: X-Dev-Role header OR cookie
+  // Dev mode: use real JWT auth if token present, otherwise fall back to dev defaults
   app.use('/api', (req, res, next) => {
+    // If a real Authorization header is present, use it (real auth flow)
+    const header = req.headers.authorization;
+    if (header?.startsWith('Bearer ')) {
+      try {
+        const JWT_SECRET = process.env.JWT_SECRET || 'change-me-to-a-random-secret';
+        const payload = jwt.verify(header.slice(7), JWT_SECRET);
+        req.userId = payload.userId;
+        req.userRole = payload.role || 'player';
+        return next();
+      } catch { /* token invalid — fall through to dev defaults */ }
+    }
+
+    // Dev fallback: create default test users
     if (!req.userId) {
       const db = getDb();
       db.prepare("INSERT OR IGNORE INTO users (id, username, password_hash, role) VALUES (1, 'player1', 'dev', 'player')").run();
       db.prepare("INSERT OR IGNORE INTO users (id, username, password_hash, role) VALUES (2, 'coach1', 'dev', 'coach')").run();
+      db.prepare("INSERT OR IGNORE INTO users (id, username, password_hash, role) VALUES (3, 'parent1', 'dev', 'parent')").run();
 
-      // Check header first, then cookie
       const role = req.headers['x-dev-role'] || req.query._role || 'player';
-      req.userId = role === 'coach' ? 2 : 1;
+      req.userId = role === 'coach' ? 2 : role === 'parent' ? 3 : 1;
       req.userRole = role;
     }
     next();
@@ -187,6 +200,7 @@ app.use('/api/drills', drillsRouter);
 app.use('/api/messages', messagingRouter);
 app.use('/api/programs', programsRouter);
 app.use('/api/ai', aiChatRouter);
+app.use('/api/parent', parentRouter);
 
 // ── API 404 ─────────────────────────────────────────────
 app.use('/api', (req, res) => {

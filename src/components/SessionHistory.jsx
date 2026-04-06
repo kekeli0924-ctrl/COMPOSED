@@ -5,7 +5,7 @@ import { Card } from './ui/Card';
 import { SessionComparison } from './SessionComparison';
 import { formatDate, formatPercentage, PRESET_DRILLS, SESSION_TYPES } from '../utils/stats';
 
-export function SessionHistory({ sessions, customDrills, onEdit, onDelete, onView }) {
+export function SessionHistory({ sessions, customDrills, onEdit, onDelete, onView, onBack }) {
   const [sortField, setSortField] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
   const [filterDrill, setFilterDrill] = useState('');
@@ -102,6 +102,17 @@ export function SessionHistory({ sessions, customDrills, onEdit, onDelete, onVie
 
   return (
     <div className="space-y-4 max-w-3xl mx-auto">
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-accent transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </button>
+      )}
       <h2 className="text-xl font-bold text-gray-900">Session History</h2>
 
       {/* Search */}
