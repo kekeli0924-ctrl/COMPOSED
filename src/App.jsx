@@ -228,6 +228,12 @@ function AppMain({ authUser, onLogout }) {
   const [viewSession, setViewSession] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
   const [showClearDouble, setShowClearDouble] = useState(false);
   const [exporting, setExporting] = useState(false);
   const fileInputRef = useRef(null);
@@ -344,11 +350,14 @@ function AppMain({ authUser, onLogout }) {
             // XP breakdown
             const streak = getStreak(newSessions);
             const xpSession = 25;
-            const xpDailyPlan = 50; // TODO: check if this completed a daily plan
+            // Check if this session completed a daily plan (user plan or coach-assigned)
+            const sessionDate = session.date;
+            const hadPlan = trainingPlans.some(p => p.date === sessionDate) || assignedPlans.some(p => p.date === sessionDate);
+            const xpDailyPlan = hadPlan ? 50 : 0;
             const xpStreak = streak > 0 ? 10 : 0;
             const xpDuration = (session.duration || 0) >= 60 ? 10 : 0;
             const xpPR = newPRs.length * 100;
-            const totalXP = xpSession + xpStreak + xpDuration + xpPR;
+            const totalXP = xpSession + xpDailyPlan + xpStreak + xpDuration + xpPR;
 
             const allXP = computeXP(newSessions);
             const level = getLevel(allXP);
@@ -396,7 +405,7 @@ function AppMain({ authUser, onLogout }) {
               isFirstSession: prevSessions.length === 0,
               xpBreakdown: {
                 sessionLogged: xpSession,
-                dailyPlan: 0,
+                dailyPlan: xpDailyPlan,
                 streakBonus: xpStreak,
                 durationBonus: xpDuration,
                 personalRecord: xpPR,
@@ -775,10 +784,42 @@ function AppMain({ authUser, onLogout }) {
               <div className="space-y-3">
                 <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Account</p>
                 <div className="space-y-2">
-                  <Button variant="secondary" className="w-full" onClick={() => {
-                    // TODO: Implement password change
-                    showToast('Coming soon');
-                  }}>Change Password</Button>
+                  {!showPasswordChange ? (
+                    <Button variant="secondary" className="w-full" onClick={() => setShowPasswordChange(true)}>Change Password</Button>
+                  ) : (
+                    <div className="space-y-2 bg-gray-50 rounded-lg p-3">
+                      <input type="password" placeholder="Current password" value={pwCurrent} onChange={e => setPwCurrent(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30" />
+                      <input type="password" placeholder="New password (8+ chars)" value={pwNew} onChange={e => setPwNew(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30" />
+                      <input type="password" placeholder="Confirm new password" value={pwConfirm} onChange={e => setPwConfirm(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30" />
+                      {pwError && <p className="text-xs text-red-500">{pwError}</p>}
+                      <div className="flex gap-2">
+                        <Button variant="secondary" className="flex-1" onClick={() => { setShowPasswordChange(false); setPwError(''); setPwCurrent(''); setPwNew(''); setPwConfirm(''); }}>Cancel</Button>
+                        <Button className="flex-1" disabled={pwLoading} onClick={async () => {
+                          setPwError('');
+                          if (!pwCurrent || !pwNew) { setPwError('All fields required'); return; }
+                          if (pwNew !== pwConfirm) { setPwError('Passwords do not match'); return; }
+                          if (pwNew.length < 8) { setPwError('Min 8 characters'); return; }
+                          setPwLoading(true);
+                          try {
+                            const token = getToken();
+                            const res = await fetch('/api/auth/password', {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
+                            });
+                            const data = await res.json();
+                            if (!res.ok) { setPwError(data.error || 'Failed'); setPwLoading(false); return; }
+                            showToast('Password changed');
+                            setShowPasswordChange(false); setPwCurrent(''); setPwNew(''); setPwConfirm('');
+                          } catch { setPwError('Failed to change password'); }
+                          setPwLoading(false);
+                        }}>{pwLoading ? '...' : 'Save'}</Button>
+                      </div>
+                    </div>
+                  )}
                   <Button variant="secondary" className="w-full" onClick={onLogout}>Log Out</Button>
                   <Button variant="danger" className="w-full" onClick={() => setShowClearConfirm(true)}>Delete Account</Button>
                 </div>

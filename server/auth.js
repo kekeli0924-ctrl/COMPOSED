@@ -160,4 +160,37 @@ authRouter.put('/role', (req, res) => {
   }
 });
 
+// PUT /api/auth/password — change password (requires current password)
+authRouter.put('/password', async (req, res) => {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required', code: 'AUTH_REQUIRED' });
+  }
+  try {
+    const payload = jwt.verify(header.slice(7), JWT_SECRET);
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password required', code: 'MISSING_FIELDS' });
+    }
+
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) return res.status(400).json({ error: passwordError, code: 'WEAK_PASSWORD' });
+
+    const db = getDb();
+    const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(payload.userId);
+    if (!user) return res.status(404).json({ error: 'User not found', code: 'NOT_FOUND' });
+
+    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!valid) return res.status(401).json({ error: 'Current password is incorrect', code: 'INVALID_PASSWORD' });
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, payload.userId);
+
+    res.json({ ok: true });
+  } catch {
+    return res.status(401).json({ error: 'Invalid or expired token', code: 'INVALID_TOKEN' });
+  }
+});
+
 export { authRouter };
