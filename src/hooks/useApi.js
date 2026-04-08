@@ -70,45 +70,84 @@ async function attemptRefresh() {
 
 export async function apiFetch(path, options = {}) {
   const token = getToken();
+  const method = (options.method || 'GET').toUpperCase();
+  const isWrite = method !== 'GET' && method !== 'HEAD';
 
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const url = `${API_BASE}${path}`;
-  let res = await fetch(url, {
-    headers,
-    ...options,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
 
-  // On 401, try refreshing the token once
-  if (res.status === 401 && token) {
-    const refreshed = await attemptRefresh();
-    if (refreshed) {
-      // Retry with new token
-      const newToken = getToken();
-      const retryHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${newToken}` };
-      res = await fetch(url, {
-        headers: retryHeaders,
-        ...options,
-        body: options.body ? JSON.stringify(options.body) : undefined,
-      });
+  try {
+    let res = await fetch(url, {
+      headers,
+      ...options,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+
+    // On 401, try refreshing the token once
+    if (res.status === 401 && token) {
+      const refreshed = await attemptRefresh();
+      if (refreshed) {
+        const newToken = getToken();
+        const retryHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${newToken}` };
+        res = await fetch(url, {
+          headers: retryHeaders,
+          ...options,
+          body: options.body ? JSON.stringify(options.body) : undefined,
+        });
+      }
+
+      if (res.status === 401) {
+        clearTokens();
+        notifyAuthFailure();
+        throw new Error('Session expired. Please log in again.');
+      }
     }
 
-    if (res.status === 401) {
-      // Refresh failed — clear tokens and notify app
-      clearTokens();
-      notifyAuthFailure();
-      throw new Error('Session expired. Please log in again.');
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `API ${res.status}: ${res.statusText}`);
     }
-  }
+    return res.json();
+  } catch (err) {
+    // Network failure (no internet, server unreachable)
+    const isNetworkError = err instanceof TypeError || err.message === 'Failed to fetch' || err.message.includes('NetworkError');
 
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `API ${res.status}: ${res.statusText}`);
+    if (isNetworkError && isWrite) {
+      // Queue the write for later sync
+      const { enqueueWrite } = await import('../services/offlineQueue.js');
+      await enqueueWrite(method, path, options.body);
+      notifyOfflineWrite();
+      // Return a synthetic success so the UI doesn't error
+      return { ok: true, queued: true, offline: true };
+    }
+
+    throw err;
   }
-  return res.json();
 }
+
+// Notify the app that a write was queued offline
+function notifyOfflineWrite() {
+  window.dispatchEvent(new CustomEvent('offline-write-queued'));
+}
+
+// Notify the app that the queue has been flushed
+function notifyQueueFlushed(result) {
+  window.dispatchEvent(new CustomEvent('offline-queue-flushed', { detail: result }));
+}
+
+// Flush the offline queue — call on reconnect
+export async function syncOfflineQueue() {
+  const { flushQueue, getPendingCount: getCount } = await import('../services/offlineQueue.js');
+  const token = getToken();
+  const result = await flushQueue(token);
+  notifyQueueFlushed(result);
+  return result;
+}
+
+// Re-export for OfflineIndicator
+export { getPendingCount } from '../services/offlineQueue.js';
 
 /**
  * Drop-in replacement for useLocalStorage for array-based collections.
