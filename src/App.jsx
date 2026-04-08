@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useApiCollection, useApiSingleton, useApiStringList, getToken, clearTokens } from './hooks/useApi';
 import { AuthScreen, SignupForm } from './components/AuthScreen';
 import { IntroFlow } from './components/IntroFlow';
+import { ScoutingPage } from './features/scouting/ScoutingPage';
 import { Dashboard } from './components/Dashboard';
 import { SessionLogger } from './components/SessionLogger';
 import { SessionHistory } from './components/SessionHistory';
@@ -856,6 +857,7 @@ function AppMain({ authUser, onLogout }) {
             onStartPlan={handleStartPlan} onStartManual={handleStartManual}
             onSavePlan={handleSavePlan} onDeletePlan={handleDeletePlan}
             customDrills={customDrills} onNavigatePrograms={() => navigateToTab('programs')}
+            onNavigateScouting={() => navigateToTab('scouting')}
           />
         </div>
         <div className={activeTab === 'programs' ? '' : 'hidden'}>
@@ -867,6 +869,9 @@ function AppMain({ authUser, onLogout }) {
             <h2 className="text-xl font-bold text-gray-900">Training Programs</h2>
             <ProgramsSection />
           </div>
+        </div>
+        <div className={activeTab === 'scouting' ? '' : 'hidden'}>
+          <ScoutingPage onBack={() => setActiveTab(previousTab || 'plan')} />
         </div>
         <div className={activeTab === 'social' ? '' : 'hidden'}>
           <div className="space-y-5 max-w-3xl mx-auto">

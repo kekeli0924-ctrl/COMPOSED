@@ -668,6 +668,29 @@ const migrations = [
     try { db.exec("CREATE INDEX IF NOT EXISTS idx_goals_user ON idp_goals(user_id)"); } catch { /* exists */ }
     try { db.exec("CREATE INDEX IF NOT EXISTS idx_settings_user ON settings(user_id)"); } catch { /* exists */ }
   }},
+  { version: 19, up: (db) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS scouting_reports (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        club_name TEXT NOT NULL,
+        level TEXT NOT NULL,
+        age_group TEXT NOT NULL,
+        gender TEXT NOT NULL,
+        location TEXT,
+        match_date TEXT,
+        status TEXT DEFAULT 'pending' CHECK(status IN ('pending','ready','failed')),
+        manus_task_id TEXT,
+        report_content TEXT,
+        confidence_summary TEXT,
+        error_message TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_scouting_user ON scouting_reports(user_id);
+      CREATE INDEX IF NOT EXISTS idx_scouting_status ON scouting_reports(status);
+    `);
+  }},
 ];
 
 function runMigrations(db) {

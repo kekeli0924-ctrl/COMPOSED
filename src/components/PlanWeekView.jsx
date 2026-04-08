@@ -11,7 +11,7 @@ export function PlanWeekView({
   plans, sessions, assignedPlans = [], activeProgram,
   weeklyGoal = 3, onStartPlan, onStartManual,
   onSavePlan, onDeletePlan, customDrills = [],
-  onNavigatePrograms,
+  onNavigatePrograms, onNavigateScouting,
 }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [editingPlan, setEditingPlan] = useState(null);
@@ -276,6 +276,22 @@ export function PlanWeekView({
                 ? `Currently in: ${activeProgram.program.name}`
                 : '4-week structured plans for every level'}
             </p>
+          </div>
+          <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </button>
+
+      {/* Scout Opponent Button */}
+      <button
+        onClick={onNavigateScouting}
+        className="w-full bg-surface rounded-xl border border-gray-100 shadow-card p-4 text-left hover:shadow-card-hover transition-shadow"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-gray-700">Scout an Opponent &rarr;</p>
+            <p className="text-xs text-gray-400 mt-0.5">AI-powered scouting reports on your next opponent</p>
           </div>
           <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
