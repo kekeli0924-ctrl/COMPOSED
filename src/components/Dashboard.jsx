@@ -361,10 +361,10 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
         <>
           {/* Your Numbers */}
           <MetricSection title="Your Numbers">
-            <MetricRow icon="📊" label="Total Sessions" value={totalSessions} onClick={() => onViewMetric?.('total-sessions')} />
-            <MetricRow icon="🔥" label="Streak" value={`${streak} day${streak !== 1 ? 's' : ''}`} onClick={() => onViewMetric?.('streak')} />
+            <MetricRow label="Total Sessions" value={totalSessions} onClick={() => onViewMetric?.('total-sessions')} />
+            <MetricRow label="Streak" value={`${streak} day${streak !== 1 ? 's' : ''}`} onClick={() => onViewMetric?.('streak')} />
             <MetricRow
-              icon="🎯" label="Weekly Goal"
+              label="Weekly Goal"
               value={`${getCurrentWeekSessionCount(sessions)}/${weeklyGoal}`}
               sub={getCurrentWeekSessionCount(sessions) >= weeklyGoal ? 'Goal reached!' : `${weeklyGoal - getCurrentWeekSessionCount(sessions)} to go`}
               onClick={() => onViewMetric?.('weekly-goal')}
@@ -372,7 +372,7 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
             {(() => {
               const ts = computeTrainingScore(sessions, weeklyGoal);
               return ts ? (
-                <MetricRow icon="💎" label="Training Score" value={`${ts.score}/100`} onClick={() => onViewMetric?.('training-score')} />
+                <MetricRow label="Training Score" value={`${ts.score}/100`} onClick={() => onViewMetric?.('training-score')} />
               ) : null;
             })()}
           </MetricSection>
@@ -380,7 +380,7 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
           {/* Performance */}
           <MetricSection title="Performance">
             <MetricRow
-              icon="🎯" label="Shot Accuracy"
+              label="Shot Accuracy"
               value={avgShot !== null ? `${avgShot}%` : '\u2014'}
               sub="Last 7 sessions"
               trend={avgShot !== null && sessions.length >= 2 ? (() => {
@@ -396,19 +396,19 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
               onClick={() => onViewMetric?.('shot-accuracy')}
             />
             <MetricRow
-              icon="📊" label="Pass Accuracy"
+              label="Pass Accuracy"
               value={avgPass !== null ? `${avgPass}%` : '\u2014'}
               sub="Last 7 sessions"
               onClick={() => onViewMetric?.('pass-accuracy')}
             />
             <MetricRow
-              icon="⏱" label="Avg Duration"
+              label="Avg Duration"
               value={sessions.length > 0 ? `${Math.round(sessions.reduce((s, x) => s + (x.duration || 0), 0) / sessions.length)} min` : '\u2014'}
               onClick={() => onViewMetric?.('duration')}
             />
             {sessions.some(s => s.fitness?.rpe) && (
               <MetricRow
-                icon="💪" label="RPE"
+                label="RPE"
                 value={(() => {
                   const rpeSessions = sessions.filter(s => s.fitness?.rpe);
                   if (rpeSessions.length === 0) return '\u2014';
@@ -422,7 +422,7 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
           {/* Development */}
           <MetricSection title="Development">
             <MetricRow
-              icon="🦶" label="Weak Foot"
+              label="Weak Foot"
               value={(() => {
                 let l = 0, lG = 0, r = 0, rG = 0;
                 sessions.forEach(s => {
@@ -437,14 +437,14 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
               onClick={() => onViewMetric?.('weak-foot')}
             />
             <MetricRow
-              icon="🏆" label="Personal Records"
+              label="Personal Records"
               value={personalRecords ? Object.values(personalRecords).filter(v => v?.value != null).length : 0}
               sub="All-time bests"
               onClick={() => onViewMetric?.('personal-records')}
             />
             {idpGoals.filter(g => g.status === 'active').length > 0 && (
               <MetricRow
-                icon="📋" label="IDP Goals"
+                label="IDP Goals"
                 value={`${idpGoals.filter(g => g.status === 'active').length} active`}
                 onClick={() => onNavigate?.('profile')}
               />
@@ -455,14 +455,14 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
           {sessions.length >= 2 && (
             <MetricSection title="Load & Recovery">
               <MetricRow
-                icon="📈" label="Weekly Load"
+                label="Weekly Load"
                 value={weeklyLoad.thisWeek?.totalLoad || 0}
                 trend={weeklyLoad.pctChange !== null ? `${Math.abs(weeklyLoad.pctChange)}%` : undefined}
                 trendUp={weeklyLoad.pctChange > 0}
                 onClick={() => onViewMetric?.('weekly-load')}
               />
               <MetricRow
-                icon="😴" label="Fatigue"
+                label="Fatigue"
                 value={(() => {
                   const decay = computeFatigueDecay(sessions);
                   if (decay === null) return '\u2014';
@@ -472,7 +472,7 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
               />
               {sessions.some(s => s.reflection?.confidence != null) && (
                 <MetricRow
-                  icon="🧠" label="Mental"
+                  label="Mental"
                   value={(() => {
                     const mental = sessions.filter(s => s.reflection?.confidence != null);
                     if (mental.length === 0) return '\u2014';
