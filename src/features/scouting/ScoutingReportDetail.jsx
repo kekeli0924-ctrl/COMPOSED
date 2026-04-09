@@ -168,21 +168,9 @@ export function ScoutingReportDetail({ reportId, onBack, onStartPlan }) {
         </Card>
       )}
 
-      {/* Formation + Key Players — visual scouting intel */}
+      {/* Quick Brief — compact player-friendly view */}
       {report.status === 'ready' && report.reportContent && (
-        <>
-          <FormationDiagram content={report.reportContent} />
-          <KeyPlayersSection content={report.reportContent} />
-        </>
-      )}
-
-      {/* Ready — full report */}
-      {report.status === 'ready' && report.reportContent && (
-        <Card>
-          <div className="prose-sm">
-            {renderMarkdown(report.reportContent)}
-          </div>
-        </Card>
+        <QuickBrief content={report.reportContent} />
       )}
 
       {/* Game Plan Section */}
@@ -301,6 +289,121 @@ function StatPill({ label, value }) {
     <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
       <p className="text-xs font-semibold text-gray-900">{value}</p>
       <p className="text-[10px] text-gray-400">{label}</p>
+    </div>
+  );
+}
+
+// ── Quick Brief — compact player-friendly view ──
+
+function extractSection(content, sectionName) {
+  // Matches "## Strengths", "## 5. Strengths", "## 5. Strengths & Weaknesses", etc.
+  const regex = new RegExp(`##\\s*(?:\\d+\\.\\s*)?${sectionName}[\\s\\S]*?(?=##|$)`, 'i');
+  const match = content.match(regex);
+  if (!match) return null;
+
+  // Strip the header line, confidence lines, and source references
+  return match[0]
+    .replace(/^##.*\n/, '')
+    .replace(/\*?\*?Confidence.*?\d\/5\*?\*?\n?/gi, '')
+    .replace(/\[\[\d+\]\]\([^)]*\)/g, '')
+    .replace(/\*Note:.*$/gm, '')
+    .trim();
+}
+
+function extractBullets(sectionText) {
+  if (!sectionText) return [];
+  return sectionText
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l.startsWith('-') || l.startsWith('*') || /^\d+\./.test(l))
+    .map(l => l.replace(/^[-*]\s*/, '').replace(/^\d+\.\s*/, '').replace(/\*+/g, '').replace(/^\d+\.\s*/, '').trim())
+    .filter(l => l.length > 5)
+    .map(l => {
+      // Truncate to first sentence for brevity
+      const firstSentence = l.match(/^[^.!]+[.!]/);
+      return firstSentence ? firstSentence[0] : (l.length > 80 ? l.slice(0, 77) + '...' : l);
+    })
+    .slice(0, 5);
+}
+
+function QuickBrief({ content }) {
+  const [showFull, setShowFull] = useState(false);
+
+  const strengths = extractBullets(extractSection(content, 'Strengths'));
+  const weaknesses = extractBullets(extractSection(content, 'Weaknesses'));
+  const tacticalRaw = extractSection(content, 'Tactical Recommendations') || extractSection(content, 'Tactical');
+  const tactics = extractBullets(tacticalRaw);
+
+  return (
+    <div className="space-y-3">
+      {/* Formation + Key Players — visual intel */}
+      <FormationDiagram content={content} />
+      <KeyPlayersSection content={content} />
+
+      {/* Strengths & Weaknesses — side by side */}
+      {(strengths.length > 0 || weaknesses.length > 0) && (
+        <Card>
+          <div className="grid grid-cols-2 gap-4">
+            {strengths.length > 0 && (
+              <div>
+                <h4 className="text-xs font-bold text-green-700 mb-2">Strengths</h4>
+                <ul className="space-y-1.5">
+                  {strengths.map((s, i) => (
+                    <li key={i} className="text-[11px] text-gray-600 leading-relaxed flex items-start gap-1.5">
+                      <span className="text-green-500 mt-0.5 shrink-0">+</span>
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {weaknesses.length > 0 && (
+              <div>
+                <h4 className="text-xs font-bold text-red-600 mb-2">Weaknesses</h4>
+                <ul className="space-y-1.5">
+                  {weaknesses.map((w, i) => (
+                    <li key={i} className="text-[11px] text-gray-600 leading-relaxed flex items-start gap-1.5">
+                      <span className="text-red-400 mt-0.5 shrink-0">−</span>
+                      {w}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* Tactical Tips */}
+      {tactics.length > 0 && (
+        <Card>
+          <h4 className="text-xs font-bold text-gray-900 mb-2">What To Do</h4>
+          <div className="space-y-2">
+            {tactics.map((t, i) => (
+              <div key={i} className="flex items-start gap-2 bg-accent/5 rounded-lg px-3 py-2">
+                <span className="text-accent font-bold text-xs mt-px">{i + 1}</span>
+                <p className="text-[11px] text-gray-700 leading-relaxed">{t}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Full report toggle */}
+      <button
+        onClick={() => setShowFull(!showFull)}
+        className="w-full text-center py-2 text-xs font-medium text-gray-400 hover:text-accent transition-colors"
+      >
+        {showFull ? 'Hide Full Report ↑' : 'View Full Report ↓'}
+      </button>
+
+      {showFull && (
+        <Card>
+          <div className="prose-sm">
+            {renderMarkdown(content)}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
