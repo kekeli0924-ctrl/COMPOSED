@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { getToken } from '../hooks/useApi';
+import { SquadPulseCard } from './SquadPulseCard';
 
 export function CoachOverview() {
   const [dashboard, setDashboard] = useState([]);
@@ -26,6 +27,9 @@ export function CoachOverview() {
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
       <h2 className="text-xl font-bold text-gray-900">Overview</h2>
+
+      {/* Squad Pulse */}
+      <SquadPulseCard />
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3">
