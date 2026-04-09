@@ -691,6 +691,9 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_scouting_status ON scouting_reports(status);
     `);
   }},
+  { version: 20, up: (db) => {
+    try { db.exec("ALTER TABLE scouting_reports ADD COLUMN game_plan TEXT"); } catch { /* exists */ }
+  }},
 ];
 
 function runMigrations(db) {

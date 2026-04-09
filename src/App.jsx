@@ -979,7 +979,7 @@ function AppMain({ authUser, onLogout }) {
           </div>
         )}
         <div className={activeTab === 'scouting' ? '' : 'hidden'}>
-          <ScoutingPage onBack={() => setActiveTab(previousTab || 'plan')} />
+          <ScoutingPage onBack={() => setActiveTab(previousTab || 'plan')} onStartPlan={handleStartPlan} />
         </div>
         <div className={activeTab === 'social' ? '' : 'hidden'}>
           <div className="space-y-5 max-w-3xl mx-auto">

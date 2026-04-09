@@ -55,10 +55,11 @@ function renderInline(text) {
   return <span dangerouslySetInnerHTML={{ __html: text }} />;
 }
 
-export function ScoutingReportDetail({ reportId, onBack }) {
+export function ScoutingReportDetail({ reportId, onBack, onStartPlan }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
+  const [generatingPlan, setGeneratingPlan] = useState(false);
 
   useEffect(() => {
     fetchReport();
@@ -92,6 +93,21 @@ export function ScoutingReportDetail({ reportId, onBack }) {
       }
     } catch { /* ignore */ }
     setChecking(false);
+  };
+
+  const generateGamePlan = async () => {
+    setGeneratingPlan(true);
+    try {
+      const res = await fetch(`/api/scouting/generate-game-plan/${reportId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReport(prev => ({ ...prev, gamePlan: data.gamePlan }));
+      }
+    } catch { /* ignore */ }
+    setGeneratingPlan(false);
   };
 
   if (loading) return null;
@@ -160,6 +176,123 @@ export function ScoutingReportDetail({ reportId, onBack }) {
           </div>
         </Card>
       )}
+
+      {/* Game Plan Section */}
+      {report.status === 'ready' && !report.gamePlan && (
+        <Card>
+          <div className="text-center py-5 space-y-3">
+            <div className="text-2xl">🎯</div>
+            <p className="text-sm font-semibold text-gray-900">Generate Your Game Plan</p>
+            <p className="text-xs text-gray-400 max-w-xs mx-auto">
+              Cross-reference this opponent's style with your training data to get personalized tactical tips and a pre-match warm-up.
+            </p>
+            <Button onClick={generateGamePlan} disabled={generatingPlan}>
+              {generatingPlan ? 'Analyzing your data...' : 'Generate Game Plan'}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {report.gamePlan && <GamePlanView gamePlan={report.gamePlan} clubName={report.clubName} onStartPlan={onStartPlan} />}
+    </div>
+  );
+}
+
+// ── Game Plan View ──────────────────
+
+function GamePlanView({ gamePlan, clubName, onStartPlan }) {
+  const { playerStats, tips, aiBrief, warmupSession } = gamePlan;
+
+  const priorityColors = {
+    high: 'border-red-400 bg-red-50',
+    medium: 'border-amber-400 bg-amber-50',
+    low: 'border-green-400 bg-green-50',
+  };
+  const priorityLabels = { high: 'Key', medium: 'Tip', low: 'Note' };
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <Card>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🎯</span>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">Your Game Plan</h3>
+              <p className="text-[10px] text-gray-400">vs. {clubName}</p>
+            </div>
+          </div>
+
+          {/* Player Stats Summary */}
+          <div className="grid grid-cols-2 gap-2">
+            <StatPill label="Shot Accuracy" value={`${playerStats.shotAccuracy}%`} />
+            <StatPill label="Pass Accuracy" value={`${playerStats.passAccuracy}%`} />
+            <StatPill label="Weak Foot" value={`${playerStats.weakFootRatio}%`} />
+            <StatPill label="Avg Intensity" value={`${playerStats.avgRPE?.toFixed?.(1) || playerStats.avgRPE}/10`} />
+          </div>
+          <p className="text-[10px] text-gray-400 text-center">Based on your last {playerStats.totalSessions || 10} sessions</p>
+        </div>
+      </Card>
+
+      {/* AI Brief (if available) */}
+      {aiBrief && (
+        <Card>
+          <h4 className="text-xs font-bold text-gray-900 mb-2">Match Brief</h4>
+          <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{aiBrief}</p>
+        </Card>
+      )}
+
+      {/* Tactical Tips */}
+      <Card>
+        <h4 className="text-xs font-bold text-gray-900 mb-3">Tactical Tips</h4>
+        <div className="space-y-2">
+          {tips.map((tip, i) => (
+            <div key={i} className={`border-l-3 rounded-r-lg px-3 py-2 ${priorityColors[tip.priority]}`}>
+              <span className="text-[9px] font-bold uppercase text-gray-500">{priorityLabels[tip.priority]}</span>
+              <p className="text-xs text-gray-700 mt-0.5 leading-relaxed">{tip.text}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Warm-Up Session */}
+      {warmupSession && (
+        <Card>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-gray-900">Pre-Match Warm-Up</h4>
+              <span className="text-[10px] text-gray-400">{warmupSession.totalDuration} min</span>
+            </div>
+
+            <div className="space-y-1.5">
+              {warmupSession.timeline.map((item, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    item.isWarmup ? 'bg-blue-400' : item.isCooldown ? 'bg-purple-400' : 'bg-accent'
+                  }`} />
+                  <span className="text-gray-700 flex-1">{item.name}</span>
+                  <span className="text-gray-400 text-[10px]">{item.duration} min</span>
+                </div>
+              ))}
+            </div>
+
+            {onStartPlan && (
+              <Button onClick={() => onStartPlan(warmupSession)} className="w-full">
+                Start Warm-Up Session
+              </Button>
+            )}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function StatPill({ label, value }) {
+  return (
+    <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
+      <p className="text-xs font-semibold text-gray-900">{value}</p>
+      <p className="text-[10px] text-gray-400">{label}</p>
     </div>
   );
 }

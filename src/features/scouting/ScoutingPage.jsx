@@ -7,7 +7,7 @@ import { ScoutingPendingView } from './ScoutingPendingView';
 /**
  * ScoutingPage manages navigation between the 4 scouting sub-views.
  */
-export function ScoutingPage({ onBack }) {
+export function ScoutingPage({ onBack, onStartPlan }) {
   const [view, setView] = useState('history'); // 'history' | 'form' | 'pending' | 'detail'
   const [selectedReportId, setSelectedReportId] = useState(null);
   const [pendingReport, setPendingReport] = useState(null);
@@ -39,6 +39,7 @@ export function ScoutingPage({ onBack }) {
       <ScoutingReportDetail
         reportId={selectedReportId}
         onBack={() => { setSelectedReportId(null); setView('history'); }}
+        onStartPlan={onStartPlan}
       />
     );
   }
