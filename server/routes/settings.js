@@ -15,6 +15,7 @@ function rowToSettings(row) {
     gettingStartedComplete: row.getting_started_complete ?? 0,
     position: row.position || 'General',
     equipment: JSON.parse(row.equipment || '["ball","wall"]'),
+    playerIdentity: row.player_identity || '',
   };
 }
 
@@ -47,6 +48,7 @@ router.put('/', validate(settingsSchema), (req, res) => {
       getting_started_complete = COALESCE(@getting_started_complete, getting_started_complete),
       position = COALESCE(@position, position),
       equipment = COALESCE(@equipment, equipment),
+      player_identity = COALESCE(@player_identity, player_identity),
       updated_at = datetime('now')
       WHERE user_id = @user_id`).run({
       distance_unit: s.distanceUnit ?? null,
@@ -58,6 +60,7 @@ router.put('/', validate(settingsSchema), (req, res) => {
       getting_started_complete: s.gettingStartedComplete ?? null,
       position: s.position ?? null,
       equipment: s.equipment ? JSON.stringify(s.equipment) : null,
+      player_identity: s.playerIdentity ?? null,
       user_id: req.userId,
     });
     row = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.userId);

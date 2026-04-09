@@ -7,6 +7,14 @@ const AGE_GROUPS = ['U12', 'U14', 'U16', 'U18', 'U21', 'Senior'];
 const SKILL_LEVELS = ['Recreational', 'Academy', 'Semi-Pro', 'Professional'];
 const EQUIPMENT_OPTIONS = ['Ball only', 'Wall / rebounder', 'Cones / markers', 'Goal / net', 'Agility ladder', 'Resistance bands'];
 
+const IDENTITY_OPTIONS = [
+  { id: 'scorer', label: 'Scoring goals from anywhere', icon: '🎯' },
+  { id: 'speedster', label: 'Speed that nobody can match', icon: '⚡' },
+  { id: 'playmaker', label: 'Vision and creativity', icon: '🧠' },
+  { id: 'engine', label: 'Being the hardest worker', icon: '🔥' },
+  { id: 'rock', label: 'Winning every ball', icon: '🛡️' },
+];
+
 function ProgressDots({ current, total }) {
   return (
     <div className="flex items-center justify-center gap-2 mb-6">
@@ -48,6 +56,8 @@ export function OnboardingFlow({ settings, onComplete }) {
     skillLevel: '',
     weeklyGoal: 3,
     equipment: ['ball'],
+    playerIdentity: '',
+    customIdentity: '',
     parentCode: '',
     parentConnectError: '',
     parentConnected: false,
@@ -73,6 +83,7 @@ export function OnboardingFlow({ settings, onComplete }) {
       skillLevel: (isCoach || isParent) ? '' : data.skillLevel,
       weeklyGoal: (isCoach || isParent) ? 3 : data.weeklyGoal,
       equipment: (isCoach || isParent) ? ['ball'] : data.equipment,
+      playerIdentity: (isCoach || isParent) ? '' : (data.playerIdentity || data.customIdentity || ''),
       onboardingComplete: 1,
     });
   };
@@ -194,7 +205,60 @@ export function OnboardingFlow({ settings, onComplete }) {
       </div>
     ),
 
-    // Step 3: Weekly Goal
+    // Step 3: Player Identity — "What do you want to be known for?"
+    () => (
+      <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
+        <div className="text-center mb-6">
+          <h2 className="text-xl font-bold text-gray-900">What do you want to be<br />known for on the pitch?</h2>
+          <p className="text-xs text-gray-400 mt-2">This shapes your training, your goals, and your story.</p>
+        </div>
+
+        <div className="space-y-2.5">
+          {IDENTITY_OPTIONS.map(opt => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => { update('playerIdentity', opt.id); update('customIdentity', ''); }}
+              className={`w-full text-left rounded-xl border-2 px-4 py-3.5 transition-all flex items-center gap-3 ${
+                data.playerIdentity === opt.id
+                  ? 'border-accent bg-accent/5 shadow-sm'
+                  : 'border-gray-100 bg-white hover:border-gray-200'
+              }`}
+            >
+              <span className="text-xl">{opt.icon}</span>
+              <span className="text-sm font-medium text-gray-900">{opt.label}</span>
+            </button>
+          ))}
+
+          {/* Custom option */}
+          <div className={`rounded-xl border-2 px-4 py-3.5 transition-all ${
+            data.playerIdentity === 'custom' ? 'border-accent bg-accent/5' : 'border-gray-100 bg-white'
+          }`}>
+            <button
+              type="button"
+              onClick={() => update('playerIdentity', 'custom')}
+              className="w-full text-left flex items-center gap-3"
+            >
+              <span className="text-xl">✍️</span>
+              <span className="text-sm font-medium text-gray-900">Write your own</span>
+            </button>
+            {data.playerIdentity === 'custom' && (
+              <input
+                type="text"
+                value={data.customIdentity}
+                onChange={e => update('customIdentity', e.target.value)}
+                placeholder="e.g. The clutch player who shows up in big moments"
+                maxLength={80}
+                className="w-full mt-2 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent/30"
+                autoFocus
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    ),
+
+    // Step 4: Weekly Goal
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
@@ -361,14 +425,14 @@ export function OnboardingFlow({ settings, onComplete }) {
     ),
   ];
 
-  // Coach skips player-specific steps (age group, weekly goal)
+  // Coach skips player-specific steps (age group, identity, weekly goal)
   // Parent skips player-specific steps, gets connect-to-child step instead
-  // steps[4] is the parent connect step — exclude it for player and coach
-  const playerSteps = steps.filter((_, i) => i !== 4); // all except parent connect
+  // steps[5] is the parent connect step — exclude it for player and coach
+  const playerSteps = steps.filter((_, i) => i !== 5); // all except parent connect
   const activeSteps = isCoach
     ? [steps[0], steps[1], steps[steps.length - 1]]  // role, name, finish
     : isParent
-    ? [steps[0], steps[4], steps[steps.length - 1]]  // role, connect, finish (skip name/position)
+    ? [steps[0], steps[5], steps[steps.length - 1]]  // role, connect, finish (skip name/position)
     : playerSteps;
   const TOTAL_STEPS = activeSteps.length;
 

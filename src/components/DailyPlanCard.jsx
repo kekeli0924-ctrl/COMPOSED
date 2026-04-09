@@ -3,7 +3,7 @@ import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { generateDailyPlan } from '../utils/dailyPlan';
 
-export function DailyPlanCard({ sessions, idpGoals, onStartPlan, onStartManual, onUploadVideo, assignedPlans = [], activeProgram, position = 'General' }) {
+export function DailyPlanCard({ sessions, idpGoals, onStartPlan, onStartManual, onUploadVideo, assignedPlans = [], activeProgram, position = 'General', playerIdentity = '' }) {
   const today = new Date().toISOString().split('T')[0];
 
   // If player has an active program, show the program session
@@ -101,7 +101,7 @@ export function DailyPlanCard({ sessions, idpGoals, onStartPlan, onStartManual, 
         xpReward: 50,
       };
     }
-    return generateDailyPlan(sessions, idpGoals, position);
+    return generateDailyPlan(sessions, idpGoals, position, playerIdentity);
   }, [coachPlanToday, sessions, idpGoals]);
 
   if (!plan) return null;

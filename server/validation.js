@@ -63,6 +63,7 @@ export const settingsSchema = z.object({
   gettingStartedComplete: z.coerce.number().int().min(0).max(1).optional(),
   position: z.string().max(50).optional(),
   equipment: z.array(z.string()).optional(),
+  playerIdentity: z.string().max(100).optional(),
 }).strict();
 
 // Training plans

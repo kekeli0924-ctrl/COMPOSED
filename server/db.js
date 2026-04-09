@@ -697,6 +697,9 @@ const migrations = [
   { version: 21, up: (db) => {
     try { db.exec("ALTER TABLE scouting_reports ADD COLUMN shared_by_coach_id INTEGER"); } catch { /* exists */ }
   }},
+  { version: 22, up: (db) => {
+    try { db.exec("ALTER TABLE settings ADD COLUMN player_identity TEXT DEFAULT ''"); } catch { /* exists */ }
+  }},
 ];
 
 function runMigrations(db) {

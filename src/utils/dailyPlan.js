@@ -1,5 +1,6 @@
 import { analyzeGaps } from './gapAnalysis';
 import { getStreak, computeFourPillars } from './stats';
+import { getIdentityMotivation, getIdentityDrillBoost } from './identity';
 
 // Detailed drill definitions with reps/duration/instructions
 const DRILL_DETAILS = {
@@ -123,8 +124,14 @@ function getWarmupForFocus(focusDrills) {
   return WARMUP_VARIANTS.default;
 }
 
-function selectDrillsByPosition(position, count = 4, exclude = []) {
-  const weights = POSITION_WEIGHTS[position] || POSITION_WEIGHTS.General;
+function selectDrillsByPosition(position, count = 4, exclude = [], identity = '') {
+  const baseWeights = { ...(POSITION_WEIGHTS[position] || POSITION_WEIGHTS.General) };
+  // Apply identity-based boosts
+  const boosts = getIdentityDrillBoost(identity);
+  for (const [cat, boost] of Object.entries(boosts)) {
+    baseWeights[cat] = (baseWeights[cat] || 0) + boost;
+  }
+  const weights = baseWeights;
   const drills = [];
   const used = new Set(exclude);
 
@@ -173,11 +180,15 @@ const MOTIVATIONS = [
   'Discipline is choosing what you want most over what you want now.',
 ];
 
-function pickMotivation() {
+function pickMotivation(identity) {
+  if (identity) {
+    const msg = getIdentityMotivation(identity);
+    if (msg) return msg;
+  }
   return MOTIVATIONS[Math.floor(Math.random() * MOTIVATIONS.length)];
 }
 
-export function generateDailyPlan(sessions, idpGoals = [], position = 'General') {
+export function generateDailyPlan(sessions, idpGoals = [], position = 'General', identity = '') {
   const today = new Date().toISOString().split('T')[0];
   const streak = getStreak(sessions);
 
@@ -258,7 +269,7 @@ export function generateDailyPlan(sessions, idpGoals = [], position = 'General')
 
     // Position weighting: fill remaining slots from position-relevant drills
     if (drills.length < 4) {
-      const positionDrills = selectDrillsByPosition(position, 2, drills);
+      const positionDrills = selectDrillsByPosition(position, 2, drills, identity);
       for (const d of positionDrills) {
         if (drills.length < 4 && !drills.includes(d)) drills.push(d);
       }
@@ -273,7 +284,7 @@ export function generateDailyPlan(sessions, idpGoals = [], position = 'General')
       timeline,
       totalDuration,
       targetDuration: totalDuration,
-      motivation: topGap.miniSession.instruction || pickMotivation(),
+      motivation: topGap.miniSession.instruction || pickMotivation(identity),
       xpReward: 50,
       gapArea: topGap.area,
       gapUrgency: topGap.urgency,
@@ -281,7 +292,7 @@ export function generateDailyPlan(sessions, idpGoals = [], position = 'General')
   }
 
   // Position-based plan (no gaps detected)
-  const drills = selectDrillsByPosition(position, 4);
+  const drills = selectDrillsByPosition(position, 4, [], identity);
 
   // IDP boost: swap one drill for IDP-relevant drill
   if (idpBoostCategories && drills.length >= 3) {
@@ -315,13 +326,13 @@ export function generateDailyPlan(sessions, idpGoals = [], position = 'General')
       timeline,
       totalDuration,
       targetDuration: totalDuration,
-      motivation: pickMotivation(),
+      motivation: pickMotivation(identity),
       xpReward: 50,
     };
   }
 
   // General fallback
-  const fallbackDrills = selectDrillsByPosition(position, 4);
+  const fallbackDrills = selectDrillsByPosition(position, 4, [], identity);
   if (fallbackDrills.length < 4) fallbackDrills.push('Finishing Drill', 'Wall Passes (1-touch)', 'Sprint Intervals', 'Dribbling Circuit');
   const finalDrills = [...new Set(fallbackDrills)].slice(0, 4);
   const { timeline: fbTimeline, totalDuration: fbDuration } = buildTimeline(finalDrills);
@@ -332,7 +343,7 @@ export function generateDailyPlan(sessions, idpGoals = [], position = 'General')
     timeline: fbTimeline,
     totalDuration: fbDuration,
     targetDuration: fbDuration,
-    motivation: pickMotivation(),
+    motivation: pickMotivation(identity),
     xpReward: 50,
   };
 }

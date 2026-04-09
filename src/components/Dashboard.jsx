@@ -13,6 +13,7 @@ import {
   computeFatigueDecay, generateInsights,
 } from '../utils/stats';
 import { computePace } from '../utils/pace';
+import { getPaceLabel, getIdentityTip, getIdentity } from '../utils/identity';
 
 const BREAKDOWN_LABELS = {
   consistency: 'Consistency',
@@ -106,7 +107,7 @@ function InsightsCard({ insights }) {
 
 const PACE_COLORS = { accelerating: '#16A34A', steady: '#D97706', stalling: '#DC2626' };
 
-function WeeklyPaceCard({ sessions, idpGoals = [], onNavigate }) {
+function WeeklyPaceCard({ sessions, idpGoals = [], onNavigate, playerIdentity }) {
   const pace = useMemo(() => computePace(sessions, 4), [sessions]);
   if (!pace) return null;
 
@@ -133,14 +134,8 @@ function WeeklyPaceCard({ sessions, idpGoals = [], onNavigate }) {
       .sort((a, b) => a[1].velocityPct - b[1].velocityPct);
     if (declining.length > 0) {
       const [key, m] = declining[0];
-      const tips = {
-        shooting: 'Add one focused finishing drill.',
-        passing: 'Try a wall-pass session this week.',
-        consistency: 'Even a short 15-minute session counts.',
-        duration: 'Try adding 10 minutes to your next session.',
-        load: 'Push the intensity slightly or add a session.',
-      };
-      result.push({ type: 'down', text: `${key[0].toUpperCase() + key.slice(1)} is declining. ${tips[key] || ''}` });
+      const tip = getIdentityTip(playerIdentity, key);
+      result.push({ type: 'down', text: `${key[0].toUpperCase() + key.slice(1)} is declining. ${tip}` });
     }
 
     // IDP projection (if there's a shooting IDP goal)
@@ -177,7 +172,7 @@ function WeeklyPaceCard({ sessions, idpGoals = [], onNavigate }) {
           <span className="text-sm font-bold" style={{ color }}>
             {overall.velocityPct > 0 ? '+' : ''}{overall.velocityPct}%
           </span>
-          <span className="text-xs font-semibold text-gray-700">Your Pace This Week</span>
+          <span className="text-xs font-semibold text-gray-700">{playerIdentity ? `Your ${getIdentity(playerIdentity)?.label || ''} Pace` : 'Your Pace This Week'}</span>
         </div>
         <span className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">
           {overall.label}
@@ -409,13 +404,13 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
       <MatchDayCard scoutingReports={scoutingReports} onNavigate={onNavigate} onStartPlan={onStartPlan} />
 
       {/* Weekly Pace Card — the Sunday night pull */}
-      <WeeklyPaceCard sessions={sessions} idpGoals={idpGoals} onNavigate={onNavigate} />
+      <WeeklyPaceCard sessions={sessions} idpGoals={idpGoals} onNavigate={onNavigate} playerIdentity={settings.playerIdentity} />
 
       {/* Welcome Back (3+ days inactive) */}
       <WelcomeBack sessions={sessions} playerName={settings.playerName} onStartSession={() => onNavigate?.('log')} />
 
       {/* Daily Plan */}
-      <DailyPlanCard sessions={sessions} idpGoals={idpGoals} onStartPlan={onStartPlan} onStartManual={onStartManual} assignedPlans={assignedPlans} activeProgram={activeProgram} position={settings.position || 'General'} />
+      <DailyPlanCard sessions={sessions} idpGoals={idpGoals} onStartPlan={onStartPlan} onStartManual={onStartManual} assignedPlans={assignedPlans} activeProgram={activeProgram} position={settings.position || 'General'} playerIdentity={settings.playerIdentity} />
 
       {/* Recent Sessions */}
       <div>

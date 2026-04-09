@@ -4,6 +4,7 @@ import { Card } from './ui/Card';
 import { computePace } from '../utils/pace';
 import { getAverageStat, getShotPercentage, getPassPercentage, getWeeklyLoads, getCurrentWeekSessionCount } from '../utils/stats';
 import { BENCHMARKS, calculatePercentile } from '../utils/benchmarks';
+import { getPaceLabel, getPaceNarrative, getPeerPrefix } from '../utils/identity';
 
 const PACE_COLORS = {
   accelerating: '#16A34A',
@@ -19,7 +20,7 @@ const METRIC_CONFIG = {
   load: { name: 'Training Load', unit: '', description: 'Volume × intensity (duration × RPE)' },
 };
 
-function PaceHeroCircle({ pace }) {
+function PaceHeroCircle({ pace, playerIdentity }) {
   const label = pace?.overall?.label || 'steady';
   const velocity = pace?.overall?.velocityPct;
   const color = PACE_COLORS[label] || PACE_COLORS.steady;
@@ -50,7 +51,7 @@ function PaceHeroCircle({ pace }) {
             {velocity != null ? `${velocity > 0 ? '+' : ''}${velocity}%` : '—'}
           </span>
           <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 relative z-10 mt-1">
-            YOUR PACE
+            {getPaceLabel(playerIdentity)}
           </span>
         </div>
       </div>
@@ -65,9 +66,7 @@ function PaceHeroCircle({ pace }) {
         </span>
         {velocity != null && (
           <p className="text-xs text-gray-400 mt-0.5">
-            {label === 'accelerating' ? 'You\'re improving faster than before'
-              : label === 'stalling' ? 'Your improvement has slowed down'
-              : 'Maintaining a steady pace'}
+            {getPaceNarrative(playerIdentity, label)}
           </p>
         )}
       </div>
@@ -224,7 +223,7 @@ const PACE_TO_BENCHMARK = {
   duration: null, // no direct benchmark match
 };
 
-function PeerContextCard({ pace, sessions, ageGroup, skillLevel }) {
+function PeerContextCard({ pace, sessions, ageGroup, skillLevel, playerIdentity }) {
   const benchmarkLevel = SKILL_MAP[skillLevel] || 'Academy';
   const benchmarks = BENCHMARKS?.[ageGroup]?.[benchmarkLevel];
 
@@ -277,12 +276,15 @@ function PeerContextCard({ pace, sessions, ageGroup, skillLevel }) {
     return picks;
   }, [comparisons]);
 
+  const peerLabel = getPeerPrefix(playerIdentity);
+
   function insightText(c) {
-    if (c.percentile >= 90) return `Your ${c.name.toLowerCase()} puts you in the top 10% of ${ageGroup} ${benchmarkLevel} players. Elite level.`;
-    if (c.percentile >= 75) return `Your ${c.name.toLowerCase()} (${c.playerValue}${c.unit}) is above 75% of ${ageGroup} ${benchmarkLevel} players. Strong.`;
-    if (c.percentile >= 50) return `Your ${c.name.toLowerCase()} (${c.playerValue}${c.unit}) is above average for ${ageGroup} ${benchmarkLevel} players. Keep pushing.`;
-    if (c.percentile >= 25) return `Your ${c.name.toLowerCase()} is below the median for ${ageGroup} ${benchmarkLevel} (${c.median}${c.unit}). Focused work here pays off fast.`;
-    return `Your ${c.name.toLowerCase()} has room to grow — most ${ageGroup} ${benchmarkLevel} players are at ${c.median}${c.unit}. A dedicated session each week can close the gap.`;
+    const cohort = `${ageGroup} ${benchmarkLevel} ${peerLabel}`;
+    if (c.percentile >= 90) return `Your ${c.name.toLowerCase()} puts you in the top 10% of ${cohort}. Elite level.`;
+    if (c.percentile >= 75) return `Your ${c.name.toLowerCase()} (${c.playerValue}${c.unit}) is above 75% of ${cohort}. Strong.`;
+    if (c.percentile >= 50) return `Your ${c.name.toLowerCase()} (${c.playerValue}${c.unit}) is above average for ${cohort}. Keep pushing.`;
+    if (c.percentile >= 25) return `Your ${c.name.toLowerCase()} is below the median for ${cohort} (${c.median}${c.unit}). Focused work here pays off fast.`;
+    return `Your ${c.name.toLowerCase()} has room to grow — most ${cohort} are at ${c.median}${c.unit}. A dedicated session each week can close the gap.`;
   }
 
   function percentileColor(pct) {
@@ -325,7 +327,7 @@ function PeerContextCard({ pace, sessions, ageGroup, skillLevel }) {
   );
 }
 
-export function PaceTab({ sessions = [], onViewMetric, ageGroup, skillLevel }) {
+export function PaceTab({ sessions = [], onViewMetric, ageGroup, skillLevel, playerIdentity }) {
   const pace = useMemo(() => computePace(sessions, 4), [sessions]);
 
   // Weekly history for bar chart
@@ -374,10 +376,10 @@ export function PaceTab({ sessions = [], onViewMetric, ageGroup, skillLevel }) {
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
       {/* Header */}
-      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">YOUR PACE</p>
+      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">{getPaceLabel(playerIdentity)}</p>
 
       {/* Hero Circle */}
-      <PaceHeroCircle pace={pace} />
+      <PaceHeroCircle pace={pace} playerIdentity={playerIdentity} />
 
       {/* Recommendation */}
       {pace.recommendation?.text && (
@@ -391,7 +393,7 @@ export function PaceTab({ sessions = [], onViewMetric, ageGroup, skillLevel }) {
 
       {/* Peer Comparison */}
       {ageGroup && skillLevel ? (
-        <PeerContextCard pace={pace} sessions={sessions} ageGroup={ageGroup} skillLevel={skillLevel} />
+        <PeerContextCard pace={pace} sessions={sessions} ageGroup={ageGroup} skillLevel={skillLevel} playerIdentity={playerIdentity} />
       ) : (
         <Card>
           <div className="flex items-center gap-3 py-1">

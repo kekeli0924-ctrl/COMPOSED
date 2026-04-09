@@ -909,7 +909,7 @@ function AppMain({ authUser, onLogout }) {
           <SessionHistory sessions={sessions} customDrills={customDrills} onEdit={handleEditSession} onDelete={handleDeleteSession} onView={handleViewSession} onBack={() => setActiveTab(previousTab)} />
         </div>
         <div className={activeTab === 'pace' ? '' : 'hidden'}>
-          <PaceTab sessions={sessions} ageGroup={settings.ageGroup} skillLevel={settings.skillLevel} />
+          <PaceTab sessions={sessions} ageGroup={settings.ageGroup} skillLevel={settings.skillLevel} playerIdentity={settings.playerIdentity} />
         </div>
         <div className={activeTab === 'plan' ? '' : 'hidden'}>
           <PlanWeekView
@@ -1110,6 +1110,28 @@ function AppMain({ authUser, onLogout }) {
                   <option value="CDM">CDM</option>
                   <option value="CB">CB</option>
                   <option value="GK">GK</option>
+                </select>
+              </div>
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Player Identity */}
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Player Identity</p>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-700">Known for</span>
+                <select
+                  value={settings.playerIdentity || ''}
+                  onChange={e => setSettings(prev => ({ ...prev, playerIdentity: e.target.value }))}
+                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                >
+                  <option value="">Select...</option>
+                  <option value="scorer">Scoring goals</option>
+                  <option value="speedster">Speed</option>
+                  <option value="playmaker">Vision & creativity</option>
+                  <option value="engine">Hardest worker</option>
+                  <option value="rock">Winning every ball</option>
                 </select>
               </div>
             </div>
