@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { MetricRow, MetricSection } from './MetricRow';
 import { WeeklyReport } from './WeeklyReport';
 import { DailyPlanCard } from './DailyPlanCard';
-import { GettingStartedChecklist } from './GettingStartedChecklist';
+// GettingStartedChecklist removed — replaced by single "Ready to train?" CTA
 import { WelcomeBack } from './WelcomeBack';
 import { DateBrowser } from './DateBrowser';
 import { SocialFeed } from './SocialFeed';
@@ -110,8 +110,23 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
       <div className="space-y-5 max-w-3xl mx-auto">
         <h1 className="text-3xl text-accent tracking-tight text-center font-logo italic">Composed</h1>
         <DateBrowser assignedPlans={assignedPlans} trainingPlans={trainingPlans} sessions={sessions} idpGoals={idpGoals} />
-        <GettingStartedChecklist sessions={sessions} idpGoals={idpGoals} myCoach={myCoach} settings={settings} onNavigate={onNavigate} onDismiss={onDismissGettingStarted} />
-        <DailyPlanCard sessions={sessions} idpGoals={idpGoals} onStartPlan={onStartPlan} onStartManual={onStartManual} onUploadVideo={onUploadVideo} assignedPlans={assignedPlans} activeProgram={activeProgram} position={settings.position || 'General'} />
+
+        {/* First-time hero — one action, no checklist */}
+        <div className="bg-surface rounded-xl border border-gray-100 shadow-card p-8 text-center">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Ready to train?</h2>
+          <p className="text-xs text-gray-400 mb-5">Record your session and let AI track your progress.</p>
+          <button
+            onClick={() => onStartPlan && onStartPlan({ drills: [], timeline: [{ name: 'Warm-up', reps: '5 min', duration: 5, instruction: 'Light jog, dynamic stretches.', startMin: 0, isWarmup: true }, { name: 'Free Training', reps: '20 min', duration: 20, instruction: 'Work on what feels right today.', startMin: 5 }, { name: 'Cool-down', reps: '5 min', duration: 5, instruction: 'Static stretches.', startMin: 25, isCooldown: true }], targetDuration: 30, focus: 'Getting Started' })}
+            className="w-full py-3 rounded-xl font-semibold text-sm btn-warm btn-bounce transition-all"
+          >
+            Start & Record
+          </button>
+          <div className="flex items-center justify-center gap-3 mt-3">
+            <button onClick={() => onUploadVideo && onUploadVideo()} className="text-xs text-accent hover:underline">Upload a Video</button>
+            <span className="text-gray-200">|</span>
+            <button onClick={() => onNavigate?.('log')} className="text-xs text-gray-400 hover:text-gray-600">Log manually</button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -133,8 +148,7 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
       {/* Date Browser */}
       <DateBrowser assignedPlans={assignedPlans} trainingPlans={trainingPlans} sessions={sessions} idpGoals={idpGoals} />
 
-      {/* Getting Started */}
-      <GettingStartedChecklist sessions={sessions} idpGoals={idpGoals} myCoach={myCoach} settings={settings} onNavigate={onNavigate} onDismiss={onDismissGettingStarted} />
+      {/* Getting Started checklist removed — replaced by contextual prompts */}
 
       {/* Training Score Hero */}
       {(() => {
