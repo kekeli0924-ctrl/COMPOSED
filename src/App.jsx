@@ -1247,6 +1247,18 @@ function AppMain({ authUser, onLogout }) {
                 <Button variant="danger" onClick={() => setShowClearConfirm(true)} className="w-full">Clear All Data</Button>
               </div>
             </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Log Out */}
+            <button
+              onClick={onLogout}
+              className="w-full py-3 text-sm font-medium text-red-500 hover:text-red-600 transition-colors"
+            >
+              Log Out
+            </button>
+
+            <div className="h-8" />
           </div>
         </div>
 
