@@ -195,6 +195,7 @@ function App() {
 function AppMain({ authUser, onLogout }) {
   // Persistent state (API-backed)
   const [sessions, setSessions, sessionsLoaded] = useApiCollection('/sessions', []);
+  const [scoutingReports] = useApiCollection('/scouting/reports', []);
   const [customDrills, setCustomDrills] = useApiStringList('/custom-drills', []);
   const [settings, setSettings] = useApiSingleton('/settings', { distanceUnit: 'km' });
   const [personalRecords, setPersonalRecords] = useApiSingleton('/personal-records', null);
@@ -898,7 +899,7 @@ function AppMain({ authUser, onLogout }) {
         ) : (
         <>
         <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
-          <Dashboard sessions={sessions} personalRecords={personalRecords} onViewSession={handleViewSession} idpGoals={idpGoals} weeklyGoal={settings.weeklyGoal ?? 3} ageGroup={settings.ageGroup} skillLevel={settings.skillLevel} onOpenSettings={() => navigateToTab('profile')} onNavigateToLog={() => setActiveTab('log')} onStartPlan={handleStartPlan} onStartManual={handleStartManual} onUploadVideo={handleUploadVideo} onViewMetric={handleViewMetric} assignedPlans={assignedPlans} trainingPlans={trainingPlans} settings={settings} myCoach={myCoach} onNavigate={navigateToTab} onDismissGettingStarted={() => setSettings(prev => ({ ...prev, gettingStartedComplete: 1 }))} activeProgram={activeProgram} />
+          <Dashboard sessions={sessions} personalRecords={personalRecords} onViewSession={handleViewSession} idpGoals={idpGoals} weeklyGoal={settings.weeklyGoal ?? 3} ageGroup={settings.ageGroup} skillLevel={settings.skillLevel} onOpenSettings={() => navigateToTab('profile')} onNavigateToLog={() => setActiveTab('log')} onStartPlan={handleStartPlan} onStartManual={handleStartManual} onUploadVideo={handleUploadVideo} onViewMetric={handleViewMetric} assignedPlans={assignedPlans} trainingPlans={trainingPlans} settings={settings} myCoach={myCoach} onNavigate={navigateToTab} onDismissGettingStarted={() => setSettings(prev => ({ ...prev, gettingStartedComplete: 1 }))} activeProgram={activeProgram} scoutingReports={scoutingReports} />
         </div>
         <div className={activeTab === 'log' ? '' : 'hidden'}>
           <SessionLogger onSave={handleSaveSession} onQuickSaveVideo={handleQuickSaveFromVideo} editSession={editSession} customDrills={customDrills} onAddCustomDrill={handleAddCustomDrill} distanceUnit={settings.distanceUnit} templates={templates} setTemplates={setTemplates} idpGoals={idpGoals} sessions={sessions} />

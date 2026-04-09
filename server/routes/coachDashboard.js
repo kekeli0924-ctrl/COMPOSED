@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import { getDb } from '../db.js';
 import { requireCoach } from '../auth.js';
 
@@ -119,6 +120,66 @@ router.get('/player/:playerId', requireCoach, (req, res) => {
     idpGoals,
     assignedPlans,
   });
+});
+
+// ── Coach Scouting ──────────────────────────────────────────
+
+// GET /api/coach/scouting-reports — coach's own scouting reports
+router.get('/scouting-reports', requireCoach, (req, res) => {
+  const db = getDb();
+  const reports = db.prepare(
+    "SELECT id, club_name, level, age_group, gender, location, match_date, status, confidence_summary, game_plan, created_at FROM scouting_reports WHERE user_id = ? AND shared_by_coach_id IS NULL ORDER BY created_at DESC"
+  ).all(req.userId);
+
+  res.json(reports.map(r => ({
+    id: r.id,
+    clubName: r.club_name,
+    level: r.level,
+    ageGroup: r.age_group,
+    gender: r.gender,
+    matchDate: r.match_date,
+    status: r.status,
+    confidenceSummary: r.confidence_summary,
+    hasGamePlan: r.game_plan != null,
+    createdAt: r.created_at,
+  })));
+});
+
+// POST /api/coach/share-scouting/:reportId — share a report with players
+router.post('/share-scouting/:reportId', requireCoach, (req, res) => {
+  const db = getDb();
+  const { playerIds } = req.body;
+  if (!Array.isArray(playerIds) || playerIds.length === 0) {
+    return res.status(400).json({ error: 'playerIds array required' });
+  }
+
+  // Verify the report belongs to the coach
+  const report = db.prepare('SELECT * FROM scouting_reports WHERE id = ? AND user_id = ?').get(req.params.reportId, req.userId);
+  if (!report) return res.status(404).json({ error: 'Report not found' });
+
+  // Verify all players are on roster
+  const roster = db.prepare('SELECT player_id FROM coach_players WHERE coach_id = ?').all(req.userId).map(r => r.player_id);
+  const validIds = playerIds.filter(id => roster.includes(id));
+  if (validIds.length === 0) return res.status(400).json({ error: 'No valid players on your roster' });
+
+  let shared = 0;
+  for (const playerId of validIds) {
+    // Don't duplicate — check if already shared
+    const existing = db.prepare(
+      "SELECT id FROM scouting_reports WHERE user_id = ? AND club_name = ? AND shared_by_coach_id = ?"
+    ).get(playerId, report.club_name, req.userId);
+    if (existing) continue;
+
+    db.prepare(`INSERT INTO scouting_reports (id, user_id, club_name, level, age_group, gender, location, match_date, status, report_content, confidence_summary, game_plan, shared_by_coach_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      crypto.randomUUID(), playerId, report.club_name, report.level, report.age_group, report.gender,
+      report.location, report.match_date, report.status, report.report_content,
+      report.confidence_summary, report.game_plan, req.userId
+    );
+    shared++;
+  }
+
+  res.json({ shared, total: validIds.length });
 });
 
 // ── Squad Pulse ─────────────────────────────────────────────

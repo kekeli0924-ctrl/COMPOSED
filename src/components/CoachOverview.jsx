@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from './ui/Card';
+import { Button } from './ui/Button';
 import { getToken } from '../hooks/useApi';
 import { SquadPulseCard } from './SquadPulseCard';
 
@@ -7,13 +8,37 @@ export function CoachOverview() {
   const [dashboard, setDashboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [leaderboardMetric, setLeaderboardMetric] = useState('sessions');
+  const [scoutingReports, setScoutingReports] = useState([]);
+  const [sharingReportId, setSharingReportId] = useState(null);
+  const [shareStatus, setShareStatus] = useState(null);
 
   useEffect(() => {
-    fetch('/api/coach/dashboard', { headers: { Authorization: `Bearer ${getToken()}` } })
-      .then(r => r.ok ? r.json() : [])
-      .then(setDashboard)
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch('/api/coach/dashboard', { headers: { Authorization: `Bearer ${getToken()}` } }).then(r => r.ok ? r.json() : []),
+      fetch('/api/coach/scouting-reports', { headers: { Authorization: `Bearer ${getToken()}` } }).then(r => r.ok ? r.json() : []),
+    ]).then(([dash, reports]) => {
+      setDashboard(dash);
+      setScoutingReports(reports);
+    }).finally(() => setLoading(false));
   }, []);
+
+  const shareWithTeam = useCallback(async (reportId) => {
+    const playerIds = dashboard.map(p => p.playerId);
+    if (playerIds.length === 0) return;
+    setShareStatus('sharing');
+    try {
+      const res = await fetch(`/api/coach/share-scouting/${reportId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ playerIds }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setShareStatus(`Shared with ${data.shared} player${data.shared !== 1 ? 's' : ''}`);
+        setTimeout(() => { setShareStatus(null); setSharingReportId(null); }, 2000);
+      }
+    } catch { setShareStatus(null); }
+  }, [dashboard]);
 
   if (loading) return <div className="text-center py-12 text-gray-400">Loading...</div>;
 
@@ -30,6 +55,49 @@ export function CoachOverview() {
 
       {/* Squad Pulse */}
       <SquadPulseCard />
+
+      {/* Coach Scouting Reports */}
+      {scoutingReports.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Your Scouting Reports</h3>
+          <div className="space-y-2">
+            {scoutingReports.slice(0, 5).map(report => (
+              <Card key={report.id}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{report.clubName}</p>
+                    <p className="text-[10px] text-gray-400">
+                      {report.level} · {report.ageGroup}
+                      {report.matchDate && ` · ${new Date(report.matchDate).toLocaleDateString()}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                      report.status === 'ready' ? 'bg-green-100 text-green-700' :
+                      report.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                      'bg-red-100 text-red-600'
+                    }`}>
+                      {report.status === 'ready' ? 'Ready' : report.status === 'pending' ? 'Loading' : 'Failed'}
+                    </span>
+                    {report.status === 'ready' && (
+                      sharingReportId === report.id ? (
+                        <span className="text-[10px] text-green-600 font-medium">{shareStatus}</span>
+                      ) : (
+                        <button
+                          onClick={() => { setSharingReportId(report.id); shareWithTeam(report.id); }}
+                          className="text-[10px] font-semibold text-accent hover:underline"
+                        >
+                          Share with Team
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3">

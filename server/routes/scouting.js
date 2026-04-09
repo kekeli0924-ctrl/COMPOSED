@@ -54,7 +54,7 @@ router.post('/request', async (req, res) => {
 router.get('/reports', (req, res) => {
   const db = getDb();
   const reports = db.prepare(
-    'SELECT id, club_name, level, age_group, gender, location, match_date, status, confidence_summary, error_message, created_at, updated_at FROM scouting_reports WHERE user_id = ? ORDER BY created_at DESC'
+    'SELECT id, club_name, level, age_group, gender, location, match_date, status, confidence_summary, error_message, game_plan, shared_by_coach_id, created_at, updated_at FROM scouting_reports WHERE user_id = ? ORDER BY created_at DESC'
   ).all(req.userId);
 
   res.json(reports.map(r => ({
@@ -68,6 +68,8 @@ router.get('/reports', (req, res) => {
     status: r.status,
     confidenceSummary: r.confidence_summary,
     errorMessage: r.error_message,
+    gamePlan: r.game_plan ? JSON.parse(r.game_plan) : null,
+    fromCoach: r.shared_by_coach_id != null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   })));

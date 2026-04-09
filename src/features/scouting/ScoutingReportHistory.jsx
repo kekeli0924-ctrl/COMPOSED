@@ -84,7 +84,12 @@ export function ScoutingReportHistory({ onViewReport, onNewReport, onBack }) {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">{report.clubName}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-gray-900">{report.clubName}</p>
+                      {report.fromCoach && (
+                        <span className="text-[9px] font-bold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded-full">From Coach</span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {report.level} · {report.ageGroup} {report.gender}
                       {report.matchDate && ` · Match: ${new Date(report.matchDate).toLocaleDateString()}`}

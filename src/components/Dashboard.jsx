@@ -200,7 +200,97 @@ function WeeklyPaceCard({ sessions, idpGoals = [], onNavigate }) {
   );
 }
 
-export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals = [], weeklyGoal = 3, ageGroup, skillLevel, onOpenSettings, onNavigateToLog, onStartPlan, onStartManual, onUploadVideo, onViewMetric, assignedPlans = [], trainingPlans = [], settings = {}, myCoach, onNavigate, onDismissGettingStarted, activeProgram }) {
+// ── Match Day Card — surfaces scouting on match day ─────────
+
+function MatchDayCard({ scoutingReports = [], onNavigate, onStartPlan }) {
+  const upcoming = useMemo(() => {
+    if (!scoutingReports.length) return null;
+    const now = new Date();
+    const threeDaysOut = new Date(now.getTime() + 3 * 86400000).toISOString().slice(0, 10);
+    const todayStr = now.toISOString().slice(0, 10);
+
+    // Find the closest upcoming match with a scouting report
+    return scoutingReports
+      .filter(r => r.matchDate && r.matchDate >= todayStr && r.matchDate <= threeDaysOut)
+      .sort((a, b) => a.matchDate.localeCompare(b.matchDate))[0] || null;
+  }, [scoutingReports]);
+
+  if (!upcoming) return null;
+
+  const isMatchDay = upcoming.matchDate === new Date().toISOString().slice(0, 10);
+  const matchDate = new Date(upcoming.matchDate + 'T00:00:00');
+  const dayLabel = isMatchDay ? 'TODAY' : matchDate.toLocaleDateString('en-US', { weekday: 'long' });
+  const isReady = upcoming.status === 'ready';
+  const hasGamePlan = upcoming.gamePlan != null;
+
+  return (
+    <div className="bg-surface rounded-xl border border-gray-100 shadow-card overflow-hidden" style={{ borderLeft: '4px solid #1E3A5F' }}>
+      {/* Header bar */}
+      <div className="bg-accent/5 px-4 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">⚔️</span>
+          <span className="text-xs font-bold text-accent uppercase tracking-wide">
+            {isMatchDay ? 'Match Day' : 'Upcoming Match'}
+          </span>
+        </div>
+        <span className="text-[10px] font-semibold text-gray-500">{dayLabel}</span>
+      </div>
+
+      <div className="px-4 py-3 space-y-3">
+        <div>
+          <p className="text-sm font-bold text-gray-900">vs. {upcoming.clubName}</p>
+          <p className="text-[10px] text-gray-400">
+            {upcoming.level} · {upcoming.ageGroup} {upcoming.gender}
+            {upcoming.location ? ` · ${upcoming.location}` : ''}
+          </p>
+        </div>
+
+        {upcoming.status === 'pending' && (
+          <div className="flex items-center gap-2 bg-amber-50 rounded-lg px-3 py-2">
+            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <p className="text-xs text-amber-700">Scouting report being generated...</p>
+          </div>
+        )}
+
+        {isReady && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => onNavigate?.('scouting')}
+              className="flex-1 text-xs font-semibold text-accent bg-accent/10 hover:bg-accent/20 rounded-lg px-3 py-2.5 transition-colors text-center"
+            >
+              View Report
+            </button>
+            {hasGamePlan && upcoming.gamePlan?.warmupSession ? (
+              <button
+                onClick={() => onStartPlan?.(upcoming.gamePlan.warmupSession)}
+                className="flex-1 text-xs font-semibold text-white bg-accent hover:bg-accent/90 rounded-lg px-3 py-2.5 transition-colors text-center"
+              >
+                Start Warm-Up
+              </button>
+            ) : (
+              <button
+                onClick={() => onNavigate?.('scouting')}
+                className="flex-1 text-xs font-semibold text-white bg-accent hover:bg-accent/90 rounded-lg px-3 py-2.5 transition-colors text-center"
+              >
+                Generate Game Plan
+              </button>
+            )}
+          </div>
+        )}
+
+        {upcoming.status === 'failed' && (
+          <p className="text-xs text-red-500">Report failed — tap to retry.</p>
+        )}
+
+        {isReady && upcoming.confidenceSummary && (
+          <p className="text-[10px] text-gray-400 text-center">Report confidence: {upcoming.confidenceSummary}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals = [], weeklyGoal = 3, ageGroup, skillLevel, onOpenSettings, onNavigateToLog, onStartPlan, onStartManual, onUploadVideo, onViewMetric, assignedPlans = [], trainingPlans = [], settings = {}, myCoach, onNavigate, onDismissGettingStarted, activeProgram, scoutingReports = [] }) {
   const insights = useMemo(() => generateInsights(sessions, [], personalRecords), [sessions, personalRecords]);
   // Pace moved to its own tab
 
@@ -314,6 +404,9 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
           </>
         );
       })()}
+
+      {/* Match Day Card — surfaces scouting when match is near */}
+      <MatchDayCard scoutingReports={scoutingReports} onNavigate={onNavigate} onStartPlan={onStartPlan} />
 
       {/* Weekly Pace Card — the Sunday night pull */}
       <WeeklyPaceCard sessions={sessions} idpGoals={idpGoals} onNavigate={onNavigate} />

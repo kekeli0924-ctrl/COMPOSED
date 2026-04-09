@@ -168,6 +168,14 @@ export function ScoutingReportDetail({ reportId, onBack, onStartPlan }) {
         </Card>
       )}
 
+      {/* Formation + Key Players — visual scouting intel */}
+      {report.status === 'ready' && report.reportContent && (
+        <>
+          <FormationDiagram content={report.reportContent} />
+          <KeyPlayersSection content={report.reportContent} />
+        </>
+      )}
+
       {/* Ready — full report */}
       {report.status === 'ready' && report.reportContent && (
         <Card>
@@ -295,4 +303,145 @@ function StatPill({ label, value }) {
       <p className="text-[10px] text-gray-400">{label}</p>
     </div>
   );
+}
+
+// ── Formation Diagram ───────────────
+
+const FORMATIONS = {
+  '4-4-2':   [[1],[2,3,4,5],[6,7,8,9],[10,11]],
+  '4-3-3':   [[1],[2,3,4,5],[6,7,8],[9,10,11]],
+  '4-2-3-1': [[1],[2,3,4,5],[6,7],[8,9,10],[11]],
+  '3-5-2':   [[1],[2,3,4],[5,6,7,8,9],[10,11]],
+  '3-4-3':   [[1],[2,3,4],[5,6,7,8],[9,10,11]],
+  '4-1-4-1': [[1],[2,3,4,5],[6],[7,8,9,10],[11]],
+  '4-5-1':   [[1],[2,3,4,5],[6,7,8,9,10],[11]],
+  '5-3-2':   [[1],[2,3,4,5,6],[7,8,9],[10,11]],
+  '5-4-1':   [[1],[2,3,4,5,6],[7,8,9,10],[11]],
+};
+
+function FormationDiagram({ content }) {
+  // Extract formation from report text
+  const match = content.match(/\b(\d-\d-\d(?:-\d)?)\b/);
+  if (!match) return null;
+  const formation = match[1];
+  const rows = FORMATIONS[formation];
+  if (!rows) return null;
+
+  const W = 220, H = 300;
+  const rowSpacing = H / (rows.length + 1);
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-xs font-bold text-gray-900">Formation</h4>
+        <span className="text-xs font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full">{formation}</span>
+      </div>
+      <div className="flex justify-center">
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="rounded-lg" style={{ background: 'linear-gradient(180deg, #1B5E20 0%, #2E7D32 100%)' }}>
+          {/* Pitch lines */}
+          <rect x={10} y={10} width={W-20} height={H-20} rx={4} fill="none" stroke="#ffffff30" strokeWidth={1.5} />
+          <line x1={10} y1={H/2} x2={W-10} y2={H/2} stroke="#ffffff25" strokeWidth={1} />
+          <circle cx={W/2} cy={H/2} r={30} fill="none" stroke="#ffffff25" strokeWidth={1} />
+          {/* Players */}
+          {rows.map((row, ri) => {
+            const y = rowSpacing * (rows.length - ri);
+            const spacing = (W - 40) / (row.length + 1);
+            return row.map((_, ci) => {
+              const x = 20 + spacing * (ci + 1);
+              return (
+                <g key={`${ri}-${ci}`}>
+                  <circle cx={x} cy={y} r={8} fill="#ffffff" opacity={0.9} />
+                  <circle cx={x} cy={y} r={8} fill="none" stroke="#ffffff" strokeWidth={1.5} />
+                </g>
+              );
+            });
+          })}
+        </svg>
+      </div>
+    </Card>
+  );
+}
+
+// ── Key Players Section ─────────────
+
+function KeyPlayersSection({ content }) {
+  // Extract key players from the ## Key Players section
+  const players = extractKeyPlayers(content);
+  if (players.length === 0) return null;
+
+  return (
+    <Card>
+      <h4 className="text-xs font-bold text-gray-900 mb-3">Key Players to Watch</h4>
+      <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
+        {players.map((p, i) => (
+          <div key={i} className="shrink-0 w-36 bg-gray-50 rounded-xl p-3 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-900">{p.name}</span>
+              {p.number && <span className="text-[10px] font-semibold text-gray-400">#{p.number}</span>}
+            </div>
+            {p.position && <p className="text-[10px] text-accent font-semibold">{p.position}</p>}
+            <p className="text-[10px] text-gray-500 leading-relaxed line-clamp-3">{p.description}</p>
+            <span className={`inline-block text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full ${
+              p.threat === 'high' ? 'bg-red-100 text-red-600' :
+              p.threat === 'medium' ? 'bg-amber-100 text-amber-600' :
+              'bg-gray-100 text-gray-500'
+            }`}>
+              {p.threat} threat
+            </span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function extractKeyPlayers(content) {
+  // Find the Key Players section
+  const keyPlayersMatch = content.match(/##\s*Key Players[\s\S]*?(?=##|$)/i);
+  if (!keyPlayersMatch) return [];
+
+  const section = keyPlayersMatch[0];
+  const players = [];
+
+  // Match patterns like "- **Player Name** (Position): Description" or "- **#10 Player Name** — Description"
+  const lines = section.split('\n').filter(l => l.trim().startsWith('-') || l.trim().startsWith('*'));
+
+  for (const line of lines) {
+    const cleaned = line.replace(/^[\s\-*]+/, '').trim();
+    if (!cleaned || cleaned.length < 5) continue;
+
+    // Extract name (bolded or first word group)
+    const nameMatch = cleaned.match(/\*\*(.+?)\*\*/);
+    let name = nameMatch ? nameMatch[1] : cleaned.split(/[:(,\-–—]/)[0].trim();
+
+    // Extract number
+    const numMatch = name.match(/#(\d+)/);
+    const number = numMatch ? numMatch[1] : null;
+    name = name.replace(/#\d+\s*/, '').trim();
+    if (!name || name.length > 40) continue;
+
+    // Extract position (in parentheses)
+    const posMatch = cleaned.match(/\(([^)]+)\)/);
+    const position = posMatch ? posMatch[1] : null;
+
+    // Description is everything after the name/position
+    let description = cleaned
+      .replace(/\*\*(.+?)\*\*/, '')
+      .replace(/\([^)]+\)/, '')
+      .replace(/^[\s:,\-–—]+/, '')
+      .trim();
+    if (description.length > 120) description = description.slice(0, 117) + '...';
+
+    // Threat level from keywords
+    const lc = cleaned.toLowerCase();
+    const threat = (lc.includes('dangerous') || lc.includes('top scorer') || lc.includes('captain') || lc.includes('key') || lc.includes('star'))
+      ? 'high'
+      : (lc.includes('strong') || lc.includes('effective') || lc.includes('fast') || lc.includes('creative'))
+        ? 'medium'
+        : 'low';
+
+    players.push({ name, number, position, description, threat });
+  }
+
+  return players.slice(0, 6); // Max 6 players
 }
