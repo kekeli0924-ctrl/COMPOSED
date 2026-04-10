@@ -1,4 +1,4 @@
-export function NumInput({ label, value, onChange, step, min, max, placeholder }) {
+export function NumInput({ label, value, onChange, step = '1', min = '0', max, placeholder }) {
   return (
     <div>
       {label && <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>}
@@ -12,6 +12,34 @@ export function NumInput({ label, value, onChange, step, min, max, placeholder }
         placeholder={placeholder}
         className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent/30"
       />
+    </div>
+  );
+}
+
+// Shared pill-style tag picker used by session forms. Pass either strings or
+// `{id, label}` objects. Clicking the active tag clears it.
+export function TagSelector({ label, options, value, onChange }) {
+  return (
+    <div>
+      {label && <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>}
+      <div className="flex flex-wrap gap-1.5">
+        {options.map(opt => {
+          const id = typeof opt === 'string' ? opt : opt.id;
+          const lbl = typeof opt === 'string' ? opt : opt.label;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onChange(value === id ? '' : id)}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                value === id ? 'bg-accent text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {lbl}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

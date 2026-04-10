@@ -2,61 +2,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
-import { ShotZoneGrid } from './ui/FormInputs';
+import { TagSelector } from './ui/FormInputs';
 import { VideoUpload } from './VideoUpload';
+import {
+  ShootingStatsCard, PassingStatsCard, FitnessStatsCard,
+} from './SessionStatCards';
 import {
   PRESET_DRILLS, SESSION_TYPES, hasShootingDrill, hasPassingDrill, hasFitnessDrill,
 } from '../utils/stats';
 
 const today = () => new Date().toISOString().split('T')[0];
-
-const SHOT_TYPES = [
-  { id: 'open-play', label: 'Open Play' },
-  { id: 'set-piece', label: 'Set Piece' },
-  { id: 'counter', label: 'Counter' },
-  { id: '1v1', label: '1v1' },
-];
-
-const SHOT_APPROACHES = [
-  { id: 'right-foot', label: 'Right Foot' },
-  { id: 'left-foot', label: 'Left Foot' },
-  { id: 'header', label: 'Header' },
-  { id: 'volley', label: 'Volley' },
-  { id: 'first-time', label: 'First Time' },
-];
-
-const PRESSURE_SIMS = [
-  { id: 'none', label: 'None' },
-  { id: 'passive', label: 'Passive' },
-  { id: 'active', label: 'Active' },
-  { id: 'match-like', label: 'Match-like' },
-];
-
-function TagSelector({ label, options, value, onChange }) {
-  return (
-    <div>
-      {label && <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>}
-      <div className="flex flex-wrap gap-1.5">
-        {options.map(opt => {
-          const id = typeof opt === 'string' ? opt : opt.id;
-          const lbl = typeof opt === 'string' ? opt : opt.label;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onChange(value === id ? '' : id)}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                value === id ? 'bg-accent text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {lbl}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 function detectMediaType(url) {
   if (/youtube\.com|youtu\.be/i.test(url)) return 'youtube';
@@ -447,8 +402,13 @@ export function SessionLogger({ onSave, onQuickSaveVideo, editSession, customDri
       setForm(prev => ({ ...prev, drills: [...prev.drills, name] }));
       setNewDrill('');
       setShowCustomInput(false);
+      // Clear drill error when a custom drill is added — same as toggleDrill.
+      setErrors(prev => ({ ...prev, drills: undefined }));
     }
   };
+
+  // Live check for the save button — same logic as validate() but doesn't set state.
+  const canSubmit = quickMode || (form.drills.length > 0 && form.duration && Number(form.duration) > 0);
 
   const validate = () => {
     const errs = {};
@@ -904,139 +864,21 @@ export function SessionLogger({ onSave, onQuickSaveVideo, editSession, customDri
         </Card>
       )}
 
-      {/* Shooting Stats */}
+      {/* Shooting / Passing / Fitness — extracted to SessionStatCards.jsx */}
       {showShooting && (
-        <Card>
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Shooting Stats</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <NumInput label="Shots Taken" value={form.shooting.shotsTaken} onChange={v => update('shooting.shotsTaken', v)} />
-            <NumInput label="Goals Scored" value={form.shooting.goals} onChange={v => update('shooting.goals', v)} />
-          </div>
-          {form.shooting.shotsTaken > 0 && (
-            <p className="text-xs text-gray-400 mt-2">
-              Shot %: {form.shooting.goals && form.shooting.shotsTaken
-                ? `${Math.round((Number(form.shooting.goals) / Number(form.shooting.shotsTaken)) * 100)}%`
-                : '\u2014'}
-            </p>
-          )}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-            <button
-              type="button"
-              onClick={() => setShowFootBreakdown(!showFootBreakdown)}
-              className="text-xs text-accent hover:underline"
-            >
-              {showFootBreakdown ? 'Hide' : 'Show'} foot breakdown
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowShotDetails(!showShotDetails)}
-              className="text-xs text-accent hover:underline"
-            >
-              {showShotDetails ? 'Hide' : 'Show'} shot context details
-            </button>
-          </div>
-          {showFootBreakdown && (
-            <div className="mt-3 space-y-3">
-              <div>
-                <p className="text-xs font-medium text-gray-500 mb-2">Left Foot</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <NumInput label="Shots" value={form.shooting.leftFoot.shots} onChange={v => update('shooting.leftFoot.shots', v)} />
-                  <NumInput label="Goals" value={form.shooting.leftFoot.goals} onChange={v => update('shooting.leftFoot.goals', v)} />
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 mb-2">Right Foot</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <NumInput label="Shots" value={form.shooting.rightFoot.shots} onChange={v => update('shooting.rightFoot.shots', v)} />
-                  <NumInput label="Goals" value={form.shooting.rightFoot.goals} onChange={v => update('shooting.rightFoot.goals', v)} />
-                </div>
-              </div>
-            </div>
-          )}
-          {showShotDetails && (
-            <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
-              <p className="text-xs text-gray-400">Add shot groups with context tags (zone, type, approach, pressure)</p>
-              {form.shooting.shotDetails.map((detail, idx) => (
-                <div key={idx} className="bg-gray-50 rounded-lg p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-500">Group {idx + 1}</span>
-                    <button type="button" onClick={() => {
-                      const next = [...form.shooting.shotDetails];
-                      next.splice(idx, 1);
-                      update('shooting.shotDetails', next);
-                    }} className="text-xs text-red-400 hover:underline">Remove</button>
-                  </div>
-                  <ShotZoneGrid value={detail.zone} onChange={v => {
-                    const next = [...form.shooting.shotDetails];
-                    next[idx] = { ...next[idx], zone: v };
-                    update('shooting.shotDetails', next);
-                  }} />
-                  <TagSelector label="Shot Type" options={SHOT_TYPES} value={detail.type} onChange={v => {
-                    const next = [...form.shooting.shotDetails];
-                    next[idx] = { ...next[idx], type: v };
-                    update('shooting.shotDetails', next);
-                  }} />
-                  <TagSelector label="Approach" options={SHOT_APPROACHES} value={detail.approach} onChange={v => {
-                    const next = [...form.shooting.shotDetails];
-                    next[idx] = { ...next[idx], approach: v };
-                    update('shooting.shotDetails', next);
-                  }} />
-                  <TagSelector label="Pressure" options={PRESSURE_SIMS} value={detail.pressure} onChange={v => {
-                    const next = [...form.shooting.shotDetails];
-                    next[idx] = { ...next[idx], pressure: v };
-                    update('shooting.shotDetails', next);
-                  }} />
-                  <div className="grid grid-cols-2 gap-3">
-                    <NumInput label="Shots" value={detail.shots} onChange={v => {
-                      const next = [...form.shooting.shotDetails];
-                      next[idx] = { ...next[idx], shots: v };
-                      update('shooting.shotDetails', next);
-                    }} />
-                    <NumInput label="Goals" value={detail.goals} onChange={v => {
-                      const next = [...form.shooting.shotDetails];
-                      next[idx] = { ...next[idx], goals: v };
-                      update('shooting.shotDetails', next);
-                    }} />
-                  </div>
-                </div>
-              ))}
-              <button type="button" onClick={() => {
-                update('shooting.shotDetails', [...form.shooting.shotDetails, { zone: '', type: '', approach: '', pressure: '', shots: '', goals: '' }]);
-              }} className="text-xs text-accent hover:underline">+ Add Shot Group</button>
-            </div>
-          )}
-        </Card>
+        <ShootingStatsCard
+          form={form}
+          update={update}
+          showFootBreakdown={showFootBreakdown}
+          setShowFootBreakdown={setShowFootBreakdown}
+          showShotDetails={showShotDetails}
+          setShowShotDetails={setShowShotDetails}
+        />
       )}
 
-      {/* Passing Stats */}
-      {showPassing && (
-        <Card>
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Passing Stats</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <NumInput label="Attempts" value={form.passing.attempts} onChange={v => update('passing.attempts', v)} />
-            <NumInput label="Completed" value={form.passing.completed} onChange={v => update('passing.completed', v)} />
-            <NumInput label="Key Passes" value={form.passing.keyPasses} onChange={v => update('passing.keyPasses', v)} />
-          </div>
-          {form.passing.attempts > 0 && (
-            <p className="text-xs text-gray-400 mt-2">
-              Completion %: {form.passing.completed && form.passing.attempts
-                ? `${Math.round((Number(form.passing.completed) / Number(form.passing.attempts)) * 100)}%`
-                : '\u2014'}
-            </p>
-          )}
-        </Card>
-      )}
+      {showPassing && <PassingStatsCard form={form} update={update} />}
 
-      {/* Fitness Stats */}
-      {showFitness && (
-        <Card>
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Fitness Stats</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <NumInput label="Sprints Completed" value={form.fitness.sprints} onChange={v => update('fitness.sprints', v)} />
-            <NumInput label={`Distance (${distanceUnit})`} value={form.fitness.distance} onChange={v => update('fitness.distance', v)} step="0.1" />
-          </div>
-        </Card>
-      )}
+      {showFitness && <FitnessStatsCard form={form} update={update} distanceUnit={distanceUnit} />}
 
       {/* RPE */}
       <Card>
@@ -1102,8 +944,15 @@ export function SessionLogger({ onSave, onQuickSaveVideo, editSession, customDri
         )
       )}
 
-      {/* Submit */}
-      <Button type="submit" className="w-full py-3">
+      {/* Submit — disabled until required fields are populated */}
+      {!canSubmit && !isEditing && (
+        <p className="text-[11px] text-amber-600 text-center">
+          {form.drills.length === 0 ? 'Pick at least one drill ' : ''}
+          {(!form.duration || Number(form.duration) <= 0) ? 'and enter a duration ' : ''}
+          to save this session.
+        </p>
+      )}
+      <Button type="submit" className="w-full py-3" disabled={!canSubmit && !isEditing}>
         {isEditing ? 'Update Session' : 'Save Session'}
       </Button>
 
@@ -1137,19 +986,3 @@ function ScaleInput({ label, value, onChange, lowLabel, highLabel }) {
   );
 }
 
-function NumInput({ label, value, onChange, step, placeholder }) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
-      <input
-        type="number"
-        min="0"
-        step={step || '1'}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-      />
-    </div>
-  );
-}

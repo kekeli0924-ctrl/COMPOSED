@@ -79,7 +79,20 @@ const CATEGORY_DRILLS = {
   physical: ['Sprint Intervals', 'Ladder Footwork', 'T-Drill', 'Cone Shuttle Runs', 'Zig-Zag Agility', 'Bodyweight Circuit'],
   tactical: ['Positional Shadow Play', 'Scanning Practice', 'Decision-Making Cones', 'Off-The-Ball Movement'],
   agility: ['Ladder Footwork', 'T-Drill', 'Zig-Zag Agility', 'Deceleration Training', 'Reaction Sprints'],
-  mental: ['Pre-Match Visualization', 'Pressure Finishing', 'Breathing & Focus Reset'],
+  mental: [
+    'Pre-Match Visualization',
+    'Pressure Finishing',
+    'Breathing & Focus Reset',
+    'Match Pressure Simulation',
+    'Decision Speed Drill',
+    'Confidence Finishing Round',
+    'Quiet Eye Penalty Practice',
+    'One-Chance Finishing',
+    'Composure Under Fatigue',
+    'Mental Reset Between Reps',
+    'Imagery Walkthrough',
+    'Cue Word Training',
+  ],
 };
 
 // Warm-up variants matched to session focus

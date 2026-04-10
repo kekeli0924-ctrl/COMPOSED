@@ -387,6 +387,11 @@ export function VideoUpload({ onAnalysisComplete, onQuickSave }) {
                   />
                 </div>
 
+                {/* Current action — tells the user exactly what's happening right now */}
+                {pipelineProgress.message && (
+                  <p className="text-xs text-gray-600 text-center">{pipelineProgress.message}</p>
+                )}
+
                 {/* Detail text */}
                 {pipelineProgress.detail && (
                   <p className="text-[10px] text-gray-400 text-center">{pipelineProgress.detail}</p>
