@@ -33,19 +33,72 @@ function parseReportSections(reportContent) {
 
 /**
  * Detect opponent characteristics from report text.
+ *
+ * Uses a scored keyword approach — each style flag sums the hits of its trigger
+ * phrases across the report. A flag fires when its score meets a minimum threshold.
+ * This is more robust than single-regex matching because it tolerates varied phrasing.
  */
+const STYLE_TRIGGERS = {
+  highPress: [
+    'high press', 'high-press', 'pressing', 'press high', 'intense press',
+    'aggressive press', 'press aggressively', 'counter-press', 'counterpress',
+    'press the goalkeeper', 'pressure from the front', 'pressure high up',
+    'harass the ball', 'close down quickly', 'hunt in packs',
+  ],
+  possessionBased: [
+    'possession', 'keep the ball', 'keeps the ball', 'build up', 'build-up',
+    'builds from the back', 'patient', 'short passing', 'circulate the ball',
+    'dominate possession', 'tiki-taka', 'ball retention', 'plays out from the back',
+  ],
+  directPlay: [
+    'direct', 'long ball', 'long balls', 'counter attack', 'counter-attack',
+    'fast break', 'transition', 'quick transitions', 'vertical play', 'counter',
+    'plays direct', 'launches', 'route one', 'over the top', 'bypass the midfield',
+  ],
+  strongSetPieces: [
+    'set piece', 'set-piece', 'set pieces', 'corner', 'corners',
+    'free kick', 'free-kick', 'dead ball', 'dangerous from corners',
+    'scored from set', 'threat from set', 'delivery from', 'aerial threat from',
+  ],
+  weakAerially: [
+    'weak aerial', 'struggle aerial', 'struggles in the air', 'poor in the air',
+    'small', 'lack of height', 'vulnerable to crosses', 'susceptible to crosses',
+    'lose aerial', 'lost aerial', 'beaten in the air', 'vulnerable at the back post',
+  ],
+  weakLeftSide: [
+    'weak left', 'vulnerable left', 'exposed left', 'left-back is vulnerable',
+    'left flank issue', 'left side exposed', 'gap on the left', 'struggles on the left',
+  ],
+  weakRightSide: [
+    'weak right', 'vulnerable right', 'exposed right', 'right-back is vulnerable',
+    'right flank issue', 'right side exposed', 'gap on the right', 'struggles on the right',
+  ],
+  physicalTeam: [
+    'physical', 'strong', 'aggressive', 'tough', 'muscular', 'robust',
+    'bully', 'outmuscle', 'body contact', 'rough',
+  ],
+  vulnerableCounter: [
+    'vulnerable to counter', 'counter-attack exposed', 'fullbacks push high',
+    'leave space behind', 'space in behind', 'high defensive line',
+    'exposed on the break', 'transition weakness',
+  ],
+};
+
 function detectOpponentStyle(sections) {
   const text = Object.values(sections).join(' ').toLowerCase();
-  return {
-    highPress: /high press|pressing|press high|intense press/i.test(text),
-    possessionBased: /possession|keep the ball|build.up|patient/i.test(text),
-    directPlay: /direct|long ball|counter.attack|fast break|transition/i.test(text),
-    strongSetPieces: /set piece|corner|free kick|dangerous.*dead ball/i.test(text),
-    weakAerially: /weak.*aerial|struggle.*header|poor.*air|vulnerability.*height/i.test(text),
-    weakLeftSide: /weak.*left|vulnerable.*left|exposed.*left/i.test(text),
-    weakRightSide: /weak.*right|vulnerable.*right|exposed.*right/i.test(text),
-    physicalTeam: /physical|strong|aggressive|tough/i.test(text),
-  };
+  const result = {};
+  for (const [flag, triggers] of Object.entries(STYLE_TRIGGERS)) {
+    let score = 0;
+    for (const trigger of triggers) {
+      // Count occurrences (not just match), so repeated mentions strengthen the signal.
+      const matches = text.split(trigger).length - 1;
+      score += matches;
+    }
+    // A flag fires on 1+ hits. We expose the score for debugging/future weighting.
+    result[flag] = score >= 1;
+    result[`${flag}Score`] = score;
+  }
+  return result;
 }
 
 /**
@@ -119,6 +172,14 @@ export function computeRulesBasedBrief(reportContent, playerStats) {
     });
   }
 
+  if (opponent.vulnerableCounter) {
+    tips.push({
+      priority: 'high',
+      text: 'Their defensive line sits high and leaves space behind. Make early runs in behind when you win the ball.',
+    });
+    drillNeeds.push('shooting');
+  }
+
   if (opponent.weakLeftSide || opponent.weakRightSide) {
     const side = opponent.weakLeftSide ? 'left' : 'right';
     tips.push({
@@ -127,12 +188,30 @@ export function computeRulesBasedBrief(reportContent, playerStats) {
     });
   }
 
-  // Default tip if none generated
+  if (opponent.possessionBased && !opponent.highPress) {
+    tips.push({
+      priority: 'medium',
+      text: 'They want to keep the ball — deny them time to build up. Press the first pass and force turnovers high up the pitch.',
+    });
+    drillNeeds.push('physical');
+  }
+
+  if (opponent.physicalTeam) {
+    tips.push({
+      priority: 'medium',
+      text: 'They\'re a physical team. Don\'t get drawn into 50/50s — use your technique and keep the ball moving.',
+    });
+  }
+
+  // Default tip if none generated — give a more actionable baseline than "stay composed"
   if (tips.length === 0) {
     tips.push({
       priority: 'medium',
-      text: 'Focus on your strengths and stick to your game plan. Stay composed and let your training show.',
+      text: 'Scouting data was limited on this opponent. Focus on your own game plan: quick ball circulation, sharp first touches, and be first to every 50/50.',
     });
+    // Include a generic shooting/passing warm-up so the game plan is still useful.
+    drillNeeds.push('passing');
+    drillNeeds.push('shooting');
   }
 
   // Sort by priority
