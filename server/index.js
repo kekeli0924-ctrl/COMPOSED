@@ -70,8 +70,18 @@ app.use(compression());
 
 // ── CORS ────────────────────────────────────────────────
 const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+// Dev mode: allow only localhost origins (any port). Prod: exactly the CORS_ORIGIN env value.
+// Previously dev used `origin: true` which reflected any requesting origin — too permissive.
+const devLocalhostRegex = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
 app.use(cors({
-  origin: isProd ? corsOrigin : true,
+  origin: isProd
+    ? corsOrigin
+    : (origin, cb) => {
+        // Same-origin (no Origin header) and localhost variants are allowed in dev.
+        if (!origin) return cb(null, true);
+        if (devLocalhostRegex.test(origin)) return cb(null, true);
+        return cb(new Error(`CORS blocked in dev: ${origin}`));
+      },
   credentials: true,
 }));
 
@@ -133,6 +143,15 @@ const authLimiter = rateLimit({
   message: { error: 'Too many auth attempts, try again later', code: 'AUTH_RATE_LIMIT' },
 });
 
+// Even stricter limit for password change — high-value target, low legitimate frequency.
+const passwordChangeLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many password change attempts, try again in an hour', code: 'PASSWORD_RATE_LIMIT' },
+});
+
 // ── Request logging ─────────────────────────────────────
 app.use('/api', (req, res, next) => {
   const start = Date.now();
@@ -148,6 +167,8 @@ app.get('/api/health', (req, res) => {
 });
 
 // ── Auth routes ─────────────────────────────────────────
+// Password change gets the strictest limiter (5/hour) — mounted first so it wins.
+app.use('/api/auth/password', passwordChangeLimiter);
 app.use('/api/auth', authLimiter, authRouter);
 
 // Protected API routes — auth required in production
