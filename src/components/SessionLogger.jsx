@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
+import { Modal } from './ui/Modal';
 import { ShotZoneGrid } from './ui/FormInputs';
 import { VideoUpload } from './VideoUpload';
 import {
@@ -181,6 +182,8 @@ export function SessionLogger({ onSave, onQuickSaveVideo, editSession, customDri
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [inputMode, setInputMode] = useState('video'); // 'video' | 'manual' — video is default
   const [aiFields, setAiFields] = useState(new Set()); // track which fields were AI-filled
+  // Holds a pending AI result + the list of fields that would be overwritten, waiting for user confirmation.
+  const [pendingAiOverwrite, setPendingAiOverwrite] = useState(null);
   const [dbDrills, setDbDrills] = useState([]);
   const [drillSearch, setDrillSearch] = useState('');
   const [collapsedCategories, setCollapsedCategories] = useState({});
@@ -248,7 +251,9 @@ export function SessionLogger({ onSave, onQuickSaveVideo, editSession, customDri
   };
   const isEditing = !!editSession;
 
-  const handleVideoAnalysis = useCallback((result) => {
+  // Build the update object + the set of fields the AI would touch.
+  // Pure function — no state mutation — so we can use it both to preview and to apply.
+  const buildAiUpdates = useCallback((result) => {
     const filled = new Set();
     const updates = {};
 
@@ -272,7 +277,6 @@ export function SessionLogger({ onSave, onQuickSaveVideo, editSession, customDri
         } : { shots: '0', goals: '0' },
       };
       filled.add('shooting');
-      if (result.shooting.leftFoot || result.shooting.rightFoot) setShowFootBreakdown(true);
     }
 
     if (result.passing) {
@@ -294,10 +298,90 @@ export function SessionLogger({ onSave, onQuickSaveVideo, editSession, customDri
       filled.add('fitness');
     }
 
-    setForm(prev => ({ ...prev, ...updates }));
-    setAiFields(filled);
-    setInputMode('manual'); // switch to manual so player can review
+    return { updates, filled };
   }, [distanceUnit]);
+
+  // Check the current form for which AI-touched fields already have user data.
+  // Returns an array of human-readable labels for the confirmation modal.
+  const findConflictingFields = useCallback((form, filled) => {
+    const conflicts = [];
+    if (filled.has('duration') && form.duration && form.duration !== '0' && form.duration !== '') {
+      conflicts.push('Duration');
+    }
+    if (filled.has('drills') && form.drills?.length > 0) {
+      conflicts.push('Drills');
+    }
+    if (filled.has('sessionType') && form.sessionType) {
+      conflicts.push('Session type');
+    }
+    if (filled.has('notes') && form.notes?.trim()) {
+      conflicts.push('Notes');
+    }
+    if (filled.has('shooting')) {
+      const shots = parseInt(form.shooting?.shotsTaken || '0', 10);
+      if (shots > 0) conflicts.push('Shooting stats');
+    }
+    if (filled.has('passing')) {
+      const attempts = parseInt(form.passing?.attempts || '0', 10);
+      if (attempts > 0) conflicts.push('Passing stats');
+    }
+    if (filled.has('fitness')) {
+      const sprints = parseInt(form.fitness?.sprints || '0', 10);
+      const distance = parseFloat(form.fitness?.distance || '0');
+      if (sprints > 0 || distance > 0) conflicts.push('Fitness stats');
+    }
+    return conflicts;
+  }, []);
+
+  // Actually apply the AI updates, optionally merging (skip fields with existing data).
+  const applyAiUpdates = useCallback((updates, filled, mode /* 'overwrite' | 'merge' */) => {
+    setForm(prev => {
+      if (mode === 'merge') {
+        // Only apply updates for fields that don't have user data.
+        const next = { ...prev };
+        const conflicts = findConflictingFields(prev, filled);
+        const conflictSet = new Set(conflicts.map(c => c.toLowerCase()));
+        for (const [key, value] of Object.entries(updates)) {
+          const label = {
+            duration: 'duration',
+            drills: 'drills',
+            sessionType: 'session type',
+            notes: 'notes',
+            shooting: 'shooting stats',
+            passing: 'passing stats',
+            fitness: 'fitness stats',
+            quickRating: 'quick rating',
+          }[key];
+          if (!conflictSet.has(label)) next[key] = value;
+        }
+        return next;
+      }
+      // overwrite mode: apply everything
+      return { ...prev, ...updates };
+    });
+    setAiFields(filled);
+    if (filled.has('shooting')) {
+      // Check the incoming shooting data for foot breakdown presence
+      if (updates.shooting?.leftFoot?.shots !== '0' || updates.shooting?.rightFoot?.shots !== '0') {
+        setShowFootBreakdown(true);
+      }
+    }
+    setInputMode('manual');
+  }, [findConflictingFields]);
+
+  const handleVideoAnalysis = useCallback((result) => {
+    const { updates, filled } = buildAiUpdates(result);
+    const conflicts = findConflictingFields(form, filled);
+
+    if (conflicts.length === 0) {
+      // No conflicts — safe to apply immediately.
+      applyAiUpdates(updates, filled, 'overwrite');
+      return;
+    }
+
+    // Stash the pending updates and show the confirmation modal.
+    setPendingAiOverwrite({ updates, filled, conflicts });
+  }, [buildAiUpdates, findConflictingFields, applyAiUpdates, form]);
 
   useEffect(() => {
     if (editSession) {
@@ -505,6 +589,66 @@ export function SessionLogger({ onSave, onQuickSaveVideo, editSession, customDri
       {inputMode === 'video' && !isEditing && (
         <VideoUpload onAnalysisComplete={handleVideoAnalysis} onQuickSave={onQuickSaveVideo} />
       )}
+
+      {/* AI overwrite confirmation modal — fires only when analysis would replace user-entered data */}
+      <Modal
+        open={!!pendingAiOverwrite}
+        onClose={() => setPendingAiOverwrite(null)}
+        title="Replace your entries with AI analysis?"
+        actions={
+          <div className="flex gap-2 w-full">
+            <Button
+              variant="secondary"
+              onClick={() => setPendingAiOverwrite(null)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (pendingAiOverwrite) {
+                  applyAiUpdates(pendingAiOverwrite.updates, pendingAiOverwrite.filled, 'merge');
+                  setPendingAiOverwrite(null);
+                }
+              }}
+              className="flex-1"
+            >
+              Keep mine
+            </Button>
+            <Button
+              onClick={() => {
+                if (pendingAiOverwrite) {
+                  applyAiUpdates(pendingAiOverwrite.updates, pendingAiOverwrite.filled, 'overwrite');
+                  setPendingAiOverwrite(null);
+                }
+              }}
+              className="flex-1"
+            >
+              Replace
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600">
+            The video analysis is ready, but you've already entered data in these fields:
+          </p>
+          <ul className="text-sm text-gray-800 bg-amber-50 border border-amber-100 rounded-lg p-3 space-y-1">
+            {pendingAiOverwrite?.conflicts.map((c) => (
+              <li key={c} className="flex items-center gap-2">
+                <span className="text-amber-500">●</span>
+                {c}
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-gray-500">
+            <span className="font-semibold">Replace</span> overwrites your entries with the AI values.{' '}
+            <span className="font-semibold">Keep mine</span> only fills the empty fields.{' '}
+            <span className="font-semibold">Cancel</span> discards the AI analysis.
+          </p>
+        </div>
+      </Modal>
 
       {/* AI-filled notice */}
       {aiFields.size > 0 && inputMode === 'manual' && (
