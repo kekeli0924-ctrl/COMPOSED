@@ -107,8 +107,8 @@ function InsightsCard({ insights }) {
 
 const PACE_COLORS = { accelerating: '#16A34A', steady: '#D97706', stalling: '#DC2626' };
 
-function WeeklyPaceCard({ sessions, idpGoals = [], onNavigate, playerIdentity }) {
-  const pace = useMemo(() => computePace(sessions, 4), [sessions]);
+function WeeklyPaceCard({ sessions, idpGoals = [], onNavigate, playerIdentity, position }) {
+  const pace = useMemo(() => computePace(sessions, 4, position), [sessions, position]);
   if (!pace) return null;
 
   const { overall, metrics, recommendation } = pace;
@@ -301,6 +301,13 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
     return { thisWeek, lastWeek, currentCount, pctChange };
   }, [sessions]);
 
+  // Training score + deltas — memoize so the 10-pattern insight scan only runs when sessions change,
+  // not on every render triggered by unrelated state (toggle expansions, modals, etc.)
+  const trainingScore = useMemo(
+    () => computeTrainingScoreWithDeltas(sessions, weeklyGoal),
+    [sessions, weeklyGoal]
+  );
+
   // (Removed: quickCompare, idpActivity — moved to MetricTrendView)
 
   // Empty state: show daily plan + prompt
@@ -351,7 +358,6 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
 
       {/* Training Score Hero */}
       {(() => {
-        const trainingScore = computeTrainingScoreWithDeltas(sessions, weeklyGoal);
         if (!trainingScore) return (
           <div className="flex gap-4 items-start">
             <div className="flex-1">
@@ -404,7 +410,7 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
       <MatchDayCard scoutingReports={scoutingReports} onNavigate={onNavigate} onStartPlan={onStartPlan} />
 
       {/* Weekly Pace Card — the Sunday night pull */}
-      <WeeklyPaceCard sessions={sessions} idpGoals={idpGoals} onNavigate={onNavigate} playerIdentity={settings.playerIdentity} />
+      <WeeklyPaceCard sessions={sessions} idpGoals={idpGoals} onNavigate={onNavigate} playerIdentity={settings.playerIdentity} position={settings.position} />
 
       {/* Welcome Back (3+ days inactive) */}
       <WelcomeBack sessions={sessions} playerName={settings.playerName} onStartSession={() => onNavigate?.('log')} />

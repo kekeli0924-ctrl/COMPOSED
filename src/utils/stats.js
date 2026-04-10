@@ -155,7 +155,16 @@ export function generateInsights(sessions, matches, personalRecords) {
   if (sessions.length < 5) return [];
 
   const sorted = [...sessions].sort((a, b) => b.date.localeCompare(a.date));
-  const insights = [];
+
+  // Each insight now carries a category and a numeric priority so we can dedupe and rank.
+  // Categories: shooting, passing, fatigue, consistency, weakfoot, load, recovery, variety, pr
+  // Priority: 4=warn, 3=down, 2=up, 1=info. Higher wins within a category.
+  // A shooting "up" and shooting "down" in the same run can't both exist (only one branch fires),
+  // but shooting-trend vs late-phase-drop can both be shooting-related. The dedupe picks the
+  // higher-priority one per category so the insights card stays focused and non-contradictory.
+  const candidates = [];
+  const push = (category, priority, icon, text) =>
+    candidates.push({ category, priority, icon, text });
 
   // 1. Shooting trend — compare last 5 vs previous 5
   (() => {
@@ -167,9 +176,9 @@ export function generateInsights(sessions, matches, personalRecords) {
     if (recentAvg === null || prevAvg === null) return;
     const diff = recentAvg - prevAvg;
     if (diff >= 5) {
-      insights.push({ text: `Your shooting accuracy improved by ${diff}% over your last 5 sessions compared to the previous 5. Keep it up.`, icon: 'up' });
+      push('shooting', 2, 'up', `Your shooting accuracy improved by ${diff}% over your last 5 sessions compared to the previous 5. Keep it up.`);
     } else if (diff <= -5) {
-      insights.push({ text: `Your shot accuracy dropped ${Math.abs(diff)}% recently. Consider adding focused finishing drills to your next session.`, icon: 'down' });
+      push('shooting', 3, 'down', `Your shot accuracy dropped ${Math.abs(diff)}% recently. Consider adding focused finishing drills to your next session.`);
     }
   })();
 
@@ -181,7 +190,7 @@ export function generateInsights(sessions, matches, personalRecords) {
       return decay && decay.score < 70;
     });
     if (fatigued.length >= 3) {
-      insights.push({ text: `You're showing signs of accumulated fatigue — ${fatigued.length} of your last 5 sessions had below-average late-phase performance. Consider a recovery day.`, icon: 'warn' });
+      push('fatigue', 4, 'warn', `You're showing signs of accumulated fatigue — ${fatigued.length} of your last 5 sessions had below-average late-phase performance. Consider a recovery day.`);
     }
   })();
 
@@ -197,7 +206,7 @@ export function generateInsights(sessions, matches, personalRecords) {
     if (lowAvg === null || highAvg === null) return;
     const diff = highAvg - lowAvg;
     if (diff >= 8) {
-      insights.push({ text: `Sessions after 7+ hours of sleep show ${diff}% higher shot accuracy. Prioritize sleep before big training days.`, icon: 'info' });
+      push('recovery', 1, 'info', `Sessions after 7+ hours of sleep show ${diff}% higher shot accuracy. Prioritize sleep before big training days.`);
     }
   })();
 
@@ -206,17 +215,17 @@ export function generateInsights(sessions, matches, personalRecords) {
     const weekCount = getCurrentWeekSessionCount(sessions);
     const streak = getStreak(sessions);
     if (streak >= 3) {
-      insights.push({ text: `Great consistency — you're on a ${streak}-day training streak. Consistency is the #1 predictor of improvement.`, icon: 'up' });
+      push('consistency', 2, 'up', `Great consistency — you're on a ${streak}-day training streak. Consistency is the #1 predictor of improvement.`);
     } else if (weekCount === 0 && sorted.length > 0) {
       const lastDate = sorted[0].date;
       const daysSince = Math.floor((Date.now() - new Date(lastDate + 'T00:00:00').getTime()) / 86400000);
       if (daysSince >= 3) {
-        insights.push({ text: `It's been ${daysSince} days since your last session. Even a quick 30-minute session keeps momentum going.`, icon: 'info' });
+        push('consistency', 1, 'info', `It's been ${daysSince} days since your last session. Even a quick 30-minute session keeps momentum going.`);
       }
     }
   })();
 
-  // 5. Late-phase shooting drop
+  // 5. Late-phase shooting drop — same category as shooting trend, dedupe will handle overlap
   (() => {
     const withPhases = sorted.slice(0, 5).filter(s => {
       const p = s.shooting?.phases;
@@ -232,7 +241,7 @@ export function generateInsights(sessions, matches, personalRecords) {
     });
     const avgDrop = drops.reduce((a, b) => a + b, 0) / drops.length;
     if (avgDrop > 15) {
-      insights.push({ text: `Your shooting accuracy drops an average of ${Math.round(avgDrop)}% in late phases. Try adding fatigue-state finishing drills at the end of training.`, icon: 'down' });
+      push('shooting', 3, 'down', `Your shooting accuracy drops an average of ${Math.round(avgDrop)}% in late phases. Try adding fatigue-state finishing drills at the end of training.`);
     }
   })();
 
@@ -246,9 +255,9 @@ export function generateInsights(sessions, matches, personalRecords) {
     if (total < 20) return;
     const weakRatio = Math.round(Math.min(lShots, rShots) / total * 100);
     if (weakRatio < 20) {
-      insights.push({ text: `Only ${weakRatio}% of your shots are on your weaker foot. Aim for 30%+ to build two-footed ability.`, icon: 'info' });
+      push('weakfoot', 1, 'info', `Only ${weakRatio}% of your shots are on your weaker foot. Aim for 30%+ to build two-footed ability.`);
     } else if (weakRatio >= 30) {
-      insights.push({ text: `Strong weak-foot usage at ${weakRatio}% — great two-footed development.`, icon: 'up' });
+      push('weakfoot', 2, 'up', `Strong weak-foot usage at ${weakRatio}% — great two-footed development.`);
     }
   })();
 
@@ -260,9 +269,9 @@ export function generateInsights(sessions, matches, personalRecords) {
     if (recentAvg === null || prevAvg === null) return;
     const diff = recentAvg - prevAvg;
     if (diff >= 5) {
-      insights.push({ text: `Pass completion up ${diff}% over your last 5 sessions. Your distribution is sharpening.`, icon: 'up' });
+      push('passing', 2, 'up', `Pass completion up ${diff}% over your last 5 sessions. Your distribution is sharpening.`);
     } else if (diff <= -5) {
-      insights.push({ text: `Pass accuracy dipped ${Math.abs(diff)}% recently. Slow down your decision-making and focus on weight of pass.`, icon: 'down' });
+      push('passing', 3, 'down', `Pass accuracy dipped ${Math.abs(diff)}% recently. Slow down your decision-making and focus on weight of pass.`);
     }
   })();
 
@@ -275,11 +284,12 @@ export function generateInsights(sessions, matches, personalRecords) {
       .map(([key]) => PR_LABELS[key])
       .filter(Boolean);
     if (recentPRs.length > 0) {
-      insights.push({ text: `You set a new personal record this week: ${recentPRs[0]}. Your hard work is paying off.`, icon: 'up' });
+      push('pr', 2, 'up', `You set a new personal record this week: ${recentPRs[0]}. Your hard work is paying off.`);
     }
   })();
 
-  // 9. Load management
+  // 9. Load management — contradicts fatigue? No — fatigue is a symptom, load is a cause.
+  // Keep both, but load has slightly lower priority than acute fatigue.
   (() => {
     const weeks = getWeeklyLoads(sessions, 4);
     if (weeks.length < 2) return;
@@ -288,7 +298,7 @@ export function generateInsights(sessions, matches, personalRecords) {
     if (!prev.length || current === 0) return;
     const avgPrev = prev.reduce((s, w) => s + w.totalLoad, 0) / prev.length;
     if (avgPrev > 0 && current / avgPrev > 1.4) {
-      insights.push({ text: `Your training load this week is ${Math.round((current / avgPrev - 1) * 100)}% above your recent average. Consider a lighter session to manage recovery.`, icon: 'warn' });
+      push('load', 4, 'warn', `Your training load this week is ${Math.round((current / avgPrev - 1) * 100)}% above your recent average. Consider a lighter session to manage recovery.`);
     }
   })();
 
@@ -296,11 +306,24 @@ export function generateInsights(sessions, matches, personalRecords) {
   (() => {
     const last5Types = sorted.slice(0, 5).map(s => s.sessionType).filter(Boolean);
     if (last5Types.length >= 4 && new Set(last5Types).size === 1) {
-      insights.push({ text: `Your last ${last5Types.length} sessions are all "${last5Types[0]}" type. Mix in different session types to develop more rounded skills.`, icon: 'info' });
+      push('variety', 1, 'info', `Your last ${last5Types.length} sessions are all "${last5Types[0]}" type. Mix in different session types to develop more rounded skills.`);
     }
   })();
 
-  return insights.slice(0, 3);
+  // Dedupe: keep only the highest-priority insight per category.
+  const bestByCategory = new Map();
+  for (const c of candidates) {
+    const existing = bestByCategory.get(c.category);
+    if (!existing || c.priority > existing.priority) {
+      bestByCategory.set(c.category, c);
+    }
+  }
+
+  // Sort by priority (highest first) so the card shows the most urgent signals at the top.
+  const ranked = [...bestByCategory.values()].sort((a, b) => b.priority - a.priority);
+
+  // Return the top 3, stripping the internal category/priority fields.
+  return ranked.slice(0, 3).map(({ icon, text }) => ({ icon, text }));
 }
 
 // === Training Score (composite 0-100) ===

@@ -322,13 +322,20 @@ function PeerContextCard({ pace, sessions, ageGroup, skillLevel, playerIdentity 
             </p>
           ))}
         </div>
+
+        {/* Source label — honest about what these benchmarks are */}
+        <p className="text-[9px] text-gray-300 pt-1 leading-relaxed">
+          Benchmarks based on published youth soccer development norms
+          (FA England + US Soccer DA). Not a live cohort — will be replaced
+          with real player data as the user base grows.
+        </p>
       </div>
     </Card>
   );
 }
 
-export function PaceTab({ sessions = [], onViewMetric, ageGroup, skillLevel, playerIdentity }) {
-  const pace = useMemo(() => computePace(sessions, 4), [sessions]);
+export function PaceTab({ sessions = [], onViewMetric, ageGroup, skillLevel, playerIdentity, position }) {
+  const pace = useMemo(() => computePace(sessions, 4, position), [sessions, position]);
 
   // Weekly history for bar chart
   const weeklyHistory = useMemo(() => {
@@ -340,7 +347,7 @@ export function PaceTab({ sessions = [], onViewMetric, ageGroup, skillLevel, pla
       const cutoffStr = cutoffDate.toISOString().split('T')[0];
       const subset = sessions.filter(s => s.date <= cutoffStr);
       if (subset.length >= 5) {
-        const p = computePace(subset, 4);
+        const p = computePace(subset, 4, position);
         if (p?.overall?.velocityPct != null) {
           history.unshift({
             week: offset === 0 ? 'Now' : offset === 1 ? '1w' : `${offset}w`,
