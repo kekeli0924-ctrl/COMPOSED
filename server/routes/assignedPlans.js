@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { getDb } from '../db.js';
 import { requireCoach } from '../auth.js';
-import { validate, assignedPlanSchema } from '../validation.js';
+import { validate, assignedPlanSchema, assignedPlanUpdateSchema } from '../validation.js';
 
 const router = Router();
 
@@ -55,7 +55,7 @@ router.post('/', requireCoach, validate(assignedPlanSchema), (req, res) => {
 });
 
 // PUT /api/assigned-plans/:id — coach updates a plan
-router.put('/:id', requireCoach, (req, res) => {
+router.put('/:id', requireCoach, validate(assignedPlanUpdateSchema), (req, res) => {
   const db = getDb();
   const existing = db.prepare('SELECT * FROM assigned_plans WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Plan not found', code: 'NOT_FOUND' });

@@ -125,6 +125,22 @@ export const assignedPlanSchema = z.object({
   notes: shortText,
 }).strict();
 
+// Assigned plan updates — id comes from URL, so not required in body.
+// Coach cannot move a plan to a different player via PUT, so playerId is excluded.
+export const assignedPlanUpdateSchema = z.object({
+  date: dateStr.optional(),
+  drills: z.array(z.string().max(200)).max(50).optional(),
+  targetDuration: z.coerce.number().int().min(0).max(1440).optional(),
+  notes: shortText.optional(),
+}).strict();
+
+// Parent visibility settings — three boolean toggles.
+export const parentVisibilitySchema = z.object({
+  showRatings: z.boolean().optional(),
+  showCoachFeedback: z.boolean().optional(),
+  showIdpGoals: z.boolean().optional(),
+}).strict();
+
 // Middleware factory
 export function validate(schema) {
   return (req, res, next) => {

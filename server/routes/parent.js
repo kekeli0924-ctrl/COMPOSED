@@ -2,6 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import { getDb } from '../db.js';
 import { requireParent, requirePlayer } from '../auth.js';
+import { validate, parentVisibilitySchema } from '../validation.js';
 
 const router = Router();
 
@@ -96,7 +97,7 @@ router.get('/visibility-settings', requirePlayer, (req, res) => {
 });
 
 // PUT /api/parent/visibility-settings — Player updates privacy toggles
-router.put('/visibility-settings', requirePlayer, (req, res) => {
+router.put('/visibility-settings', requirePlayer, validate(parentVisibilitySchema), (req, res) => {
   const db = getDb();
   const { showRatings, showCoachFeedback, showIdpGoals } = req.body;
 
