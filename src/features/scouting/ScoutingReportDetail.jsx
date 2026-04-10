@@ -103,15 +103,35 @@ function renderInline(text) {
   return <>{out}</>;
 }
 
+// Max poll window before we give up and ask the user to retry (10 minutes).
+const POLL_TIMEOUT_MS = 10 * 60 * 1000;
+const POLL_INTERVAL_MS = 30 * 1000;
+
 export function ScoutingReportDetail({ reportId, onBack, onStartPlan }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [generatingPlan, setGeneratingPlan] = useState(false);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
 
   useEffect(() => {
     fetchReport();
   }, [reportId]);
+
+  // Auto-poll pending reports every 30s, giving up after 10 min to avoid infinite spinners.
+  useEffect(() => {
+    if (!report || report.status !== 'pending' || pollTimedOut) return;
+    const startedAt = Date.now();
+    const id = setInterval(async () => {
+      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
+        clearInterval(id);
+        setPollTimedOut(true);
+        return;
+      }
+      await checkStatus();
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [report?.status, pollTimedOut, reportId]);
 
   const fetchReport = async () => {
     try {
@@ -119,7 +139,7 @@ export function ScoutingReportDetail({ reportId, onBack, onStartPlan }) {
       if (res.ok) {
         const data = await res.json();
         setReport(data);
-        // If pending, auto-check
+        // If pending, kick off one immediate check; recurring poll is handled by the useEffect above.
         if (data.status === 'pending') checkStatus();
       }
     } catch { /* ignore */ }
@@ -137,10 +157,16 @@ export function ScoutingReportDetail({ reportId, onBack, onStartPlan }) {
         const data = await res.json();
         if (data.status !== 'pending') {
           setReport(prev => ({ ...prev, ...data }));
+          setPollTimedOut(false);
         }
       }
     } catch { /* ignore */ }
     setChecking(false);
+  };
+
+  const retryPoll = () => {
+    setPollTimedOut(false);
+    checkStatus();
   };
 
   const generateGamePlan = async () => {
@@ -192,14 +218,28 @@ export function ScoutingReportDetail({ reportId, onBack, onStartPlan }) {
       </Card>
 
       {/* Pending state */}
-      {report.status === 'pending' && (
+      {report.status === 'pending' && !pollTimedOut && (
         <Card>
           <div className="text-center py-4 space-y-3">
             <div className="text-3xl">⏳</div>
             <p className="text-sm text-gray-600">Report is still being generated...</p>
-            <p className="text-xs text-gray-400">This typically takes about 20 minutes. Check back soon.</p>
+            <p className="text-xs text-gray-400">This typically takes about 20 minutes. We'll auto-check every 30 seconds.</p>
             <Button variant="secondary" onClick={checkStatus} disabled={checking}>
               {checking ? 'Checking...' : 'Check Now'}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Poll timed out state */}
+      {report.status === 'pending' && pollTimedOut && (
+        <Card>
+          <div className="text-center py-4 space-y-3">
+            <div className="text-3xl">⏱️</div>
+            <p className="text-sm text-gray-600">This is taking longer than expected</p>
+            <p className="text-xs text-gray-400">We've been waiting 10 minutes. The research may still be running, or something went wrong. Try checking manually.</p>
+            <Button variant="secondary" onClick={retryPoll} disabled={checking}>
+              {checking ? 'Checking...' : 'Check Again'}
             </Button>
           </div>
         </Card>
@@ -365,7 +405,7 @@ function extractBullets(sectionText) {
     .map(l => l.trim())
     .filter(l => l.startsWith('-') || l.startsWith('*') || /^\d+\./.test(l))
     .map(l => l.replace(/^[-*]\s*/, '').replace(/^\d+\.\s*/, '').replace(/\*+/g, '').replace(/^\d+\.\s*/, '').trim())
-    .filter(l => l.length > 5)
+    .filter(l => l.length >= 2) // Keep even short but meaningful bullets ("Pace", "4-3-3")
     .map(l => {
       // Truncate to first sentence for brevity
       const firstSentence = l.match(/^[^.!]+[.!]/);
