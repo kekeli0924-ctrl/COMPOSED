@@ -719,7 +719,10 @@ function AppMain({ authUser, onLogout }) {
       drills: result.drills || [],
       notes: result.notes || '',
       sessionType: result.sessionType || 'Training',
-      position: settings.position || 'General',
+      // Session position is single-valued; default to the player's primary profile
+      // position (first entry in the settings.position array). Falls back to 'General'
+      // if the player didn't pick any positions during onboarding.
+      position: (Array.isArray(settings.position) && settings.position[0]) || 'General',
       quickRating: result.quickRating || 3,
       shooting: result.shooting || null,
       passing: result.passing || null,
@@ -977,7 +980,7 @@ function AppMain({ authUser, onLogout }) {
           <SessionHistory sessions={sessions} customDrills={customDrills} onEdit={handleEditSession} onDelete={handleDeleteSession} onView={handleViewSession} onBack={() => setActiveTab(previousTab)} />
         </div>
         <div className={activeTab === 'pace' ? '' : 'hidden'}>
-          <PaceTab sessions={sessions} ageGroup={settings.ageGroup} skillLevel={settings.skillLevel} playerIdentity={settings.playerIdentity} position={settings.position} />
+          <PaceTab sessions={sessions} ageGroup={settings.ageGroup} skillLevel={settings.skillLevel} playerIdentity={settings.playerIdentity} position={Array.isArray(settings.position) ? settings.position[0] : settings.position} />
         </div>
         <div className={activeTab === 'plan' ? '' : 'hidden'}>
           <PlanWeekView
@@ -1081,7 +1084,11 @@ function AppMain({ authUser, onLogout }) {
               </div>
               <h2 className="text-lg font-bold text-gray-900 mt-3">{settings.playerName || 'Player'}</h2>
               <p className="text-xs text-gray-400">
-                {settings.position && settings.position !== 'General' ? `${settings.position} · ` : ''}{settings.ageGroup && `${settings.ageGroup} · `}{settings.skillLevel || 'Set your profile'}
+                {Array.isArray(settings.position) && settings.position.length > 0
+                  ? `${settings.position.join(', ')} · `
+                  : ''}
+                {settings.ageGroup && `${settings.ageGroup} · `}
+                {settings.skillLevel || 'Set your profile'}
               </p>
               <div className="flex items-center justify-center gap-1 mt-2 bg-gray-100 rounded-lg p-0.5 w-fit mx-auto">
                 {['player', 'coach'].map(r => (
@@ -1164,21 +1171,44 @@ function AppMain({ authUser, onLogout }) {
                   <option value="Professional">Professional</option>
                 </select>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Position</span>
-                <select
-                  value={settings.position || 'General'}
-                  onChange={e => setSettings(prev => ({ ...prev, position: e.target.value }))}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-                >
-                  <option value="General">General</option>
-                  <option value="Striker">Striker</option>
-                  <option value="Winger">Winger</option>
-                  <option value="CAM">CAM</option>
-                  <option value="CDM">CDM</option>
-                  <option value="CB">CB</option>
-                  <option value="GK">GK</option>
-                </select>
+              {/* Position — multi-select. Matches the onboarding picker exactly. */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-700">Position</span>
+                  <span className="text-[11px] text-gray-400">pick one or more</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {['Striker', 'Winger', 'CAM', 'CM', 'CDM', 'Fullback', 'CB', 'GK'].map(pos => {
+                    const current = Array.isArray(settings.position) ? settings.position : [];
+                    const selected = current.includes(pos);
+                    return (
+                      <button
+                        key={pos}
+                        type="button"
+                        onClick={() => {
+                          // Functional setState so rapid clicks / batching don't
+                          // trample each other — each click reads the latest state.
+                          setSettings(prev => {
+                            const cur = Array.isArray(prev.position) ? prev.position : [];
+                            return {
+                              ...prev,
+                              position: cur.includes(pos)
+                                ? cur.filter(p => p !== pos)
+                                : [...cur, pos],
+                            };
+                          });
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                          selected
+                            ? 'bg-accent text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {pos}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

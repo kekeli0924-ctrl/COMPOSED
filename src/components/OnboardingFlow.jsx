@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 
-const POSITIONS = ['General', 'Winger', 'Striker', 'CAM', 'CDM', 'CB', 'GK'];
+// Canonical player positions. Ordered front-to-back so the layout reads naturally
+// left-to-right. "General" was removed — players who don't pick anything simply
+// leave the list empty, and the app falls back to position-agnostic metrics.
+const POSITIONS = ['Striker', 'Winger', 'CAM', 'CM', 'CDM', 'Fullback', 'CB', 'GK'];
 const AGE_GROUPS = ['U12', 'U14', 'U16', 'U18', 'U21', 'Senior'];
 const SKILL_LEVELS = ['Recreational', 'Academy', 'Semi-Pro', 'Professional'];
 const EQUIPMENT_OPTIONS = ['Ball only', 'Wall / rebounder', 'Cones / markers', 'Goal / net', 'Agility ladder', 'Resistance bands'];
@@ -59,7 +62,7 @@ export function OnboardingFlow({ settings, onComplete, googleFlow }) {
     playerName: googleFlow?.name || settings.playerName || '',
     username: '',
     usernameError: '',
-    position: 'General',
+    position: [], // multi-select: players can pick multiple positions (e.g. Winger + Fullback)
     ageGroup: '',
     skillLevel: '',
     weeklyGoal: 3,
@@ -110,6 +113,11 @@ export function OnboardingFlow({ settings, onComplete, googleFlow }) {
       // Password flow ignores this field — its username is typed in SignupForm.
       username: isGoogleFlow ? data.username.trim() : undefined,
       playerName: data.playerName,
+      // Position is a multi-select array. Coaches/parents don't play, so they
+      // get an empty array (no profile position). Players carry through whatever
+      // they picked; if they skipped the picker, it's [] and the app falls back
+      // to position-agnostic metrics.
+      position: (isCoach || isParent) ? [] : (Array.isArray(data.position) ? data.position : []),
       ageGroup: (isCoach || isParent) ? '' : data.ageGroup,
       skillLevel: (isCoach || isParent) ? '' : data.skillLevel,
       weeklyGoal: (isCoach || isParent) ? 3 : data.weeklyGoal,
@@ -191,13 +199,35 @@ export function OnboardingFlow({ settings, onComplete, googleFlow }) {
 
           {!isCoach && (
             <>
-              <label className="block text-xs font-medium text-gray-500 mb-2">Your position</label>
+              <label className="block text-xs font-medium text-gray-500 mb-2">
+                Your position <span className="text-gray-300">(pick one or more)</span>
+              </label>
               <div className="flex flex-wrap gap-2">
-                {POSITIONS.map(pos => (
-                  <TagButton key={pos} selected={data.position === pos} onClick={() => update('position', pos)}>
-                    {pos}
-                  </TagButton>
-                ))}
+                {POSITIONS.map(pos => {
+                  const selected = Array.isArray(data.position) && data.position.includes(pos);
+                  return (
+                    <TagButton
+                      key={pos}
+                      selected={selected}
+                      onClick={() => {
+                        // Functional setState so rapid clicks / React batching don't
+                        // trample each other. Each click reads the LATEST state, not
+                        // the captured snapshot from when onClick was defined.
+                        setData(prev => {
+                          const cur = Array.isArray(prev.position) ? prev.position : [];
+                          return {
+                            ...prev,
+                            position: cur.includes(pos)
+                              ? cur.filter(p => p !== pos)
+                              : [...cur, pos],
+                          };
+                        });
+                      }}
+                    >
+                      {pos}
+                    </TagButton>
+                  );
+                })}
               </div>
             </>
           )}

@@ -169,7 +169,9 @@ function PlayerRow({ player, isActive, onToggle }) {
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-900">{player.name}</p>
-              <p className="text-[10px] text-gray-400">{player.position}</p>
+              <p className="text-[10px] text-gray-400">
+                {Array.isArray(player.position) ? player.position.join(', ') : (player.position || '')}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">

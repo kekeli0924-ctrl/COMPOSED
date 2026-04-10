@@ -409,14 +409,17 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
       {/* Match Day Card — surfaces scouting when match is near */}
       <MatchDayCard scoutingReports={scoutingReports} onNavigate={onNavigate} onStartPlan={onStartPlan} />
 
-      {/* Weekly Pace Card — the Sunday night pull */}
-      <WeeklyPaceCard sessions={sessions} idpGoals={idpGoals} onNavigate={onNavigate} playerIdentity={settings.playerIdentity} position={settings.position} />
+      {/* Weekly Pace Card — the Sunday night pull.
+          settings.position is now a multi-select array; pace weighting still takes a
+          single string, so pass the primary (first) position. Blending across
+          positions is a v2 improvement. */}
+      <WeeklyPaceCard sessions={sessions} idpGoals={idpGoals} onNavigate={onNavigate} playerIdentity={settings.playerIdentity} position={(Array.isArray(settings.position) && settings.position[0]) || 'General'} />
 
       {/* Welcome Back (3+ days inactive) */}
       <WelcomeBack sessions={sessions} playerName={settings.playerName} onStartSession={() => onNavigate?.('log')} />
 
       {/* Daily Plan */}
-      <DailyPlanCard sessions={sessions} idpGoals={idpGoals} onStartPlan={onStartPlan} onStartManual={onStartManual} assignedPlans={assignedPlans} activeProgram={activeProgram} position={settings.position || 'General'} playerIdentity={settings.playerIdentity} />
+      <DailyPlanCard sessions={sessions} idpGoals={idpGoals} onStartPlan={onStartPlan} onStartManual={onStartManual} assignedPlans={assignedPlans} activeProgram={activeProgram} position={(Array.isArray(settings.position) && settings.position[0]) || 'General'} playerIdentity={settings.playerIdentity} />
 
       {/* Recent Sessions */}
       <div>

@@ -424,10 +424,27 @@ router.get('/dashboard/:playerId', requireParent, (req, res) => {
   if (allSessions.length >= 25) recentBadges.push({ name: 'Quarter Century', icon: '🏆', description: '25 sessions completed' });
   if (streak >= 7) recentBadges.push({ name: 'Week Warrior', icon: '⭐', description: '7-day training streak' });
 
+  // settings.position is stored as a JSON array (or a legacy single string).
+  // Parse defensively and always emit an array to the client.
+  let positionList = [];
+  const rawPos = settings?.position;
+  if (rawPos && rawPos !== 'General') {
+    try {
+      const parsed = JSON.parse(rawPos);
+      if (Array.isArray(parsed)) {
+        positionList = parsed.filter(p => typeof p === 'string' && p && p !== 'General');
+      } else if (typeof parsed === 'string') {
+        positionList = [parsed];
+      }
+    } catch {
+      positionList = [rawPos]; // legacy bare-string value
+    }
+  }
+
   res.json({
     player: {
       name: settings?.player_name || playerUser?.username || 'Player',
-      position: settings?.position || 'General',
+      position: positionList,
       ageGroup: settings?.age_group || null,
       skillLevel: settings?.skill_level || null,
       currentLevel: level,

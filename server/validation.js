@@ -53,6 +53,11 @@ export const customDrillSchema = z.object({
 });
 
 // Settings
+// `position` accepts either:
+//   - A new-style array: ["Winger", "Fullback"] (max 5 positions)
+//   - A legacy single string: "Winger" (coerced to ["Winger"] server-side for
+//     backward compat with older clients; empty/"General" becomes [])
+// Storage is always a JSON-serialized array in the TEXT column.
 export const settingsSchema = z.object({
   distanceUnit: z.enum(['km', 'mi']).optional(),
   weeklyGoal: z.coerce.number().int().min(1).max(14).optional(),
@@ -61,7 +66,10 @@ export const settingsSchema = z.object({
   playerName: z.string().max(100).optional(),
   onboardingComplete: z.coerce.number().int().min(0).max(1).optional(),
   gettingStartedComplete: z.coerce.number().int().min(0).max(1).optional(),
-  position: z.string().max(50).optional(),
+  position: z.union([
+    z.array(z.string().max(50)).max(5),
+    z.string().max(50),
+  ]).optional(),
   equipment: z.array(z.string()).optional(),
   playerIdentity: z.string().max(100).optional(),
 }).strict();

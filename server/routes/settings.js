@@ -4,6 +4,23 @@ import { settingsSchema, validate } from '../validation.js';
 
 const router = Router();
 
+// Position is stored as a JSON array in the TEXT column (e.g. '["Winger","Fullback"]').
+// Legacy rows have a bare string like "Winger" or the old sentinel "General" — parse
+// defensively and always return an array to the client. Legacy "General" is treated
+// as unset so the user gets the new multi-select with nothing preselected.
+function parsePositions(raw) {
+  if (!raw || raw === 'General') return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.filter(p => typeof p === 'string' && p && p !== 'General');
+    if (typeof parsed === 'string') return [parsed];
+    return [];
+  } catch {
+    // Not JSON — it's a legacy single-position string.
+    return [raw];
+  }
+}
+
 function rowToSettings(row) {
   return {
     distanceUnit: row.distance_unit || 'km',
@@ -13,7 +30,7 @@ function rowToSettings(row) {
     playerName: row.player_name || '',
     onboardingComplete: row.onboarding_complete ?? 0,
     gettingStartedComplete: row.getting_started_complete ?? 0,
-    position: row.position || 'General',
+    position: parsePositions(row.position),
     equipment: JSON.parse(row.equipment || '["ball","wall"]'),
     playerIdentity: row.player_identity || '',
   };
@@ -28,6 +45,21 @@ router.get('/', (req, res) => {
   }
   res.json(rowToSettings(row));
 });
+
+// Serialize incoming position (array or legacy string) to a JSON string for storage.
+// Returns null to skip the COALESCE update when the field isn't being changed.
+function serializePositionForStorage(value) {
+  if (value === undefined || value === null) return null;
+  if (Array.isArray(value)) {
+    const clean = value.filter(p => typeof p === 'string' && p && p !== 'General');
+    return JSON.stringify(clean);
+  }
+  if (typeof value === 'string') {
+    if (!value || value === 'General') return JSON.stringify([]);
+    return JSON.stringify([value]);
+  }
+  return null;
+}
 
 router.put('/', validate(settingsSchema), (req, res) => {
   try {
@@ -58,7 +90,7 @@ router.put('/', validate(settingsSchema), (req, res) => {
       player_name: s.playerName ?? null,
       onboarding_complete: s.onboardingComplete ?? null,
       getting_started_complete: s.gettingStartedComplete ?? null,
-      position: s.position ?? null,
+      position: serializePositionForStorage(s.position),
       equipment: s.equipment ? JSON.stringify(s.equipment) : null,
       player_identity: s.playerIdentity ?? null,
       user_id: req.userId,

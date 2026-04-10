@@ -144,7 +144,9 @@ export function ParentDashboard({ dashboardData, children, selectedChild, onSele
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-bold text-gray-900">{d.player.name}</h2>
             <p className="text-xs text-gray-400">
-              {d.player.position && d.player.position !== 'General' ? `${d.player.position} · ` : ''}
+              {Array.isArray(d.player.position) && d.player.position.length > 0
+                ? `${d.player.position.join(', ')} · `
+                : ''}
               {d.player.ageGroup ? `${d.player.ageGroup} · ` : ''}{d.player.skillLevel || ''}
             </p>
             <div className="flex items-center gap-3 mt-1">

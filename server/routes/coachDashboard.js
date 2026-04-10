@@ -252,10 +252,27 @@ router.get('/squad-pulse', requireCoach, (req, res) => {
     assignedByPlayer.get(a.player_id).push(a.date);
   }
 
+  // settings.position is stored as a JSON array string. Parse defensively and
+  // emit an array to the coach UI so one player can show multiple positions.
+  // Legacy rows with a bare string (e.g. "Winger") are wrapped in an array.
+  const parsePlayerPositions = (raw) => {
+    if (!raw || raw === 'General') return [];
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(p => typeof p === 'string' && p && p !== 'General');
+      }
+      if (typeof parsed === 'string') return [parsed];
+      return [];
+    } catch {
+      return [raw];
+    }
+  };
+
   const playerPulse = players.map(p => {
     const settings = settingsByUserId.get(p.id);
     const name = settings?.player_name || p.username;
-    const position = settings?.position || 'General';
+    const position = parsePlayerPositions(settings?.position);
 
     const mySessions = sessionsByUserId.get(p.id) || [];
 
