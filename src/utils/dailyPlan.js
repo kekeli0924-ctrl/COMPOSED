@@ -1,26 +1,7 @@
 import { analyzeGaps } from './gapAnalysis';
 import { getStreak, computeFourPillars } from './stats';
 import { getIdentityMotivation, getIdentityDrillBoost } from './identity';
-
-// Detailed drill definitions with reps/duration/instructions
-const DRILL_DETAILS = {
-  'Wall Passes (1-touch)': { reps: '3 sets x 20 passes', duration: 5, instruction: 'Alternate feet each set. Stay on your toes.' },
-  'Wall Passes (2-touch)': { reps: '3 sets x 15 passes', duration: 5, instruction: 'First touch to control, second to pass. Focus on cushioning.' },
-  'Finishing Drill': { reps: '20 shots total', duration: 8, instruction: '10 right foot, 10 left foot from inside the box. Aim corners.' },
-  'Shooting (Inside Box)': { reps: '15 shots', duration: 7, instruction: '5 right, 5 left, 5 from different angles. Quick release.' },
-  'Shooting (Outside Box)': { reps: '10 shots', duration: 6, instruction: 'Focus on power and placement. Hit the target before hitting it hard.' },
-  'Crossing & Finishing': { reps: '10 crosses + finish', duration: 8, instruction: 'Cross from wide, run in and finish. Alternate sides.' },
-  'Free Kicks': { reps: '15 kicks', duration: 8, instruction: '5 near post, 5 far post, 5 over the wall. Technique over power.' },
-  'Long Passing': { reps: '20 passes', duration: 7, instruction: 'Hit targets at 30+ yards. Lock your ankle, follow through.' },
-  'Short Passing Combos': { reps: '3 sets x 2 min', duration: 6, instruction: 'Quick 1-2 touch passing. Move after every pass.' },
-  'Rondo': { reps: '3 rounds x 3 min', duration: 10, instruction: 'Keep possession under pressure. 2-touch max.' },
-  'Dribbling Circuit': { reps: '5 runs through', duration: 6, instruction: 'Cones: inside-outside, drag backs, step-overs. Speed up each run.' },
-  'Sprint Intervals': { reps: '8 x 30m sprints', duration: 8, instruction: '30 sec rest between sprints. Max effort each one.' },
-};
-
-function getDrillDetail(name) {
-  return DRILL_DETAILS[name] || { reps: '10 min', duration: 10, instruction: 'Focus on quality over quantity.' };
-}
+import { DRILL_DETAILS, getDrillDetail } from '../constants/drills';
 
 function buildTimeline(drillNames) {
   const timeline = [];
