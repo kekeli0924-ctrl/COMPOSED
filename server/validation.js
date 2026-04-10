@@ -71,7 +71,13 @@ export const settingsSchema = z.object({
     z.string().max(50),
   ]).optional(),
   equipment: z.array(z.string()).optional(),
-  playerIdentity: z.string().max(100).optional(),
+  // playerIdentity accepts either an array (new format, multi-select) or a
+  // legacy single string. Stored as a JSON-serialized array in the TEXT column
+  // using the same pattern as position. Max 6 = 5 presets + 1 custom free-text.
+  playerIdentity: z.union([
+    z.array(z.string().max(100)).max(6),
+    z.string().max(100),
+  ]).optional(),
 }).strict();
 
 // Training plans

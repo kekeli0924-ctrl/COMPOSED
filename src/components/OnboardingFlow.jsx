@@ -10,12 +10,15 @@ const AGE_GROUPS = ['U12', 'U14', 'U16', 'U18', 'U21', 'Senior'];
 const SKILL_LEVELS = ['Recreational', 'Academy', 'Semi-Pro', 'Professional'];
 const EQUIPMENT_OPTIONS = ['Ball only', 'Wall / rebounder', 'Cones / markers', 'Goal / net', 'Agility ladder', 'Resistance bands'];
 
+// Player identity presets. Emojis intentionally removed — the cleaner text-only
+// look matches the rest of the onboarding surface and reduces visual noise on
+// a screen the player sees exactly once.
 const IDENTITY_OPTIONS = [
-  { id: 'scorer', label: 'Scoring goals from anywhere', icon: '🎯' },
-  { id: 'speedster', label: 'Speed that nobody can match', icon: '⚡' },
-  { id: 'playmaker', label: 'Vision and creativity', icon: '🧠' },
-  { id: 'engine', label: 'Being the hardest worker', icon: '🔥' },
-  { id: 'rock', label: 'Winning every ball', icon: '🛡️' },
+  { id: 'scorer', label: 'Scoring goals from anywhere' },
+  { id: 'speedster', label: 'Speed that nobody can match' },
+  { id: 'playmaker', label: 'Vision and creativity' },
+  { id: 'engine', label: 'Being the hardest worker' },
+  { id: 'rock', label: 'Winning every ball' },
 ];
 
 function ProgressDots({ current, total }) {
@@ -67,7 +70,10 @@ export function OnboardingFlow({ settings, onComplete, googleFlow }) {
     skillLevel: '',
     weeklyGoal: 3,
     equipment: ['ball'],
-    playerIdentity: '',
+    // Multi-select: array of preset IDs (e.g. ['scorer', 'engine']). Custom
+    // free-text is held in customIdentity and merged into the final array at
+    // onComplete time so it doesn't get lost when the user toggles presets.
+    playerIdentity: [],
     customIdentity: '',
     parentCode: '',
     parentConnectError: '',
@@ -122,7 +128,15 @@ export function OnboardingFlow({ settings, onComplete, googleFlow }) {
       skillLevel: (isCoach || isParent) ? '' : data.skillLevel,
       weeklyGoal: (isCoach || isParent) ? 3 : data.weeklyGoal,
       equipment: (isCoach || isParent) ? ['ball'] : data.equipment,
-      playerIdentity: (isCoach || isParent) ? '' : (data.playerIdentity || data.customIdentity || ''),
+      // Merge selected presets with any custom free-text the user typed into
+      // a single array. Coaches and parents don't have an identity (they don't
+      // play), so they get an empty array.
+      playerIdentity: (isCoach || isParent)
+        ? []
+        : [
+            ...(Array.isArray(data.playerIdentity) ? data.playerIdentity : []),
+            ...(data.customIdentity && data.customIdentity.trim() ? [data.customIdentity.trim()] : []),
+          ],
       onboardingComplete: 1,
     });
   };
@@ -267,53 +281,60 @@ export function OnboardingFlow({ settings, onComplete, googleFlow }) {
     ),
 
     // Step 3: Player Identity — "What do you want to be known for?"
+    // Multi-select: players can pick multiple presets AND add free-text.
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
           <h2 className="text-xl font-bold text-gray-900">What do you want to be<br />known for on the pitch?</h2>
-          <p className="text-xs text-gray-400 mt-2">This shapes your training, your goals, and your story.</p>
+          <p className="text-xs text-gray-400 mt-2">
+            Pick one or more. This shapes your training, your goals, and your story.
+          </p>
         </div>
 
         <div className="space-y-2.5">
-          {IDENTITY_OPTIONS.map(opt => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => { update('playerIdentity', opt.id); update('customIdentity', ''); }}
-              className={`w-full text-left rounded-xl border-2 px-4 py-3.5 transition-all flex items-center gap-3 ${
-                data.playerIdentity === opt.id
-                  ? 'border-accent bg-accent/5 shadow-sm'
-                  : 'border-gray-100 bg-white hover:border-gray-200'
-              }`}
-            >
-              <span className="text-xl">{opt.icon}</span>
-              <span className="text-sm font-medium text-gray-900">{opt.label}</span>
-            </button>
-          ))}
+          {IDENTITY_OPTIONS.map(opt => {
+            const selected = Array.isArray(data.playerIdentity) && data.playerIdentity.includes(opt.id);
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => {
+                  // Functional setState so rapid clicks / batching don't trample
+                  // each other (same pattern as position multi-select).
+                  setData(prev => {
+                    const cur = Array.isArray(prev.playerIdentity) ? prev.playerIdentity : [];
+                    return {
+                      ...prev,
+                      playerIdentity: cur.includes(opt.id)
+                        ? cur.filter(i => i !== opt.id)
+                        : [...cur, opt.id],
+                    };
+                  });
+                }}
+                className={`w-full text-left rounded-xl border-2 px-4 py-3.5 transition-all ${
+                  selected
+                    ? 'border-accent bg-accent/5 shadow-sm'
+                    : 'border-gray-100 bg-white hover:border-gray-200'
+                }`}
+              >
+                <span className="text-sm font-medium text-gray-900">{opt.label}</span>
+              </button>
+            );
+          })}
 
-          {/* Custom option */}
-          <div className={`rounded-xl border-2 px-4 py-3.5 transition-all ${
-            data.playerIdentity === 'custom' ? 'border-accent bg-accent/5' : 'border-gray-100 bg-white'
-          }`}>
-            <button
-              type="button"
-              onClick={() => update('playerIdentity', 'custom')}
-              className="w-full text-left flex items-center gap-3"
-            >
-              <span className="text-xl">✍️</span>
-              <span className="text-sm font-medium text-gray-900">Write your own</span>
-            </button>
-            {data.playerIdentity === 'custom' && (
-              <input
-                type="text"
-                value={data.customIdentity}
-                onChange={e => update('customIdentity', e.target.value)}
-                placeholder="e.g. The clutch player who shows up in big moments"
-                maxLength={80}
-                className="w-full mt-2 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent/30"
-                autoFocus
-              />
-            )}
+          {/* Optional free-text — users can add one custom identity alongside presets */}
+          <div className="rounded-xl border-2 border-gray-100 bg-white px-4 py-3.5">
+            <label className="block text-xs font-medium text-gray-500 mb-2">
+              Write your own <span className="text-gray-300">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={data.customIdentity}
+              onChange={e => update('customIdentity', e.target.value)}
+              placeholder="e.g. The clutch player who shows up in big moments"
+              maxLength={80}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent/30"
+            />
           </div>
         </div>
       </div>

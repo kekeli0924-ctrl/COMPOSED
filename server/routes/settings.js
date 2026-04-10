@@ -21,6 +21,22 @@ function parsePositions(raw) {
   }
 }
 
+// playerIdentity is stored the same way: JSON array for new rows, legacy rows
+// have a bare string. Empty / nullish becomes an empty array. Entries can be
+// either preset IDs (e.g. 'scorer') or custom free-text — we don't distinguish
+// at the storage layer, the frontend's identity.js knows which ones are presets.
+function parsePlayerIdentity(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.filter(s => typeof s === 'string' && s.length > 0);
+    if (typeof parsed === 'string') return parsed.length > 0 ? [parsed] : [];
+    return [];
+  } catch {
+    return [raw]; // legacy bare-string value
+  }
+}
+
 function rowToSettings(row) {
   return {
     distanceUnit: row.distance_unit || 'km',
@@ -32,7 +48,7 @@ function rowToSettings(row) {
     gettingStartedComplete: row.getting_started_complete ?? 0,
     position: parsePositions(row.position),
     equipment: JSON.parse(row.equipment || '["ball","wall"]'),
-    playerIdentity: row.player_identity || '',
+    playerIdentity: parsePlayerIdentity(row.player_identity),
   };
 }
 
@@ -57,6 +73,19 @@ function serializePositionForStorage(value) {
   if (typeof value === 'string') {
     if (!value || value === 'General') return JSON.stringify([]);
     return JSON.stringify([value]);
+  }
+  return null;
+}
+
+// Same pattern for playerIdentity — array or legacy string → JSON array string.
+function serializePlayerIdentityForStorage(value) {
+  if (value === undefined || value === null) return null;
+  if (Array.isArray(value)) {
+    const clean = value.filter(s => typeof s === 'string' && s.length > 0);
+    return JSON.stringify(clean);
+  }
+  if (typeof value === 'string') {
+    return value.length > 0 ? JSON.stringify([value]) : JSON.stringify([]);
   }
   return null;
 }
@@ -92,7 +121,7 @@ router.put('/', validate(settingsSchema), (req, res) => {
       getting_started_complete: s.gettingStartedComplete ?? null,
       position: serializePositionForStorage(s.position),
       equipment: s.equipment ? JSON.stringify(s.equipment) : null,
-      player_identity: s.playerIdentity ?? null,
+      player_identity: serializePlayerIdentityForStorage(s.playerIdentity),
       user_id: req.userId,
     });
     row = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.userId);

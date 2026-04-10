@@ -1214,23 +1214,48 @@ function AppMain({ authUser, onLogout }) {
 
             <hr className="border-gray-100" />
 
-            {/* Player Identity */}
+            {/* Player Identity — multi-select chips, matches onboarding */}
             <div className="space-y-3">
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Player Identity</p>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Known for</span>
-                <select
-                  value={settings.playerIdentity || ''}
-                  onChange={e => setSettings(prev => ({ ...prev, playerIdentity: e.target.value }))}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-                >
-                  <option value="">Select...</option>
-                  <option value="scorer">Scoring goals</option>
-                  <option value="speedster">Speed</option>
-                  <option value="playmaker">Vision & creativity</option>
-                  <option value="engine">Hardest worker</option>
-                  <option value="rock">Winning every ball</option>
-                </select>
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Player Identity</p>
+                <span className="text-[11px] text-gray-400">pick one or more</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: 'scorer', label: 'Scoring goals' },
+                  { id: 'speedster', label: 'Speed' },
+                  { id: 'playmaker', label: 'Vision & creativity' },
+                  { id: 'engine', label: 'Hardest worker' },
+                  { id: 'rock', label: 'Winning every ball' },
+                ].map(opt => {
+                  const current = Array.isArray(settings.playerIdentity) ? settings.playerIdentity : [];
+                  const selected = current.includes(opt.id);
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        // Functional setState so rapid taps don't lose selections.
+                        setSettings(prev => {
+                          const cur = Array.isArray(prev.playerIdentity) ? prev.playerIdentity : [];
+                          return {
+                            ...prev,
+                            playerIdentity: cur.includes(opt.id)
+                              ? cur.filter(i => i !== opt.id)
+                              : [...cur, opt.id],
+                          };
+                        });
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        selected
+                          ? 'bg-accent text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

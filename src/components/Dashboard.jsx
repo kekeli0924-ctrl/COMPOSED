@@ -13,7 +13,7 @@ import {
   computeFatigueDecay, generateInsights,
 } from '../utils/stats';
 import { computePace } from '../utils/pace';
-import { getPaceLabel, getIdentityTip, getIdentity } from '../utils/identity';
+import { getPaceLabel, getIdentityTip, getIdentity, hasAnyIdentity } from '../utils/identity';
 
 const BREAKDOWN_LABELS = {
   consistency: 'Consistency',
@@ -172,7 +172,11 @@ function WeeklyPaceCard({ sessions, idpGoals = [], onNavigate, playerIdentity, p
           <span className="text-sm font-bold" style={{ color }}>
             {overall.velocityPct > 0 ? '+' : ''}{overall.velocityPct}%
           </span>
-          <span className="text-xs font-semibold text-gray-700">{playerIdentity ? `Your ${getIdentity(playerIdentity)?.label || ''} Pace` : 'Your Pace This Week'}</span>
+          <span className="text-xs font-semibold text-gray-700">
+            {hasAnyIdentity(playerIdentity) && getIdentity(playerIdentity)?.label
+              ? `Your ${getIdentity(playerIdentity).label} Pace`
+              : 'Your Pace This Week'}
+          </span>
         </div>
         <span className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">
           {overall.label}

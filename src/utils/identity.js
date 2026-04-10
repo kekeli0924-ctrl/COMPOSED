@@ -107,11 +107,60 @@ export const IDENTITIES = {
 };
 
 /**
- * Get the identity config for a player. Falls back to a generic default.
+ * Normalize a playerIdentity input (which may be a string, an array of strings,
+ * or nullish) down to the FIRST known preset ID we can find. Unknown/custom
+ * strings are ignored for lookup purposes — they exist in the data so the UI
+ * can display them, but they don't drive narratives/drills/tips because we
+ * have no preset config for free-text.
+ *
+ * Returns null if nothing usable is found.
+ */
+function toPrimaryIdentity(input) {
+  if (!input) return null;
+  if (typeof input === 'string') {
+    return IDENTITIES[input] ? input : null;
+  }
+  if (Array.isArray(input)) {
+    for (const item of input) {
+      if (typeof item === 'string' && IDENTITIES[item]) return item;
+    }
+    return null;
+  }
+  return null;
+}
+
+/**
+ * True if the input has at least one identity (preset OR custom free-text).
+ * This is what UI should check to decide whether to show identity-flavored
+ * copy at all ("Your Scorer's Pace" vs "Your Pace This Week").
+ */
+export function hasAnyIdentity(input) {
+  if (!input) return false;
+  if (typeof input === 'string') return input.length > 0;
+  if (Array.isArray(input)) return input.some(x => typeof x === 'string' && x.length > 0);
+  return false;
+}
+
+/**
+ * Get all identity labels for display. Preset IDs become their nice label
+ * ("scorer" → "Scorer"), custom strings are passed through verbatim.
+ * Returns an array ready to join with ", " for UI.
+ */
+export function getIdentityLabels(input) {
+  if (!input) return [];
+  const items = Array.isArray(input) ? input : [input];
+  return items
+    .filter(x => typeof x === 'string' && x.length > 0)
+    .map(x => IDENTITIES[x]?.label || x);
+}
+
+/**
+ * Get the identity config for a player. Accepts either a string or an array;
+ * returns the config for the FIRST preset ID found. Falls back to null.
  */
 export function getIdentity(playerIdentity) {
-  if (!playerIdentity) return null;
-  return IDENTITIES[playerIdentity] || null;
+  const primary = toPrimaryIdentity(playerIdentity);
+  return primary ? IDENTITIES[primary] : null;
 }
 
 /**
@@ -160,11 +209,31 @@ export function getPeerPrefix(playerIdentity) {
 }
 
 /**
- * Get drill category weight boosts for the identity.
+ * Get drill category weight boosts. When given an array of identities, BLENDS
+ * the boosts across all preset identities in the array so a Scorer + Playmaker
+ * gets both shooting and passing bumps. Custom free-text entries contribute
+ * nothing to boosts (we have no preset config for them).
  */
 export function getIdentityDrillBoost(playerIdentity) {
-  const id = getIdentity(playerIdentity);
-  return id?.drillBoost || {};
+  if (!playerIdentity) return {};
+
+  const items = Array.isArray(playerIdentity) ? playerIdentity : [playerIdentity];
+  const blended = {};
+  let count = 0;
+  for (const item of items) {
+    const cfg = typeof item === 'string' ? IDENTITIES[item] : null;
+    if (!cfg?.drillBoost) continue;
+    count += 1;
+    for (const [category, boost] of Object.entries(cfg.drillBoost)) {
+      blended[category] = (blended[category] || 0) + boost;
+    }
+  }
+  // Average across contributing identities so picking 5 of them doesn't
+  // compound into absurdly large boosts.
+  if (count > 1) {
+    for (const key of Object.keys(blended)) blended[key] = blended[key] / count;
+  }
+  return blended;
 }
 
 /**
