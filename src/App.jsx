@@ -1221,12 +1221,15 @@ function AppMain({ authUser, onLogout }) {
                 <span className="text-[11px] text-gray-400">pick one or more</span>
               </div>
               <div className="flex flex-wrap gap-2">
+                {/* Keep these labels in sync with IDENTITY_OPTIONS in OnboardingFlow.jsx —
+                    a player who picked "Too fast to catch" in onboarding should see the
+                    same label here, not "Speed". */}
                 {[
-                  { id: 'scorer', label: 'Scoring goals' },
-                  { id: 'speedster', label: 'Speed' },
-                  { id: 'playmaker', label: 'Vision & creativity' },
-                  { id: 'engine', label: 'Hardest worker' },
-                  { id: 'rock', label: 'Winning every ball' },
+                  { id: 'scorer', label: 'Scoring goals from anywhere' },
+                  { id: 'speedster', label: 'Too fast to catch' },
+                  { id: 'playmaker', label: 'The pass nobody else sees' },
+                  { id: 'engine', label: 'First to arrive, last to leave' },
+                  { id: 'rock', label: 'Every 50/50 is mine' },
                 ].map(opt => {
                   const current = Array.isArray(settings.playerIdentity) ? settings.playerIdentity : [];
                   const selected = current.includes(opt.id);

@@ -10,15 +10,15 @@ const AGE_GROUPS = ['U12', 'U14', 'U16', 'U18', 'U21', 'Senior'];
 const SKILL_LEVELS = ['Recreational', 'Academy', 'Semi-Pro', 'Professional'];
 const EQUIPMENT_OPTIONS = ['Ball only', 'Wall / rebounder', 'Cones / markers', 'Goal / net', 'Agility ladder', 'Resistance bands'];
 
-// Player identity presets. Emojis intentionally removed — the cleaner text-only
-// look matches the rest of the onboarding surface and reduces visual noise on
-// a screen the player sees exactly once.
+// Player identity presets. Emojis removed; labels rewritten as first-person
+// declarations so the player picks what they WANT TO BE, not what they are.
+// The IDs are stable contract keys — do not rename them when copy changes.
 const IDENTITY_OPTIONS = [
   { id: 'scorer', label: 'Scoring goals from anywhere' },
-  { id: 'speedster', label: 'Speed that nobody can match' },
-  { id: 'playmaker', label: 'Vision and creativity' },
-  { id: 'engine', label: 'Being the hardest worker' },
-  { id: 'rock', label: 'Winning every ball' },
+  { id: 'speedster', label: 'Too fast to catch' },
+  { id: 'playmaker', label: 'The pass nobody else sees' },
+  { id: 'engine', label: 'First to arrive, last to leave' },
+  { id: 'rock', label: 'Every 50/50 is mine' },
 ];
 
 function ProgressDots({ current, total }) {
