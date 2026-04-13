@@ -37,6 +37,8 @@ import { Toast } from './components/ui/Toast';
 import { Button } from './components/ui/Button';
 import { Modal, ConfirmModal } from './components/ui/Modal';
 import { OfflineIndicator } from './components/ui/OfflineIndicator';
+import { VideoAnalysisProvider } from './contexts/VideoAnalysisContext';
+import { AnalysisBanner } from './components/ui/AnalysisBanner';
 import { formatDate, formatPercentage, computePersonalRecords, detectNewPRs, PR_LABELS, getStreak } from './utils/stats';
 import { computeXP, getLevel, getLevelProgress } from './utils/gamification';
 import { getNewBadges } from './utils/gamification';
@@ -824,6 +826,7 @@ function AppMain({ authUser, onLogout, pendingFirstSession, onFirstSessionConsum
   const isOnboarding = false; // Onboarding now happens before signup in App()
 
   return (
+    <VideoAnalysisProvider>
     <div className={`min-h-screen bg-gray-50 ${isOnboarding ? '' : 'pb-20 md:pb-4'}`}>
       {/* Readiness Check → Adapted Plan → Live Session Mode */}
       {readinessCheckPlan && (
@@ -833,6 +836,7 @@ function AppMain({ authUser, onLogout, pendingFirstSession, onFirstSessionConsum
         <AdaptedPlanConfirm plan={adaptedPlan} onStart={handleAdaptedStart} onChange={handleAdaptedChange} />
       )}
       <OfflineIndicator />
+      <AnalysisBanner />
       {/* Header */}
       <header className={`sticky top-0 z-30 ${isOnboarding ? 'hidden' : ''}`} role="banner">
         <div className="max-w-3xl mx-auto px-4 py-2 flex items-center justify-start">
@@ -1561,6 +1565,7 @@ function AppMain({ authUser, onLogout, pendingFirstSession, onFirstSessionConsum
         hasProgram={!!activeProgram}
       />
     </div>
+    </VideoAnalysisProvider>
   );
 }
 

@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { processVideoForAnalysis, checkVideoProcessingSupport, terminateFFmpeg, formatFileSize } from '../utils/ffmpeg';
+import { useVideoAnalysis } from '../contexts/VideoAnalysisContext';
 
 const CONFIDENCE_COLORS = {
   high: 'text-green-600 bg-green-50',
@@ -13,6 +14,11 @@ const STAGE_ICONS = { done: '\u2705', active: '\u23f3', pending: '\u2b1c' };
 const SKIP_THRESHOLD = 20 * 1024 * 1024; // 20MB — skip compression for small files
 
 export function VideoUpload({ onAnalysisComplete, onQuickSave }) {
+  // Shared context for the AnalysisBanner — drives the persistent top-of-app
+  // progress indicator. Falls back to a no-op stub if no provider is mounted
+  // (shouldn't happen, but defensive).
+  const va = useVideoAnalysis();
+
   const [capabilities, setCapabilities] = useState(null);
   const [file, setFile] = useState(null);
   const [processing, setProcessing] = useState(false);
@@ -27,6 +33,7 @@ export function VideoUpload({ onAnalysisComplete, onQuickSave }) {
   const fileInputRef = useRef(null);
   const pollingRef = useRef(null);
   const abortRef = useRef(false);
+  const encodeHangRef = useRef(null); // watchdog timer for FFmpeg hang detection
 
   useEffect(() => {
     fetch('/api/video/capabilities')
@@ -61,6 +68,8 @@ export function VideoUpload({ onAnalysisComplete, onQuickSave }) {
     setCancelled(true);
     terminateFFmpeg();
     if (pollingRef.current) clearInterval(pollingRef.current);
+    if (encodeHangRef.current) clearTimeout(encodeHangRef.current);
+    va.cancel(); // clear the AnalysisBanner
     reset();
   };
 
@@ -129,7 +138,7 @@ export function VideoUpload({ onAnalysisComplete, onQuickSave }) {
       let uploaded = 0;
 
       for (let i = 0; i < totalChunks; i++) {
-        if (abortRef.current) return;
+        if (abortRef.current) return; // cancel check between every chunk
         const start = i * CHUNK_SIZE;
         const end = Math.min(start + CHUNK_SIZE, compressedVideo.size);
         const chunk = compressedVideo.slice(start, end);
@@ -139,15 +148,30 @@ export function VideoUpload({ onAnalysisComplete, onQuickSave }) {
         chunkForm.append('chunkIndex', String(i));
         chunkForm.append('totalChunks', String(totalChunks));
 
-        const res = await fetch(`/api/video/upload-chunk/${vid}`, { method: 'POST', body: chunkForm });
-        if (!res.ok) throw new Error(`Chunk ${i + 1} failed`);
+        // Retry logic: up to 3 attempts per chunk with 2s backoff.
+        // Without this, a single dropped packet on mobile LTE kills the
+        // entire pipeline and the user has to start over.
+        let chunkOk = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          if (abortRef.current) return;
+          try {
+            const res = await fetch(`/api/video/upload-chunk/${vid}`, { method: 'POST', body: chunkForm });
+            if (res.ok) { chunkOk = true; break; }
+          } catch { /* network error — retry */ }
+          if (attempt < 2) {
+            va.updateProgress('Reconnecting…');
+            await new Promise(r => setTimeout(r, 2000));
+          }
+        }
+        if (!chunkOk) throw new Error(`Chunk ${i + 1} failed after 3 retries`);
 
         uploaded += (end - start);
         const pct = Math.round((uploaded / compressedVideo.size) * 100);
         setPipelineProgress(prev => ({
-          ...prev, message: `Uploading video... ${pct}%`, percentage: pct,
+          ...prev, message: `Uploading video… ${pct}%`, percentage: pct,
           detail: `${formatFileSize(uploaded)} / ${formatFileSize(compressedVideo.size)}`,
         }));
+        va.updateProgress(`Uploading… ${pct}%`, pct);
       }
 
       // 3. Signal complete
@@ -166,48 +190,132 @@ export function VideoUpload({ onAnalysisComplete, onQuickSave }) {
     }
   };
 
-  // ── Trigger Gemini analysis + poll ──────
+  // ── Trigger Gemini analysis + poll (hardened) ──────
   const triggerAnalysis = async (vid) => {
     setPipelineProgress(null);
     setStatus('analyzing');
+    va.startAnalyzing();
+    va.storeVideoId(vid);
 
-    const analyzeRes = await fetch(`/api/video/${vid}/analyze`, { method: 'POST' });
-    if (!analyzeRes.ok) {
-      const data = await analyzeRes.json();
-      setError(data.error || 'Analysis failed');
+    // 60s timeout on the initial POST — AbortController so it's cancellable.
+    // Without this, a hung Gemini API holds the user forever.
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 60_000);
+      const analyzeRes = await fetch(`/api/video/${vid}/analyze`, {
+        method: 'POST',
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      if (!analyzeRes.ok) {
+        let errMsg = 'Analysis failed';
+        try { const d = await analyzeRes.json(); errMsg = d.error || errMsg; } catch { /* non-JSON body */ }
+        setError(errMsg);
+        setStatus('error');
+        setProcessing(false);
+        va.failWithFallback("AI couldn't analyze this one — you can still log it manually.");
+        return;
+      }
+    } catch (err) {
+      const msg = err.name === 'AbortError'
+        ? 'Analysis timed out. You can still log this session manually.'
+        : "AI couldn't analyze this one — you can still log it manually.";
+      setError(msg);
       setStatus('error');
       setProcessing(false);
+      va.failWithFallback(msg);
       return;
     }
 
+    // Polling with limits:
+    // - Max 90 polls (3 minutes at 2s interval)
+    // - 5 consecutive network errors → give up
+    let pollCount = 0;
+    let consecutiveFails = 0;
+    const MAX_POLLS = 90;
+    const MAX_CONSEC_FAILS = 5;
+
     pollingRef.current = setInterval(async () => {
+      pollCount++;
+
+      // Time limit
+      if (pollCount > MAX_POLLS) {
+        clearInterval(pollingRef.current);
+        const msg = 'Analysis is taking too long. You can still log this session manually.';
+        setError(msg);
+        setStatus('error');
+        setProcessing(false);
+        va.failWithFallback(msg);
+        return;
+      }
+
       try {
         const res = await fetch(`/api/video/${vid}/status`);
-        const data = await res.json();
+        let data;
+        try { data = await res.json(); } catch {
+          // Malformed JSON — count as a failure but don't crash
+          consecutiveFails++;
+          if (consecutiveFails >= MAX_CONSEC_FAILS) {
+            clearInterval(pollingRef.current);
+            const msg = 'Lost connection to the server. You can still log this session manually.';
+            setError(msg);
+            setStatus('error');
+            setProcessing(false);
+            va.failWithFallback(msg);
+          }
+          return;
+        }
+        consecutiveFails = 0; // reset on any successful response
+
         setStatus(data.status);
         if (data.status === 'complete') {
           clearInterval(pollingRef.current);
           setResult(data.result);
           setProcessing(false);
+          va.completeAnalysis(data.result);
         } else if (data.status === 'error') {
           clearInterval(pollingRef.current);
-          setError(data.error || 'Analysis failed');
+          const errMsg = data.error || "AI couldn't analyze this one — you can still log it manually.";
+          setError(errMsg);
           setProcessing(false);
+          va.failWithFallback(errMsg);
         }
-      } catch { /* keep polling */ }
+      } catch {
+        // Network error — tolerate transient failures
+        consecutiveFails++;
+        va.updateProgress('Reconnecting…');
+        if (consecutiveFails >= MAX_CONSEC_FAILS) {
+          clearInterval(pollingRef.current);
+          const msg = 'Lost connection to the server. You can still log this session manually.';
+          setError(msg);
+          setStatus('error');
+          setProcessing(false);
+          va.failWithFallback(msg);
+        }
+      }
     }, 2000);
   };
 
-  // ── Main handler ──────
+  // ── Main handler (hardened) ──────
   const handleStart = async () => {
     if (!file) return;
+
+    // Guard: block second analysis while one is running
+    if (va.isActive) {
+      setError('One analysis is already in progress.');
+      return;
+    }
+
     setProcessing(true);
     setError(null);
     abortRef.current = false;
     setCancelled(false);
+    va.startCompressing(); // notify banner
 
     // Small files: skip compression
     if (file.size < SKIP_THRESHOLD) {
+      va.startUploading();
       return uploadRaw();
     }
 
@@ -215,22 +323,61 @@ export function VideoUpload({ onAnalysisComplete, onQuickSave }) {
     const support = checkVideoProcessingSupport();
     if (!support.supported) {
       setCompressionWarning('Your browser doesn\'t support client-side video compression. Uploading the full-size file instead — it will take longer.');
+      va.startUploading();
       return uploadRaw();
     }
 
-    // Run client-side pipeline
+    // Run client-side pipeline with encode-hang watchdog.
+    // If processVideoForAnalysis emits no progress for 20s, treat as hung.
     try {
-      const processed = await processVideoForAnalysis(file, setPipelineProgress);
-      if (abortRef.current) return;
+      let lastEncodeProgress = Date.now();
+      const progressWrapper = (p) => {
+        lastEncodeProgress = Date.now();
+        setPipelineProgress(p);
+        if (p?.percentage != null) {
+          va.updateProgress(`Compressing… ${Math.round(p.percentage)}%`, p.percentage);
+        }
+      };
+
+      // Watchdog: check every 5s whether progress has advanced
+      encodeHangRef.current = setInterval(() => {
+        if (Date.now() - lastEncodeProgress > 20_000) {
+          console.warn('FFmpeg encode appears hung (no progress for 20s)');
+          clearInterval(encodeHangRef.current);
+          abortRef.current = true;
+          terminateFFmpeg();
+        }
+      }, 5000);
+
+      const processed = await processVideoForAnalysis(file, progressWrapper);
+      clearInterval(encodeHangRef.current);
+      if (abortRef.current) {
+        // Hung encode was force-terminated — fall back to raw
+        va.updateProgress('Compression stalled, uploading original…');
+        setCompressionWarning('Compression stalled, uploading the full-size file instead.');
+        abortRef.current = false; // reset so upload can proceed
+        va.startUploading();
+        return uploadRaw();
+      }
       setProcessedResult(processed);
       setCompressionWarning(null);
+      va.startUploading();
       await uploadProcessed(processed);
     } catch (err) {
-      if (abortRef.current) return;
+      clearInterval(encodeHangRef.current);
+      if (abortRef.current) {
+        // User cancelled or encode was force-terminated
+        va.updateProgress('Compression stalled, uploading original…');
+        setCompressionWarning('Compression stalled, uploading the full-size file instead.');
+        abortRef.current = false;
+        va.startUploading();
+        return uploadRaw();
+      }
       console.warn('Client-side processing failed, falling back to raw upload:', err);
       setError(null);
       setPipelineProgress(null);
       setCompressionWarning('Video compression failed, so we\'re uploading the full-size file. This will take longer but still works.');
+      va.startUploading();
       await uploadRaw();
     } finally {
       terminateFFmpeg();
@@ -243,9 +390,11 @@ export function VideoUpload({ onAnalysisComplete, onQuickSave }) {
 
   const reset = () => {
     if (pollingRef.current) clearInterval(pollingRef.current);
+    if (encodeHangRef.current) clearInterval(encodeHangRef.current);
     setFile(null); setVideoId(null); setStatus(null); setResult(null);
     setError(null); setProcessing(false); setPipelineProgress(null);
     setProcessedResult(null); setCancelled(false); setCompressionWarning(null);
+    va.reset();
   };
 
   // ── Not configured ──────
