@@ -42,7 +42,10 @@ import { Modal, ConfirmModal } from './components/ui/Modal';
 import { OfflineIndicator } from './components/ui/OfflineIndicator';
 import { VideoAnalysisProvider } from './contexts/VideoAnalysisContext';
 import { AnalysisBanner } from './components/ui/AnalysisBanner';
-import { formatDate, formatPercentage, computePersonalRecords, detectNewPRs, PR_LABELS, getStreak } from './utils/stats';
+import { formatDate, formatPercentage, computePersonalRecords, detectNewPRs, PR_LABELS, getStreak, getCurrentWeekSessionCount } from './utils/stats';
+import { computePace } from './utils/pace';
+import { getIdentity, hasAnyIdentity } from './utils/identity';
+import { getPaceCelebrationState } from './utils/paceCelebration';
 import { computeXP, getLevel, getLevelProgress } from './utils/gamification';
 import { getNewBadges } from './utils/gamification';
 
@@ -516,6 +519,21 @@ function AppMain({ authUser, onLogout, pendingFirstSession, onFirstSessionConsum
 
             setCompletedSession(fullSession);
             setCompletedBadge(badge);
+            // Pace capture: compute before and after this session for the celebration beat.
+            // Uses the same computePace helper the Pace tab uses.
+            const playerPos = (Array.isArray(settings.position) && settings.position[0]) || 'General';
+            const prePace = computePace(prevSessions, 4, playerPos);
+            const postPace = computePace(newSessions, 4, playerPos);
+            const identityConfig = hasAnyIdentity(settings.playerIdentity) ? getIdentity(settings.playerIdentity) : null;
+            const paceBeat = getPaceCelebrationState({
+              prePace,
+              postPace,
+              identityLabel: identityConfig?.label || null,
+              sessionsThisWeek: weekCompleted,
+              weeklyGoal: wGoal,
+              isFirstSessionEver: prevSessions.length === 0,
+            });
+
             setCompletionData({
               previousSession: prevTraining ? {
                 duration: prevTraining.duration,
@@ -525,6 +543,7 @@ function AppMain({ authUser, onLogout, pendingFirstSession, onFirstSessionConsum
                 date: prevTraining.date,
               } : null,
               isFirstSession: prevSessions.length === 0,
+              paceBeat, // Step 12: Pace-aware celebration phase
               xpBreakdown: {
                 sessionLogged: xpSession,
                 dailyPlan: xpDailyPlan,
@@ -877,6 +896,7 @@ function AppMain({ authUser, onLogout, pendingFirstSession, onFirstSessionConsum
             session={completedSession}
             completionData={completionData}
             onDone={() => { setCompletedSession(null); setCompletedBadge(null); setCompletionData(null); setActiveTab('dashboard'); }}
+            onSeeWhy={() => { setCompletedSession(null); setCompletedBadge(null); setCompletionData(null); handleViewMetric('pace-audit'); }}
           />
         ) : isParent ? (
           activeTab === 'profile' ? (

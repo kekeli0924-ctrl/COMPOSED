@@ -38,7 +38,7 @@ function AnimatedCounter({ target, duration = 800 }) {
   return <span>{value}</span>;
 }
 
-export function SessionCompleteScreen({ session, completionData, onDone }) {
+export function SessionCompleteScreen({ session, completionData, onDone, onSeeWhy }) {
   const [phase, setPhase] = useState(1);
   const timerRef = useRef(null);
 
@@ -69,17 +69,18 @@ export function SessionCompleteScreen({ session, completionData, onDone }) {
     }
   }, []);
 
-  // Auto-advance phases
+  // Auto-advance phases (phase 5 = Pace beat, requires tap — no auto-advance past 5)
   useEffect(() => {
+    if (phase >= 5) return; // Pace beat waits for user tap
     timerRef.current = setTimeout(() => {
-      if (phase < 4) setPhase(p => p + 1);
+      if (phase < 5) setPhase(p => p + 1);
     }, phase === 1 ? 1500 : 1200);
     return () => clearTimeout(timerRef.current);
   }, [phase]);
 
   const advance = useCallback(() => {
     clearTimeout(timerRef.current);
-    if (phase < 4) setPhase(p => p + 1);
+    if (phase < 5) setPhase(p => p + 1);
   }, [phase]);
 
   if (!session) return null;
@@ -88,7 +89,7 @@ export function SessionCompleteScreen({ session, completionData, onDone }) {
   const passPct = passing?.attempts > 0 ? Math.round((passing.completed / passing.attempts) * 100) : null;
 
   return (
-    <div className="max-w-lg mx-auto py-6 px-4 min-h-screen" onClick={phase < 4 ? advance : undefined}>
+    <div className="max-w-lg mx-auto py-6 px-4 min-h-screen" onClick={phase < 5 ? advance : undefined}>
 
       {/* Phase 1: Splash */}
       <div className="text-center mb-6" style={{ animation: 'fadeSlideUp 0.4s ease-out' }}>
@@ -294,7 +295,7 @@ export function SessionCompleteScreen({ session, completionData, onDone }) {
             </div>
           )}
 
-          {/* Action Buttons */}
+          {/* Share button — moved Done to Phase 5 (Pace beat) */}
           <div className="flex gap-3">
             <Button variant="secondary" onClick={() => {
               const canvas = renderWeeklySummaryCard({
@@ -307,10 +308,37 @@ export function SessionCompleteScreen({ session, completionData, onDone }) {
             }} className="flex-1 py-3">
               Share Session
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 5: Pace Beat — the final phase, requires tap */}
+      {phase >= 5 && cd.paceBeat && (
+        <div style={{ animation: 'fadeSlideUp 0.4s ease-out' }}>
+          <Card className="mb-4 border-l-4 border-l-accent">
+            <p className="text-sm text-gray-900 leading-relaxed font-medium">
+              {cd.paceBeat.headline}
+            </p>
+          </Card>
+          <div className="flex gap-3">
+            {cd.paceBeat.showSeeWhy && onSeeWhy && (
+              <Button variant="secondary" onClick={onSeeWhy} className="flex-1 py-3">
+                See why
+              </Button>
+            )}
             <Button onClick={onDone} className="flex-1 py-3">
               Done ✓
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* Fallback: if no paceBeat data, show Done on Phase 5 anyway */}
+      {phase >= 5 && !cd.paceBeat && (
+        <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+          <Button onClick={onDone} className="w-full py-3">
+            Done ✓
+          </Button>
         </div>
       )}
 
