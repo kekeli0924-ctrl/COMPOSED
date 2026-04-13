@@ -121,7 +121,7 @@ export function CoachSquadDashboard({ onSelectPlayer }) {
           return (
             <button
               key={player.playerId}
-              onClick={() => onSelectPlayer?.({ id: player.playerId, username: player.name })}
+              onClick={() => onSelectPlayer?.({ playerId: player.playerId, username: player.name })}
               className="w-full text-left bg-surface rounded-xl border border-gray-100 px-3 py-2.5 flex items-center gap-3 hover:bg-gray-50 active:bg-gray-100 transition-colors"
             >
               {/* Compliance dot — the single strongest signal */}

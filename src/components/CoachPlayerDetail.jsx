@@ -72,9 +72,10 @@ export function CoachPlayerDetail({ player, onBack }) {
                     <div>
                       <p className="text-sm font-medium text-gray-900">{formatDate(plan.date)}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {plan.drills.map(d => (
-                          <span key={d} className="bg-blue-50 text-blue-600 text-[10px] px-1.5 py-0.5 rounded-full">{d}</span>
-                        ))}
+                        {plan.drills.map((d, i) => {
+                          const name = typeof d === 'string' ? d : d?.name || 'Drill';
+                          return <span key={name + i} className="bg-blue-50 text-blue-600 text-[10px] px-1.5 py-0.5 rounded-full">{name}</span>;
+                        })}
                       </div>
                     </div>
                     <span className={`text-lg ${sessionOnDate ? 'text-green-500' : 'text-gray-200'}`}>
@@ -100,7 +101,7 @@ export function CoachPlayerDetail({ player, onBack }) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-900">{formatDate(session.date)}</p>
-                    <p className="text-xs text-gray-400">{session.duration} min &middot; {session.drills.slice(0, 3).join(', ')}</p>
+                    <p className="text-xs text-gray-400">{session.duration} min &middot; {(session.drills || []).slice(0, 3).map(d => typeof d === 'string' ? d : d?.name || 'Drill').join(', ')}</p>
                   </div>
                   <div className="text-right">
                     <div className="flex items-center gap-2 text-xs">
