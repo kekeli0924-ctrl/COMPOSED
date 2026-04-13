@@ -125,7 +125,7 @@ export function OnboardingFlow({ settings, onComplete, googleFlow }) {
     return true; // preview, weekly goal, equipment, finish — all passable
   };
 
-  const handleFinish = () => {
+  const handleFinish = (firstSessionMode = null) => {
     onComplete({
       role: data.role,
       // Google flow passes username through so the parent can call /google/complete.
@@ -151,6 +151,10 @@ export function OnboardingFlow({ settings, onComplete, googleFlow }) {
             ...(data.customIdentity && data.customIdentity.trim() ? [data.customIdentity.trim()] : []),
           ],
       onboardingComplete: 1,
+      // Step 6: first-session-at-end-of-onboarding. 'quick' = open SessionLogger
+      // in Quick Mode, 'video' = open SessionLogger in video mode. null = skip.
+      // App.jsx reads this and auto-navigates after account creation.
+      firstSessionMode: firstSessionMode,
     });
   };
 
@@ -489,7 +493,8 @@ export function OnboardingFlow({ settings, onComplete, googleFlow }) {
       </div>
     ),
 
-    // Feature Overview + CTA
+    // Coach/Parent: Feature Overview + CTA (unchanged)
+    // Player: this step is replaced by firstSessionChoiceStep below via activeSteps
     () => (
       <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
         <div className="text-center mb-6">
@@ -501,14 +506,10 @@ export function OnboardingFlow({ settings, onComplete, googleFlow }) {
             { num: 1, title: 'Build Your Roster', desc: 'Generate invite codes and link up with your players.' },
             { num: 2, title: 'Assign Plans', desc: 'Create training plans on specific dates for each player.' },
             { num: 3, title: 'Track Progress', desc: 'View stats, compliance, and development across your squad.' },
-          ] : isParent ? [
+          ] : [
             { num: 1, title: 'Stay Updated', desc: "See your child's training sessions, stats, and streaks at a glance." },
             { num: 2, title: 'Track Progress', desc: 'Monitor development goals, shooting accuracy, and fitness trends.' },
             { num: 3, title: 'Stay Connected', desc: 'See coach-assigned plans and training compliance.' },
-          ] : [
-            { num: 1, title: 'Log', desc: 'Track every session — shooting, passing, fitness, and more. Or upload a video for AI analysis.' },
-            { num: 2, title: 'Track', desc: 'See trends, streaks, personal records, and peer comparisons.' },
-            { num: 3, title: 'Improve', desc: 'Get AI insights, gap analysis, and personalized session recommendations.' },
           ]).map(item => (
             <Card key={item.num}>
               <div className="flex items-start gap-3">
@@ -525,8 +526,8 @@ export function OnboardingFlow({ settings, onComplete, googleFlow }) {
         </div>
 
         <div className="mt-6">
-          <Button onClick={handleFinish} className="w-full py-3 text-base">
-            {isCoach ? 'Get Started' : isParent ? 'View Dashboard' : 'Start Training'}
+          <Button onClick={() => handleFinish()} className="w-full py-3 text-base">
+            {isCoach ? 'Get Started' : 'View Dashboard'}
           </Button>
         </div>
       </div>
@@ -646,19 +647,84 @@ export function OnboardingFlow({ settings, onComplete, googleFlow }) {
     );
   };
 
+  // ── First Session Choice step — the last onboarding screen for players ───
+  // Two equally-weighted cards: Quick Log (30 sec) and Record + AI (2 min).
+  // Each card calls handleFinish with a firstSessionMode flag. A small "Skip
+  // for now" link bypasses first-session entirely. This replaces the old
+  // Feature Overview step for the player path — coaches and parents still get
+  // the Feature Overview via the steps array.
+  const firstSessionChoiceStep = () => (
+    <div style={{ animation: 'fadeSlideUp 0.3s ease-out' }}>
+      <div className="text-center mb-6">
+        <h2 className="text-xl font-bold text-gray-900">Let's log your first session.</h2>
+      </div>
+
+      <div className="space-y-3">
+        {/* Quick Log card */}
+        <button
+          type="button"
+          onClick={() => handleFinish('quick')}
+          className="w-full text-left rounded-2xl border-2 border-gray-100 bg-white hover:border-accent/40 hover:bg-accent/5 transition-all p-5 space-y-1.5"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📝</span>
+            <div>
+              <p className="text-sm font-bold text-gray-900">Quick log</p>
+              <p className="text-[11px] text-gray-400">30 seconds</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed pl-10">
+            Just duration, drills, and how it felt.
+          </p>
+        </button>
+
+        {/* Record + AI card — visually identical weight */}
+        <button
+          type="button"
+          onClick={() => handleFinish('video')}
+          className="w-full text-left rounded-2xl border-2 border-gray-100 bg-white hover:border-accent/40 hover:bg-accent/5 transition-all p-5 space-y-1.5"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🎥</span>
+            <div>
+              <p className="text-sm font-bold text-gray-900">Record + AI analysis</p>
+              <p className="text-[11px] text-gray-400">2 minutes</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed pl-10">
+            Film a drill. AI fills in the stats for you.
+          </p>
+        </button>
+      </div>
+
+      {/* Skip link — deliberately de-emphasized */}
+      <div className="text-center mt-5">
+        <button
+          type="button"
+          onClick={() => handleFinish(null)}
+          className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          Skip for now
+        </button>
+      </div>
+    </div>
+  );
+
   // Coach skips player-specific steps (age group, identity, weekly goal)
   // Parent skips player-specific steps, gets connect-to-child step instead
   // steps[5] is the parent connect step — exclude it for player and coach
   const playerSteps = steps.filter((_, i) => i !== 5); // all except parent connect
 
-  // For players, inject the preview step right after identity (steps[3])
-  // and before weekly goal + equipment (steps[4]).
-  // playerSteps order is: [role, name, age, identity, weekly, finish]
-  // After injection:      [role, name, age, identity, PREVIEW, weekly, finish]
+  // For players, inject:
+  //   1. Pace preview right after identity (steps[3])
+  //   2. First Session Choice as the LAST step (replacing Feature Overview)
+  // playerSteps order: [role, name, age, identity, weekly, featureOverview]
+  // After injection:   [role, name, age, identity, PREVIEW, weekly, FIRST_SESSION_CHOICE]
   const playerStepsWithPreview = [
-    ...playerSteps.slice(0, 4),  // role, name, age, identity
-    pacePreviewStep,              // NEW: preview
-    ...playerSteps.slice(4),      // weekly+equipment, finish
+    ...playerSteps.slice(0, 4),   // role, name, age, identity
+    pacePreviewStep,               // Step 5: Pace preview
+    playerSteps[4],                // weekly goal + equipment
+    firstSessionChoiceStep,        // Step 6: First session choice (replaces Feature Overview)
   ];
 
   let activeSteps = isCoach

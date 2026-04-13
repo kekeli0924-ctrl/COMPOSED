@@ -68,6 +68,10 @@ function App() {
   // them through onboarding (with an extra "pick a username" step), then exchange
   // the pendingToken for real tokens at /google/complete. null if not in Google flow.
   const [googleFlow, setGoogleFlow] = useState(null);
+  // Step 6: first-session mode. Set during onboarding completion. When the main
+  // app mounts, if this is 'quick' or 'video', auto-navigate to SessionLogger.
+  // Consumed once and cleared so it doesn't re-trigger on rerender.
+  const [pendingFirstSession, setPendingFirstSession] = useState(null);
 
   // Check for existing token on mount
   useEffect(() => {
@@ -190,6 +194,8 @@ function App() {
                 } catch { /* non-fatal */ }
                 setAuthUser({ userId: result.userId, username: data.username, role: result.role || 'player' });
                 setGoogleFlow(null);
+                // Stash first-session mode so AppMain auto-navigates on mount
+                if (data.firstSessionMode) setPendingFirstSession(data.firstSessionMode);
                 setAuthFlow('done');
               } catch {
                 // eslint-disable-next-line no-alert
@@ -241,6 +247,8 @@ function App() {
                 } catch { /* ignore */ }
               }
             }
+            // Stash first-session mode so AppMain auto-navigates on mount
+            if (onboardingData?.firstSessionMode) setPendingFirstSession(onboardingData.firstSessionMode);
             setAuthFlow('done');
           }}
           onBack={() => setAuthFlow('onboarding')}
@@ -258,13 +266,13 @@ function App() {
 
   // Step 4: Main app (authenticated)
   if (authFlow === 'done' && authUser) {
-    return <AppMain authUser={authUser} onLogout={handleLogout} />;
+    return <AppMain authUser={authUser} onLogout={handleLogout} pendingFirstSession={pendingFirstSession} onFirstSessionConsumed={() => setPendingFirstSession(null)} />;
   }
 
   return null;
 }
 
-function AppMain({ authUser, onLogout }) {
+function AppMain({ authUser, onLogout, pendingFirstSession, onFirstSessionConsumed }) {
   // Persistent state (API-backed)
   const [sessions, setSessions, sessionsLoaded] = useApiCollection('/sessions', []);
   const [scoutingReports] = useApiCollection('/scouting/reports', []);
@@ -330,6 +338,25 @@ function AppMain({ authUser, onLogout }) {
   const [showClearDouble, setShowClearDouble] = useState(false);
   const [exporting, setExporting] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Step 6: auto-navigate to SessionLogger on first mount if the user picked
+  // a first-session mode during onboarding. Consumed once and cleared so it
+  // doesn't re-fire on rerenders. Uses a small delay to let API hooks hydrate.
+  useEffect(() => {
+    if (!pendingFirstSession) return;
+    const timer = setTimeout(() => {
+      setActiveTab('log');
+      setTimeout(() => {
+        if (pendingFirstSession === 'video') {
+          window.dispatchEvent(new CustomEvent('show-video-upload'));
+        } else {
+          window.dispatchEvent(new CustomEvent('show-manual-log'));
+        }
+      }, 200);
+      onFirstSessionConsumed?.();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [pendingFirstSession, onFirstSessionConsumed]);
 
   // Parent-specific state
   const [parentChildren, setParentChildren] = useState([]);
