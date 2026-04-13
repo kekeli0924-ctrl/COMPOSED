@@ -1020,7 +1020,7 @@ function AppMain({ authUser, onLogout, pendingFirstSession, onFirstSessionConsum
           <SessionHistory sessions={sessions} customDrills={customDrills} onEdit={handleEditSession} onDelete={handleDeleteSession} onView={handleViewSession} onBack={() => setActiveTab(previousTab)} />
         </div>
         <div className={activeTab === 'pace' ? '' : 'hidden'}>
-          <PaceTab sessions={sessions} onViewMetric={handleViewMetric} ageGroup={settings.ageGroup} skillLevel={settings.skillLevel} playerIdentity={settings.playerIdentity} position={Array.isArray(settings.position) ? settings.position[0] : settings.position} />
+          <PaceTab sessions={sessions} onViewMetric={handleViewMetric} ageGroup={settings.ageGroup} skillLevel={settings.skillLevel} playerIdentity={settings.playerIdentity} position={Array.isArray(settings.position) ? settings.position[0] : settings.position} idpGoals={idpGoals} parentVisibility={parentVisibility} settings={settings} />
         </div>
         <div className={activeTab === 'plan' ? '' : 'hidden'}>
           <PlanWeekView

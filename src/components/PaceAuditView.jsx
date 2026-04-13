@@ -2,137 +2,16 @@ import { useMemo } from 'react';
 import { Card } from './ui/Card';
 import { computePace } from '../utils/pace';
 import { getPaceLabel as getIdentityPaceLabel } from '../utils/identity';
-
-// ── Constants ────────────────────────────────────────────────────────────────
-
-// Position weight table — imported conceptually from pace.js. We read it from
-// the pace output's `.position` field + this local map so we never duplicate
-// the actual calculation logic. If pace.js changes its weights, update here.
-// (Ideally pace.js would export POSITION_WEIGHTS, but we're not modifying it.)
-const POSITION_WEIGHTS = {
-  Striker:  { shooting: 0.40, passing: 0.10, consistency: 0.20, duration: 0.10, load: 0.20 },
-  Winger:   { shooting: 0.25, passing: 0.15, consistency: 0.20, duration: 0.15, load: 0.25 },
-  CAM:      { shooting: 0.25, passing: 0.30, consistency: 0.20, duration: 0.10, load: 0.15 },
-  CDM:      { shooting: 0.05, passing: 0.35, consistency: 0.25, duration: 0.15, load: 0.20 },
-  CB:       { shooting: 0.05, passing: 0.30, consistency: 0.25, duration: 0.20, load: 0.20 },
-  GK:       { shooting: 0.05, passing: 0.15, consistency: 0.30, duration: 0.20, load: 0.30 },
-  Fullback: { shooting: 0.10, passing: 0.20, consistency: 0.25, duration: 0.15, load: 0.30 },
-  CM:       { shooting: 0.10, passing: 0.30, consistency: 0.25, duration: 0.15, load: 0.20 },
-  General:  { shooting: 0.25, passing: 0.20, consistency: 0.25, duration: 0.15, load: 0.15 },
-};
-
-const METRIC_NAMES = {
-  shooting: 'Shot accuracy',
-  passing: 'Pass completion',
-  consistency: 'Sessions per week',
-  duration: 'Avg session length',
-  load: 'Training load',
-};
-
-const METRIC_UNITS = {
-  shooting: '%',
-  passing: '%',
-  consistency: '',
-  duration: 'min',
-  load: '',
-};
+import {
+  POSITION_WEIGHTS, METRIC_NAMES, formatMetricValue,
+  generatePlainEnglishSummary,
+} from '../utils/paceReport';
 
 const PACE_COLORS = {
   accelerating: '#16A34A',
   steady: '#D97706',
   stalling: '#DC2626',
 };
-
-// ── Plain-English sentence generator ─────────────────────────────────────────
-
-// NOTE: computeMetricPace returns shooting/passing values that are already
-// percentages (e.g. 31 for 31%, not 0.31). Do NOT multiply by 100 again.
-function formatMetricValue(key, value) {
-  if (value == null) return '—';
-  if (key === 'shooting' || key === 'passing') {
-    return `${Math.round(value)}%`;
-  }
-  if (key === 'duration') return `${Math.round(value)} min`;
-  if (key === 'consistency') return `${value} session${value !== 1 ? 's' : ''}`;
-  if (key === 'load') return `${Math.round(value)}`;
-  return `${value}`;
-}
-
-function generatePlainEnglishSummary(pace, sessions) {
-  if (!pace) return null;
-
-  const { overall, metrics } = pace;
-
-  // No-data case
-  if (overall.velocityPct == null) {
-    return "Your Pace will start showing trends after your second week of training. Right now we're recording your baseline.";
-  }
-
-  // Gather ranked contributors (biggest absolute movers, weighted by position importance)
-  const weights = POSITION_WEIGHTS[pace.position] || POSITION_WEIGHTS.General;
-  const movers = Object.entries(metrics)
-    .filter(([, m]) => m != null && m.velocityPct != null)
-    .map(([key, m]) => ({
-      key,
-      name: METRIC_NAMES[key],
-      velocity: m.velocityPct,
-      weight: weights[key] || 0,
-      // "Impact" combines how much it moved with how much it matters
-      impact: Math.abs(m.velocityPct) * (weights[key] || 0),
-      thisWeek: m.thisWeek,
-      lastWeek: m.lastWeek,
-    }))
-    .sort((a, b) => b.impact - a.impact);
-
-  if (movers.length === 0) {
-    return "Not enough metric data to explain the movement yet. Keep logging sessions with stats.";
-  }
-
-  const delta = overall.velocityPct;
-  const absDelta = Math.abs(delta);
-
-  // Flat case: |delta| < 1%
-  if (absDelta < 1) {
-    return "Your Pace is roughly the same as last week — your key metrics held steady.";
-  }
-
-  // Pick the 1–2 biggest contributors
-  const top = movers.slice(0, 2);
-  const direction = delta > 0 ? 'went up' : 'dropped';
-
-  const describeMove = (m) => {
-    if (m.key === 'consistency') {
-      const diff = (m.thisWeek || 0) - (m.lastWeek || 0);
-      if (diff > 0) return `you logged ${diff} more session${diff > 1 ? 's' : ''} this week`;
-      if (diff < 0) return `you trained ${Math.abs(diff)} fewer time${Math.abs(diff) > 1 ? 's' : ''} this week`;
-      return 'your session count held steady';
-    }
-    if (m.key === 'shooting' || m.key === 'passing') {
-      const from = m.lastWeek != null ? `${Math.round(m.lastWeek)}%` : '—';
-      const to = m.thisWeek != null ? `${Math.round(m.thisWeek)}%` : '—';
-      const label = m.key === 'shooting' ? 'shot accuracy' : 'pass completion';
-      if (m.velocity > 0) return `your ${label} improved from ${from} to ${to}`;
-      return `your ${label} dropped from ${from} to ${to}`;
-    }
-    if (m.key === 'duration') {
-      const from = m.lastWeek != null ? `${Math.round(m.lastWeek)}m` : '—';
-      const to = m.thisWeek != null ? `${Math.round(m.thisWeek)}m` : '—';
-      if (m.velocity > 0) return `your average session grew from ${from} to ${to}`;
-      return `your average session shrank from ${from} to ${to}`;
-    }
-    if (m.key === 'load') {
-      if (m.velocity > 0) return 'your training volume and intensity increased';
-      return 'your training volume and intensity decreased';
-    }
-    return `${m.name.toLowerCase()} ${m.velocity > 0 ? 'improved' : 'declined'}`;
-  };
-
-  if (top.length === 1) {
-    return `Your Pace ${direction} because ${describeMove(top[0])}.`;
-  }
-
-  return `Your Pace ${direction} because ${describeMove(top[0])} and ${describeMove(top[1])}.`;
-}
 
 // ── Session list for this period ─────────────────────────────────────────────
 

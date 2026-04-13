@@ -1,10 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { BarChart, Bar, LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, ReferenceLine, Cell } from 'recharts';
 import { Card } from './ui/Card';
 import { computePace } from '../utils/pace';
 import { getAverageStat, getShotPercentage, getPassPercentage, getWeeklyLoads, getCurrentWeekSessionCount } from '../utils/stats';
 import { BENCHMARKS, calculatePercentile } from '../utils/benchmarks';
 import { getPaceLabel, getPaceNarrative, getPeerPrefix } from '../utils/identity';
+import { gatherCoachReportData } from '../utils/paceReport';
+import { renderCoachReportCard, shareCanvas } from '../utils/shareCard';
 
 const PACE_COLORS = {
   accelerating: '#16A34A',
@@ -340,7 +342,8 @@ function PeerContextCard({ pace, sessions, ageGroup, skillLevel, playerIdentity 
   );
 }
 
-export function PaceTab({ sessions = [], onViewMetric, ageGroup, skillLevel, playerIdentity, position }) {
+export function PaceTab({ sessions = [], onViewMetric, ageGroup, skillLevel, playerIdentity, position, idpGoals = [], parentVisibility = {}, settings = {} }) {
+  const [sharing, setSharing] = useState(false);
   const pace = useMemo(() => computePace(sessions, 4, position), [sessions, position]);
 
   // Weekly history for bar chart
@@ -399,6 +402,32 @@ export function PaceTab({ sessions = [], onViewMetric, ageGroup, skillLevel, pla
 
       {/* Hero Circle — tappable when onViewMetric is available */}
       <PaceHeroCircle pace={pace} playerIdentity={playerIdentity} onTap={onViewMetric ? () => onViewMetric('pace-audit') : undefined} />
+
+      {/* Share with coach — generates a one-page image summary */}
+      <div className="flex justify-center">
+        <button
+          type="button"
+          disabled={sharing}
+          onClick={async () => {
+            setSharing(true);
+            try {
+              const data = gatherCoachReportData({ sessions, settings, idpGoals, parentVisibility });
+              const canvas = renderCoachReportCard(data);
+              await shareCanvas(canvas);
+            } catch (err) {
+              console.error('Coach Report generation failed:', err);
+              // Inline fallback — no error screen, no modal
+            }
+            setSharing(false);
+          }}
+          className="text-xs text-accent font-medium flex items-center gap-1.5 hover:underline disabled:opacity-50"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+          </svg>
+          {sharing ? 'Generating…' : 'Share with coach'}
+        </button>
+      </div>
 
       {/* Recommendation */}
       {pace.recommendation?.text && (
