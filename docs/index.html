@@ -755,6 +755,29 @@ footer .logo em { color: var(--gold-dark); font-style: italic; }
   color: var(--navy);
   margin: 1.75rem 0;
 }
+
+/* ── Scout section ───────────────────────────────────────── */
+.scout-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: clamp(2.5rem, 5vw, 5rem);
+  align-items: center;
+  margin-top: 3rem;
+}
+@media (max-width: 860px) {
+  .scout-grid { grid-template-columns: 1fr; }
+}
+.scout-copy > * + * { margin-top: 1.25rem; }
+.scout-copy .file-ref {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--gold-dark);
+  letter-spacing: 0.05em;
+  margin-top: 0.5rem;
+}
+.scout-visual { display: flex; justify-content: center; }
+.scout-visual .phone-shell { max-width: 16rem; width: 100%; }
 </style>
 </head>
 <body>
@@ -767,6 +790,7 @@ footer .logo em { color: var(--gold-dark); font-style: italic; }
       <a href="#how">How</a>
       <a href="#problem">Problem</a>
       <a href="#pace">Pace</a>
+      <a href="#scout">Scout</a>
       <a href="#screens">Screens</a>
       <a href="#stack">Stack</a>
       <a href="#engineering">Engineering</a>
@@ -960,10 +984,41 @@ footer .logo em { color: var(--gold-dark); font-style: italic; }
 
 <hr class="rule">
 
+<!-- ══ PRE-MATCH SCOUT ════════════════════════════════════════════ -->
+<section id="scout" class="enter">
+  <div class="wrap">
+    <div class="mono" style="margin-bottom: 1rem;">05 &nbsp;·&nbsp; Pre-match scout</div>
+    <h2 class="h-lead" style="max-width: 20ch;">A scouting report on the next opponent.</h2>
+
+    <div class="scout-grid">
+      <div class="scout-copy">
+        <p class="lede">
+          Enter an opponent's name. The generator classifies their playing style from prior
+          matches, picks a warm-up session that counters it, and hands the coach a brief they'd
+          otherwise write by hand the night before the game.
+        </p>
+        <p class="lede">
+          Rules-based detection runs first. Gemini fills in the narrative when it's available.
+          A seeded PRNG keeps the same opponent producing the same warm-up, so repeat runs are
+          deterministic.
+        </p>
+        <span class="file-ref">services/gamePlanGenerator.js &nbsp;·&nbsp; 451 lines &nbsp;·&nbsp; routes/scouting.js</span>
+      </div>
+      <div class="scout-visual">
+        <div class="phone-shell phone-real">
+          <img src="assets/app-scout.png" alt="Scouting Reports screen listing FC Barcelona, FC Thunder, and FC Lightning with Ready and Failed status tags" loading="lazy">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
 <!-- ══ SCREENSHOTS (REAL APP) ══════════════════════════════════════ -->
 <section id="screens" class="enter">
   <div class="wrap">
-    <div class="mono" style="margin-bottom: 1rem;">05 &nbsp;·&nbsp; The output</div>
+    <div class="mono" style="margin-bottom: 1rem;">06 &nbsp;·&nbsp; The output</div>
     <h2 class="h-lead">What the app <em>actually</em> looks like.</h2>
     <p class="lede" style="margin-top: 1rem;">
       Captured from the running dev server. Warm stone background, navy ink, gold accents.
@@ -1010,7 +1065,7 @@ footer .logo em { color: var(--gold-dark); font-style: italic; }
 <!-- ══ TECH STACK ══════════════════════════════════════════════════ -->
 <section id="stack" class="enter">
   <div class="wrap">
-    <div class="mono" style="margin-bottom: 1rem;">06 &nbsp;·&nbsp; Built with</div>
+    <div class="mono" style="margin-bottom: 1rem;">07 &nbsp;·&nbsp; Built with</div>
     <h2 class="h-lead">The stack.</h2>
     <p class="lede" style="margin-top: 1rem;">
       Every dependency pulls its weight. Versions pinned. No framework-of-the-week.
@@ -1086,7 +1141,7 @@ footer .logo em { color: var(--gold-dark); font-style: italic; }
 <!-- ══ ENGINEERING ═════════════════════════════════════════════════ -->
 <section id="engineering" class="enter">
   <div class="wrap">
-    <div class="mono" style="margin-bottom: 1rem;">07 &nbsp;·&nbsp; Interesting bits</div>
+    <div class="mono" style="margin-bottom: 1rem;">08 &nbsp;·&nbsp; Interesting bits</div>
     <h2 class="h-lead">Four things I'm <em>glad</em> I spent the time on.</h2>
 
     <div class="eng-grid">
@@ -1131,33 +1186,6 @@ footer .logo em { color: var(--gold-dark); font-style: italic; }
         <span class="file">services/gamePlanGenerator.js &nbsp;·&nbsp; 451 lines</span>
       </div>
     </div>
-  </div>
-</section>
-
-<hr class="rule">
-
-<!-- ══ BY THE NUMBERS ══════════════════════════════════════════════ -->
-<section id="numbers" class="enter">
-  <div class="wrap">
-    <div class="mono" style="margin-bottom: 1rem;">08 &nbsp;·&nbsp; By the numbers</div>
-    <h2 class="h-lead">The codebase.</h2>
-
-    <div class="numbers">
-      <div class="num-cell"><div class="big">77</div><div class="cap">Components</div></div>
-      <div class="num-cell"><div class="big">26</div><div class="cap">Route files</div></div>
-      <div class="num-cell"><div class="big">30</div><div class="cap">SQL tables</div></div>
-      <div class="num-cell"><div class="big">28</div><div class="cap">Migrations</div></div>
-      <div class="num-cell"><div class="big">76</div><div class="cap">Drills</div></div>
-      <div class="num-cell"><div class="big">4</div><div class="cap">Programs</div></div>
-      <div class="num-cell"><div class="big">49</div><div class="cap">Program sessions</div></div>
-      <div class="num-cell"><div class="big">5</div><div class="cap">Identity archetypes</div></div>
-    </div>
-
-    <p class="lede" style="margin-top: 2.5rem;">
-      Identity archetypes — Scorer, Speedster, Playmaker, Engine, Rock — each reshape the
-      vocabulary the app uses for the same player. A striker who picks <em>Scorer</em> sees
-      "Scorer's Pace." A midfielder who picks <em>Engine</em> sees "Engine's Pace."
-    </p>
   </div>
 </section>
 
