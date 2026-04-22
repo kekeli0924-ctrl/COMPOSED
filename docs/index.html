@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Composed — Project Showcase</title>
+<meta name="description" content="A soccer training companion that turns every solo session into a position-weighted score coaches can act on and parents can trust. Built with React 19, Express 5, SQLite, and Gemini.">
+<meta name="theme-color" content="#FAFAF8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='74' font-size='84' font-family='serif' font-style='italic' font-weight='500' fill='%231E3A5F' text-anchor='middle'>C</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════════════════════
+   COMPOSED — Project showcase
+   Palette + typography match the actual app (src/index.css):
+   warm off-white bg, navy primary, gold warm accent,
+   Cormorant Garamond + DM Sans.
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* Surfaces — warm stone */
+  --bg:           #FAFAF8;
+  --bg-elevated:  #FFFFFF;
+  --bg-soft:      #F3F1EE;
+  --bg-sunken:    #E8E5E0;
+
+  /* Ink */
+  --ink:          #292524;
+  --ink-dim:      #57534E;
+  --ink-mute:     #8E8880;
+  --ink-soft:     #6B6560;
+
+  /* Lines */
+  --line:         #E8E5E0;
+  --line-soft:    #F3F1EE;
+  --line-strong:  #D5D0C8;
+
+  /* Accent (navy) */
+  --navy:         #1E3A5F;
+  --navy-light:   #2A4A73;
+  --navy-dark:    #162D4A;
+
+  /* Warm accent (gold) */
+  --gold:         #C4956A;
+  --gold-light:   #D4AB85;
+  --gold-dark:    #A67A52;
+  --gold-wash:    rgba(196, 149, 106, 0.10);
+
+  /* Semantic */
+  --green:        #16A34A;
+  --red:          #DC2626;
+
+  --max: 74rem;
+
+  --serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --sans:  'DM Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --mono:  'JetBrains Mono', ui-monospace, Menlo, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: clamp(0.95rem, 0.9rem + 0.2vw, 1.05rem);
+  line-height: 1.55;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-variant-numeric: tabular-nums;
+  overflow-x: hidden;
+}
+
+img, svg { max-width: 100%; display: block; }
+a { color: var(--navy); text-decoration: none; transition: color 0.2s ease; }
+a:hover { color: var(--gold-dark); }
+
+/* ── Typography scale ────────────────────────────────────── */
+.display {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(4rem, 11vw, 11rem);
+  line-height: 0.92;
+  letter-spacing: -0.015em;
+  color: var(--navy);
+}
+.display em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--gold);
+}
+.h-lead {
+  font-family: var(--serif);
+  font-size: clamp(2.1rem, 4.4vw, 3.9rem);
+  line-height: 1.05;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--navy);
+}
+.h-lead em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--gold-dark);
+}
+.h-section {
+  font-family: var(--serif);
+  font-size: clamp(1.6rem, 2.6vw, 2.3rem);
+  line-height: 1.15;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--navy);
+}
+.mono {
+  font-family: var(--mono);
+  font-size: clamp(0.7rem, 0.72rem + 0.1vw, 0.82rem);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.mono strong { color: var(--navy); font-weight: 500; }
+.lede {
+  font-size: clamp(1.05rem, 1vw + 0.65rem, 1.28rem);
+  line-height: 1.55;
+  color: var(--ink-dim);
+  max-width: 58ch;
+}
+.lede strong { color: var(--ink); font-weight: 500; }
+
+/* ── Layout primitives ───────────────────────────────────── */
+.wrap {
+  width: 100%;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 clamp(1.25rem, 4vw, 3rem);
+}
+section {
+  padding: clamp(5rem, 10vh, 9rem) 0;
+  position: relative;
+}
+.rule {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 0;
+}
+
+/* ── Meta bar ────────────────────────────────────────────── */
+.meta-bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(250, 250, 248, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+  padding: 0.85rem 0;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.meta-bar .wrap {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.meta-id { color: var(--navy); font-weight: 500; }
+.meta-id em {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--gold-dark);
+  margin-right: 0.15em;
+}
+.meta-right { color: var(--ink-mute); display: flex; gap: 1.25rem; }
+.meta-right a { color: var(--ink-mute); }
+.meta-right a:hover { color: var(--navy); }
+
+/* ── Hero ────────────────────────────────────────────────── */
+.hero {
+  min-height: 92vh;
+  padding-top: clamp(4rem, 8vh, 7rem);
+  padding-bottom: clamp(4rem, 8vh, 7rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 55% 65% at 85% 35%, rgba(196, 149, 106, 0.14), transparent 55%),
+    radial-gradient(ellipse 45% 55% at 8% 85%, rgba(30, 58, 95, 0.06), transparent 55%);
+  pointer-events: none;
+}
+.hero-inner { position: relative; z-index: 1; }
+.hero-kicker { margin-bottom: 2rem; }
+.hero-title { margin-bottom: 1.75rem; }
+.hero-subhead {
+  max-width: 42ch;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(1.3rem, 1.9vw, 1.9rem);
+  line-height: 1.32;
+  color: var(--ink-soft);
+  margin-bottom: 3rem;
+}
+.hero-subhead strong { font-weight: 500; color: var(--navy); font-style: normal; }
+
+.hero-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-top: 2rem;
+}
+.hero-stat {
+  background: var(--bg);
+  padding: 1.5rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.hero-stat .num {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(2.3rem, 3.6vw, 3.1rem);
+  line-height: 1;
+  color: var(--navy);
+}
+.hero-stat .label {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.18em;
+  color: var(--ink-mute);
+  text-transform: uppercase;
+}
+
+/* ── Two-column ──────────────────────────────────────────── */
+.two-col {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .two-col { grid-template-columns: 1fr; }
+}
+.two-col .copy > * + * { margin-top: 1.25rem; }
+
+/* ── Pace interactive ────────────────────────────────────── */
+.pace-demo {
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  padding: clamp(1.75rem, 3vw, 2.5rem);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 12px 32px rgba(30, 58, 95, 0.05);
+  position: relative;
+}
+.pace-demo-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1.75rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.pace-demo-head .label {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.pace-demo-head .source {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  color: var(--gold-dark);
+  letter-spacing: 0.12em;
+}
+.positions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+.pos-btn {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.65rem 1.1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.pos-btn:hover { border-color: var(--navy); color: var(--navy); }
+.pos-btn.active {
+  background: var(--navy);
+  color: var(--bg);
+  border-color: var(--navy);
+}
+.bars { display: flex; flex-direction: column; gap: 0.8rem; }
+.bar-row {
+  display: grid;
+  grid-template-columns: 7rem 1fr 3rem;
+  align-items: center;
+  gap: 1rem;
+}
+@media (max-width: 640px) {
+  .bar-row { grid-template-columns: 5rem 1fr 2.5rem; gap: 0.75rem; }
+}
+.bar-label {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 0.3s ease;
+}
+.bar-track {
+  height: 0.55rem;
+  background: var(--bg-sunken);
+  border-radius: 0.3rem;
+  overflow: hidden;
+  position: relative;
+}
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-dark) 0%, var(--gold) 100%);
+  border-radius: 0.3rem;
+  transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  width: 20%;
+}
+.bar-pct {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  text-align: right;
+  transition: color 0.3s ease;
+}
+.bar-row.dominant .bar-label { color: var(--navy); }
+.bar-row.dominant .bar-pct { color: var(--gold-dark); font-weight: 500; }
+.pace-demo-foot {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px dashed var(--line-strong);
+  font-size: 0.92rem;
+  color: var(--ink-dim);
+  line-height: 1.55;
+}
+.pace-demo-foot em {
+  color: var(--gold-dark);
+  font-style: italic;
+  font-family: var(--serif);
+  font-size: 1.1em;
+}
+
+/* ── Steps ───────────────────────────────────────────────── */
+.steps { margin-top: 3rem; }
+.step {
+  display: grid;
+  grid-template-columns: 4rem 1fr;
+  gap: 1.75rem;
+  padding: 1.85rem 0;
+  border-top: 1px solid var(--line);
+  align-items: start;
+}
+.step:last-child { border-bottom: 1px solid var(--line); }
+.step-num {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-style: italic;
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  line-height: 1;
+  color: var(--gold);
+}
+.step-body h3 {
+  font-family: var(--serif);
+  font-size: clamp(1.3rem, 1.8vw, 1.6rem);
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--navy);
+}
+.step-body p {
+  color: var(--ink-dim);
+  line-height: 1.6;
+  max-width: 58ch;
+}
+.step-body p code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  color: var(--navy);
+  background: var(--bg-soft);
+  padding: 0.1em 0.4em;
+  border-radius: 0.25em;
+}
+.step-body .file-ref {
+  display: inline-block;
+  margin-top: 0.8rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--gold-dark);
+  letter-spacing: 0.05em;
+}
+
+/* ── Screenshots ─────────────────────────────────────────── */
+.screens {
+  margin-top: 3rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 2rem;
+  justify-items: center;
+}
+
+/* Real-app screenshot grid */
+.app-screens {
+  margin-top: 3rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  justify-items: center;
+  align-items: start;
+}
+.app-shot {
+  max-width: 17rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+.shot-tag {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-dark);
+  background: var(--gold-wash);
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  margin-bottom: 1rem;
+  align-self: flex-start;
+}
+.app-shot figcaption {
+  font-size: 0.88rem;
+  color: var(--ink-dim);
+  line-height: 1.5;
+  margin-top: 1.1rem;
+  text-align: left;
+  max-width: 100%;
+}
+.app-shot figcaption strong {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 1.1em;
+  color: var(--navy);
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+/* Real-app phone shell — the app itself is warm-light, so drop the dark bezel */
+.phone-real {
+  background: linear-gradient(145deg, #1C1917 0%, #0f0c0b 100%);
+}
+.phone-real img {
+  object-fit: cover;
+  object-position: top;
+  /* Scale the very tall 2x DPR shots gracefully */
+}
+.phone-shell {
+  width: 100%;
+  max-width: 18rem;
+  aspect-ratio: 9 / 18;
+  background: linear-gradient(145deg, #292524 0%, #14100F 100%);
+  border-radius: 2rem;
+  padding: 0.5rem;
+  box-shadow:
+    0 2px 4px rgba(30, 58, 95, 0.08),
+    0 20px 50px rgba(30, 58, 95, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  position: relative;
+  transition: transform 0.4s ease;
+}
+.phone-shell:hover { transform: translateY(-6px); }
+.phone-shell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 1.6rem;
+  display: block;
+}
+.phone-caption {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  text-align: center;
+  margin-top: 1rem;
+}
+.phone-caption strong { color: var(--gold-dark); font-weight: 500; }
+
+/* ── Tech stack ──────────────────────────────────────────── */
+.stack-grid {
+  margin-top: 3rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  background: var(--bg-elevated);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.stack-item {
+  padding: 1.5rem 1.35rem;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: background 0.25s ease;
+}
+.stack-item:hover { background: var(--bg-soft); }
+.stack-item .name {
+  font-family: var(--serif);
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: var(--navy);
+}
+.stack-item .ver {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--gold-dark);
+  letter-spacing: 0.1em;
+}
+.stack-item .desc {
+  font-size: 0.88rem;
+  color: var(--ink-dim);
+  line-height: 1.5;
+  margin-top: 0.35rem;
+}
+
+/* ── Engineering cards ───────────────────────────────────── */
+.eng-grid {
+  margin-top: 3rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 1.5rem;
+}
+.eng-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 1.85rem 1.6rem;
+  transition: border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+}
+.eng-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(30, 58, 95, 0.08);
+}
+.eng-card .tag {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  color: var(--gold-dark);
+  text-transform: uppercase;
+  margin-bottom: 0.85rem;
+}
+.eng-card h3 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 1.55rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.2;
+  color: var(--navy);
+}
+.eng-card p {
+  color: var(--ink-dim);
+  font-size: 0.93rem;
+  line-height: 1.6;
+  margin-bottom: 0.85rem;
+}
+.eng-card .file {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--ink-mute);
+  letter-spacing: 0.05em;
+  display: block;
+}
+
+/* ── Numbers strip ───────────────────────────────────────── */
+.numbers {
+  margin-top: 3rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+.num-cell {
+  background: var(--bg-elevated);
+  padding: 1.5rem 1rem;
+  text-align: center;
+  transition: background 0.25s ease;
+}
+.num-cell:hover { background: var(--bg-soft); }
+.num-cell .big {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(2.4rem, 3.5vw, 3.2rem);
+  line-height: 1;
+  color: var(--navy);
+}
+.num-cell .cap {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-top: 0.6rem;
+}
+
+/* ── Pace curve SVG in hero ──────────────────────────────── */
+.hero-curve {
+  position: absolute;
+  right: -6%;
+  bottom: 6%;
+  width: 62%;
+  max-width: 46rem;
+  opacity: 0.9;
+  pointer-events: none;
+}
+@media (max-width: 860px) { .hero-curve { opacity: 0.35; } }
+.hero-curve path.line {
+  fill: none;
+  stroke: var(--navy);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  opacity: 0.85;
+  animation: draw 3.2s cubic-bezier(0.22, 1, 0.36, 1) 0.4s forwards;
+}
+.hero-curve path.fill-under {
+  fill: url(#paceGrad);
+  opacity: 0;
+  animation: fadeIn 1.4s ease-out 2.2s forwards;
+}
+.hero-curve circle.dot {
+  fill: var(--gold);
+  stroke: var(--bg);
+  stroke-width: 3;
+  opacity: 0;
+  animation: pop 0.6s ease-out 3.2s forwards;
+}
+@keyframes draw    { to { stroke-dashoffset: 0; } }
+@keyframes pop     { to { opacity: 1; } }
+@keyframes fadeIn  { to { opacity: 1; } }
+
+/* ── Reveal on scroll ────────────────────────────────────── */
+.enter {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.enter.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .enter { opacity: 1; transform: none; }
+  .hero-curve path.line { animation: none; stroke-dashoffset: 0; }
+  .hero-curve path.fill-under { animation: none; opacity: 1; }
+  .hero-curve circle.dot { animation: none; opacity: 1; }
+}
+
+/* ── Footer ──────────────────────────────────────────────── */
+footer {
+  padding: 3rem 0 4rem;
+  border-top: 1px solid var(--line);
+  background: var(--bg-soft);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+footer .wrap {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+footer .logo {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--navy);
+}
+footer .logo em { color: var(--gold-dark); font-style: italic; }
+
+/* ── Small helpers ───────────────────────────────────────── */
+.eyebrow {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-dark);
+  margin-bottom: 1.1rem;
+  padding-left: 1.5rem;
+  position: relative;
+}
+.eyebrow::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 1rem;
+  height: 1px;
+  background: var(--gold);
+  transform: translateY(-50%);
+}
+.callout {
+  background: var(--gold-wash);
+  border-left: 2px solid var(--gold);
+  padding: 1.1rem 1.35rem;
+  border-radius: 0.25rem;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.15rem;
+  line-height: 1.45;
+  color: var(--navy);
+  margin: 1.75rem 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ══ META BAR ═════════════════════════════════════════════════════ -->
+<div class="meta-bar">
+  <div class="wrap">
+    <span class="meta-id"><em>C</em>omposed &nbsp;·&nbsp; Project showcase &nbsp;·&nbsp; v0.1</span>
+    <span class="meta-right">
+      <a href="#how">How</a>
+      <a href="#problem">Problem</a>
+      <a href="#pace">Pace</a>
+      <a href="#screens">Screens</a>
+      <a href="#stack">Stack</a>
+      <a href="#engineering">Engineering</a>
+    </span>
+  </div>
+</div>
+
+<!-- ══ HERO ════════════════════════════════════════════════════════ -->
+<header class="hero">
+  <svg class="hero-curve" viewBox="0 0 600 260" aria-hidden="true">
+    <defs>
+      <linearGradient id="paceGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"   stop-color="#C4956A" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="#C4956A" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path class="fill-under" d="M 20 220 C 90 210, 140 198, 200 170 S 320 110, 380 80 S 500 30, 580 18 L 580 240 L 20 240 Z"/>
+    <path class="line"       d="M 20 220 C 90 210, 140 198, 200 170 S 320 110, 380 80 S 500 30, 580 18"/>
+    <circle class="dot" cx="580" cy="18" r="7"/>
+  </svg>
+
+  <div class="wrap hero-inner">
+    <div class="mono hero-kicker">01 &nbsp;·&nbsp; A soccer training companion</div>
+    <h1 class="display hero-title">
+      Compo<em>s</em>ed.
+    </h1>
+    <p class="hero-subhead">
+      A web app that turns every solo training session — backyard, wall, empty park — into a
+      <em>position-weighted</em> score <strong>coaches can act on</strong> and
+      <strong>parents can trust.</strong>
+    </p>
+
+    <div class="hero-strip">
+      <div class="hero-stat">
+        <span class="num">77</span>
+        <span class="label">React components</span>
+      </div>
+      <div class="hero-stat">
+        <span class="num">26</span>
+        <span class="label">API routes</span>
+      </div>
+      <div class="hero-stat">
+        <span class="num">30</span>
+        <span class="label">SQLite tables</span>
+      </div>
+      <div class="hero-stat">
+        <span class="num">28</span>
+        <span class="label">Migrations</span>
+      </div>
+      <div class="hero-stat">
+        <span class="num">76</span>
+        <span class="label">Seeded drills</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<hr class="rule">
+
+<!-- ══ HOW IT WORKS ═══════════════════════════════════════════════ -->
+<section id="how" class="enter">
+  <div class="wrap">
+    <div class="mono" style="margin-bottom: 1rem;">02 &nbsp;·&nbsp; How it works</div>
+    <h2 class="h-lead" style="max-width: 22ch;">Log <em>&rarr;</em> score <em>&rarr;</em> see <em>&rarr;</em> structure <em>&rarr;</em> prove.</h2>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <h3>Player logs the work</h3>
+          <p>Quick session form (one tap) or full logger — or a phone clip. Session drafts survive a dropped connection via IndexedDB, so a player can finish entering on the subway.</p>
+          <span class="file-ref">SessionLogger.jsx &nbsp;·&nbsp; QuickSessionForm.jsx &nbsp;·&nbsp; idb</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <h3>The app scores it</h3>
+          <p>Sessions feed the Pace calculator. Clips get H.264-compressed in the browser with <code>ffmpeg.wasm</code>, uploaded resumably via Tus, sampled into frames, and analyzed by Google's Gemini 2.5 Pro (with a Flash fallback) — returning time-coded stats: shots, on-target, foot usage, pass accuracy.</p>
+          <span class="file-ref">services/videoAnalyzer.js &nbsp;·&nbsp; services/frameExtractor.js</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <h3>Coach sees the squad</h3>
+          <p>Squad Pulse — one scannable view showing who trained, who's stalling, who's accelerating. Three batched queries on the backend regardless of squad size. Coaches push assigned daily plans from the same screen.</p>
+          <span class="file-ref">CoachSquadDashboard.jsx &nbsp;·&nbsp; routes/roster.js</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-body">
+          <h3>4-week blocks anchor to real tests</h3>
+          <p>LSPT and LSST benchmarks (Loughborough passing + shooting) at baseline, week 2, and week 4. Scores percentile-ranked against FA England and US Soccer norms. Elite / Advanced / Competitive / Developing / Lower.</p>
+          <span class="file-ref">routes/blocks.js &nbsp;·&nbsp; utils/benchmarks.js</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">05</div>
+        <div class="step-body">
+          <h3>One revocable link proves it</h3>
+          <p>Coach generates a <code>/r/:slug</code> URL with a frozen snapshot. Parent opens it on any device — no app, no account, no login. One click revokes it and anyone who still has the URL sees a "no longer available" page, not a crash.</p>
+          <span class="file-ref">routes/digests.js &nbsp;·&nbsp; PublicDigest.jsx</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ══ PROBLEM ═════════════════════════════════════════════════════ -->
+<section id="problem" class="enter">
+  <div class="wrap two-col">
+    <div class="mono">03 &nbsp;·&nbsp; The problem</div>
+    <div class="copy">
+      <h2 class="h-lead">Youth players train alone. <em>Coaches see none of it.</em></h2>
+      <p class="lede">
+        Between team sessions, serious players put in hours nobody counts — at the wall, in the
+        backyard, at the empty park. When they show up on game day, they look the same as the
+        kids who did nothing. Existing apps flatten everyone into one generic "score" — a
+        striker's and a goalkeeper's reduced to the same number.
+      </p>
+      <div class="callout">
+        Measurement that doesn't know what position you play isn't measurement — it's noise.
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ══ THE IDEA — PACE ═════════════════════════════════════════════ -->
+<section id="pace" class="enter">
+  <div class="wrap">
+    <div class="mono" style="margin-bottom: 1rem;">04 &nbsp;·&nbsp; The core idea</div>
+    <h2 class="h-lead" style="margin-bottom: 1.5rem;">One score per player. <em>Recomputed for who they actually are.</em></h2>
+    <p class="lede" style="margin-bottom: 3rem;">
+      <strong>Pace</strong> is a 0&ndash;100 score computed from five sub-signals — shooting,
+      passing, consistency, duration, load — weighted differently by position. Pick a role below
+      and watch the math redistribute.
+    </p>
+
+    <div class="pace-demo">
+      <div class="pace-demo-head">
+        <span class="label">Pace weight table</span>
+        <span class="source">src/utils/pace.js &nbsp;·&nbsp; 237 lines</span>
+      </div>
+
+      <div class="positions" id="positions">
+        <button class="pos-btn active" data-pos="striker">Striker</button>
+        <button class="pos-btn" data-pos="winger">Winger</button>
+        <button class="pos-btn" data-pos="cam">CAM</button>
+        <button class="pos-btn" data-pos="cdm">CDM</button>
+        <button class="pos-btn" data-pos="cb">Centre-back</button>
+        <button class="pos-btn" data-pos="gk">Goalkeeper</button>
+      </div>
+
+      <div class="bars" id="bars">
+        <div class="bar-row" data-key="shooting">
+          <span class="bar-label">Shooting</span>
+          <div class="bar-track"><div class="bar-fill"></div></div>
+          <span class="bar-pct">40%</span>
+        </div>
+        <div class="bar-row" data-key="passing">
+          <span class="bar-label">Passing</span>
+          <div class="bar-track"><div class="bar-fill"></div></div>
+          <span class="bar-pct">10%</span>
+        </div>
+        <div class="bar-row" data-key="consistency">
+          <span class="bar-label">Consistency</span>
+          <div class="bar-track"><div class="bar-fill"></div></div>
+          <span class="bar-pct">20%</span>
+        </div>
+        <div class="bar-row" data-key="duration">
+          <span class="bar-label">Duration</span>
+          <div class="bar-track"><div class="bar-fill"></div></div>
+          <span class="bar-pct">10%</span>
+        </div>
+        <div class="bar-row" data-key="load">
+          <span class="bar-label">Load</span>
+          <div class="bar-track"><div class="bar-fill"></div></div>
+          <span class="bar-pct">20%</span>
+        </div>
+      </div>
+
+      <div class="pace-demo-foot">
+        A striker's Pace weights shooting at <em>40%</em>; a centre-back's weights it at <em>5%</em>.
+        Two players can have the same raw numbers and very different Paces — which is the whole point.
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ══ SCREENSHOTS (REAL APP) ══════════════════════════════════════ -->
+<section id="screens" class="enter">
+  <div class="wrap">
+    <div class="mono" style="margin-bottom: 1rem;">05 &nbsp;·&nbsp; The output</div>
+    <h2 class="h-lead">What the app <em>actually</em> looks like.</h2>
+    <p class="lede" style="margin-top: 1rem;">
+      Live screens, captured straight from the dev server. Warm stone background, navy ink,
+      gold accents — <strong>one number, one verb, one curve</strong> per view. No feature
+      matrix, no dopamine maze.
+    </p>
+
+    <div class="app-screens">
+      <figure class="app-shot">
+        <div class="shot-tag">Player</div>
+        <div class="phone-shell phone-real">
+          <img src="assets/app-player-home.png" alt="Player home screen showing Scorer Pace -100% STALLING and today's training" loading="lazy">
+        </div>
+        <figcaption><strong>Home.</strong> The one-number pitch — your Pace, your last session, today's training.</figcaption>
+      </figure>
+
+      <figure class="app-shot">
+        <div class="shot-tag">Player</div>
+        <div class="phone-shell phone-real">
+          <img src="assets/app-player-pace.png" alt="Player Pace detail view showing the Scorer's Pace dial and diagnostic copy" loading="lazy">
+        </div>
+        <figcaption><strong>Pace detail.</strong> Tap the number and it defends itself — "Players like you" percentile, what dropped, what to do.</figcaption>
+      </figure>
+
+      <figure class="app-shot">
+        <div class="shot-tag">Coach</div>
+        <div class="phone-shell phone-real">
+          <img src="assets/app-coach-home.png" alt="Coach squad view showing the 4-week block, Pilot Test Block, and all players with stall status" loading="lazy">
+        </div>
+        <figcaption><strong>Squad.</strong> Every player, one scroll. Red dots = stalling. Blocks are listed above the roster.</figcaption>
+      </figure>
+
+      <figure class="app-shot">
+        <div class="shot-tag">Coach</div>
+        <div class="phone-shell phone-real">
+          <img src="assets/app-coach-roster.png" alt="Coach roster view showing per-player compliance percentages and assigned plan counts" loading="lazy">
+        </div>
+        <figcaption><strong>Roster.</strong> Per-player: this-week sessions, 30-day volume, compliance with assigned plans.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ══ TECH STACK ══════════════════════════════════════════════════ -->
+<section id="stack" class="enter">
+  <div class="wrap">
+    <div class="mono" style="margin-bottom: 1rem;">06 &nbsp;·&nbsp; Built with</div>
+    <h2 class="h-lead">Boring, reliable, <em>exact.</em></h2>
+    <p class="lede" style="margin-top: 1rem;">
+      Every dependency pulls its weight. Versions pinned. No framework-of-the-week.
+    </p>
+
+    <div class="stack-grid">
+      <div class="stack-item">
+        <span class="name">React</span>
+        <span class="ver">v19.2</span>
+        <span class="desc">One codebase, three roles (player, coach, parent). Conditional routing instead of three apps.</span>
+      </div>
+      <div class="stack-item">
+        <span class="name">Vite</span>
+        <span class="ver">v7.3</span>
+        <span class="desc">Dev server + code-split production build. Dev proxy to the Express backend on :3001.</span>
+      </div>
+      <div class="stack-item">
+        <span class="name">Tailwind CSS</span>
+        <span class="ver">v4.2</span>
+        <span class="desc">Utility-first styling. Zero runtime cost, zero CSS-in-JS tax.</span>
+      </div>
+      <div class="stack-item">
+        <span class="name">Express</span>
+        <span class="ver">v5.2</span>
+        <span class="desc">Thin API surface. Helmet, rate-limit, CORS, Zod validation on every body.</span>
+      </div>
+      <div class="stack-item">
+        <span class="name">better-sqlite3</span>
+        <span class="ver">v12.6</span>
+        <span class="desc">Synchronous SQLite. One file, zero-latency reads, painless backup.</span>
+      </div>
+      <div class="stack-item">
+        <span class="name">@ffmpeg/ffmpeg</span>
+        <span class="ver">v0.12</span>
+        <span class="desc">H.264 encoding inside the browser — the video never leaves the phone raw.</span>
+      </div>
+      <div class="stack-item">
+        <span class="name">tus-js-client</span>
+        <span class="ver">v4.3</span>
+        <span class="desc">Resumable uploads. Survives the subway tunnel.</span>
+      </div>
+      <div class="stack-item">
+        <span class="name">@google/genai</span>
+        <span class="ver">v1.47</span>
+        <span class="desc">Multimodal model. Reads extracted frames, returns counted stats with timestamps.</span>
+      </div>
+      <div class="stack-item">
+        <span class="name">google-auth-library</span>
+        <span class="ver">v10.6</span>
+        <span class="desc">Google Sign-In via ID-token verification — no OAuth redirect, no client secret.</span>
+      </div>
+      <div class="stack-item">
+        <span class="name">bcryptjs + jsonwebtoken</span>
+        <span class="ver">—</span>
+        <span class="desc">12 bcrypt rounds. JWT access (1h) + refresh (7d). Token-version revocation.</span>
+      </div>
+      <div class="stack-item">
+        <span class="name">Zod</span>
+        <span class="ver">v4.3</span>
+        <span class="desc">Schema-validated request bodies. Contract-first, bottom-up.</span>
+      </div>
+      <div class="stack-item">
+        <span class="name">vite-plugin-pwa</span>
+        <span class="ver">v1.2</span>
+        <span class="desc">Installable from a link. Offline-capable. No app store.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ══ ENGINEERING ═════════════════════════════════════════════════ -->
+<section id="engineering" class="enter">
+  <div class="wrap">
+    <div class="mono" style="margin-bottom: 1rem;">07 &nbsp;·&nbsp; Interesting bits</div>
+    <h2 class="h-lead">Four things I'm <em>glad</em> I spent the time on.</h2>
+
+    <div class="eng-grid">
+      <div class="eng-card">
+        <div class="tag">Math</div>
+        <h3>Position-weighted scoring</h3>
+        <p>
+          Six position tables. Each row is five weights that sum to 1.0. Re-tune any row and the
+          whole app re-ranks. The calculator is a pure function of &lt;sessions, position&gt; —
+          cheap to test, easy to audit.
+        </p>
+        <span class="file">src/utils/pace.js &nbsp;·&nbsp; 237 lines</span>
+      </div>
+      <div class="eng-card">
+        <div class="tag">Client</div>
+        <h3>In-browser video compression</h3>
+        <p>
+          FFmpeg compiled to WebAssembly. A phone clip is H.264-compressed before the first byte
+          leaves the device — kinder to data plans, faster to upload. Tus makes dropped uploads
+          resume instead of restart.
+        </p>
+        <span class="file">@ffmpeg/ffmpeg + @tus/server</span>
+      </div>
+      <div class="eng-card">
+        <div class="tag">Trust</div>
+        <h3>Revocable public digests</h3>
+        <p>
+          22-char base64url slug, frozen snapshot stored server-side, no-auth public route. Coach
+          revokes and anyone who still has the URL sees a "no longer available" page — not a
+          crash, not a 404. The single most important feature for parent-side trust.
+        </p>
+        <span class="file">server/routes/digests.js &nbsp;·&nbsp; 15 KB</span>
+      </div>
+      <div class="eng-card">
+        <div class="tag">AI</div>
+        <h3>Rules-based first, AI second</h3>
+        <p>
+          The game-plan generator runs deterministic rules (opponent style detection, warm-up
+          selection via a seeded PRNG) before falling back to Gemini. Same opponent &rarr; same
+          warm-up. Reliability doesn't depend on the model being available.
+        </p>
+        <span class="file">services/gamePlanGenerator.js &nbsp;·&nbsp; 451 lines</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ══ BY THE NUMBERS ══════════════════════════════════════════════ -->
+<section id="numbers" class="enter">
+  <div class="wrap">
+    <div class="mono" style="margin-bottom: 1rem;">08 &nbsp;·&nbsp; By the numbers</div>
+    <h2 class="h-lead">Scope, <em>not vibes.</em></h2>
+
+    <div class="numbers">
+      <div class="num-cell"><div class="big">77</div><div class="cap">Components</div></div>
+      <div class="num-cell"><div class="big">26</div><div class="cap">Route files</div></div>
+      <div class="num-cell"><div class="big">30</div><div class="cap">SQL tables</div></div>
+      <div class="num-cell"><div class="big">28</div><div class="cap">Migrations</div></div>
+      <div class="num-cell"><div class="big">76</div><div class="cap">Drills</div></div>
+      <div class="num-cell"><div class="big">4</div><div class="cap">Programs</div></div>
+      <div class="num-cell"><div class="big">49</div><div class="cap">Program sessions</div></div>
+      <div class="num-cell"><div class="big">5</div><div class="cap">Identity archetypes</div></div>
+    </div>
+
+    <p class="lede" style="margin-top: 2.5rem;">
+      Identity archetypes — Scorer, Speedster, Playmaker, Engine, Rock — each reshape the
+      vocabulary the app uses for the same player. A striker who picks <em>Scorer</em> sees
+      "Scorer's Pace." A midfielder who picks <em>Engine</em> sees "Engine's Pace." Same math,
+      different story.
+    </p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ══ WHAT I LEARNED ══════════════════════════════════════════════ -->
+<section id="learned" class="enter">
+  <div class="wrap two-col">
+    <div class="mono">09 &nbsp;·&nbsp; Takeaways</div>
+    <div class="copy">
+      <h2 class="h-lead">What I'd do again. <em>And what I'd change.</em></h2>
+      <p class="lede">
+        The hardest product decision wasn't a feature — it was figuring out that a
+        <strong>number is only useful if you can defend how it was computed.</strong> Adding the
+        Pace audit view (tap the number, see the exact sub-signals and weights) turned a black
+        box into something a coach can argue with. That one view did more for trust than any
+        marketing copy.
+      </p>
+      <p class="lede">
+        Biggest regret: not starting with multi-user isolation from day one. Ten tables still
+        have <code>user_id INTEGER DEFAULT 1</code> leftover from the single-user prototype —
+        every query writes a real ID, but the default is a latent footgun. Refactor is queued.
+      </p>
+      <p class="lede">
+        Next up: a manual "Link Google to existing account" flow for the typed-unverified-email
+        case, an email password reset, and an eval harness for the AI chat surface before I
+        promote it out of Labs.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ══════════════════════════════════════════════════════ -->
+<footer>
+  <div class="wrap">
+    <span class="logo"><em>C</em>omposed</span>
+    <span>React + Express + SQLite + Gemini</span>
+    <span>Built solo &nbsp;·&nbsp; pre-launch 2026</span>
+  </div>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   1. Scroll-reveal
+   ═══════════════════════════════════════════════════════════════ */
+(function () {
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -60px 0px' });
+
+  document.querySelectorAll('.enter').forEach((el) => io.observe(el));
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   2. Pace weight table — interactive position selector
+   These are the REAL weights from src/utils/pace.js
+   ═══════════════════════════════════════════════════════════════ */
+(function () {
+  const WEIGHTS = {
+    striker: { shooting: 0.40, passing: 0.10, consistency: 0.20, duration: 0.10, load: 0.20 },
+    winger:  { shooting: 0.25, passing: 0.15, consistency: 0.20, duration: 0.15, load: 0.25 },
+    cam:     { shooting: 0.25, passing: 0.30, consistency: 0.20, duration: 0.10, load: 0.15 },
+    cdm:     { shooting: 0.05, passing: 0.35, consistency: 0.25, duration: 0.15, load: 0.20 },
+    cb:      { shooting: 0.05, passing: 0.30, consistency: 0.25, duration: 0.20, load: 0.20 },
+    gk:      { shooting: 0.05, passing: 0.15, consistency: 0.30, duration: 0.20, load: 0.30 },
+  };
+
+  const positions = document.getElementById('positions');
+  const bars = document.getElementById('bars');
+
+  function apply(pos) {
+    const w = WEIGHTS[pos];
+    if (!w) return;
+
+    const maxVal = Math.max(...Object.values(w));
+
+    bars.querySelectorAll('.bar-row').forEach((row) => {
+      const key = row.dataset.key;
+      const val = w[key];
+      const pct = Math.round(val * 100);
+      row.querySelector('.bar-fill').style.width = (val / maxVal * 100) + '%';
+      row.querySelector('.bar-pct').textContent = pct + '%';
+      row.classList.toggle('dominant', val === maxVal);
+    });
+  }
+
+  positions.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pos-btn');
+    if (!btn) return;
+    positions.querySelectorAll('.pos-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    apply(btn.dataset.pos);
+  });
+
+  apply('striker');
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   3. Hero & numbers count-up on first view
+   ═══════════════════════════════════════════════════════════════ */
+(function () {
+  const cells = document.querySelectorAll('.hero-stat .num, .num-cell .big');
+  const seen = new WeakSet();
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting || seen.has(entry.target)) return;
+      seen.add(entry.target);
+      const el = entry.target;
+      const target = parseInt(el.textContent, 10);
+      if (isNaN(target)) return;
+      const start = performance.now();
+      const duration = 900;
+      function frame(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        el.textContent = Math.round(target * eased);
+        if (t < 1) requestAnimationFrame(frame);
+        else el.textContent = String(target);
+      }
+      requestAnimationFrame(frame);
+    });
+  }, { threshold: 0.5 });
+  cells.forEach((c) => io.observe(c));
+})();
+</script>
+
+</body>
+</html>
