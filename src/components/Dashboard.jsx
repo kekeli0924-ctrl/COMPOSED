@@ -15,6 +15,51 @@ import { computePace } from '../utils/pace';
 import { getPaceLabel, getIdentityTip, getIdentity, hasAnyIdentity } from '../utils/identity';
 import { getDashboardNudge } from '../utils/nudge';
 import { TeamRankCard } from './TeamRankCard';
+import { useActiveBlock } from '../hooks/useActiveBlock';
+
+// Renders a due-state pill when the player is in an active 4-week block.
+// Priority: benchmark due > session due > active-no-due > nothing.
+// Deliberately a thin wrapper — one pill, one CTA, doesn't redesign the dashboard.
+function BlockDuePill({ onNavigate }) {
+  const { block } = useActiveBlock();
+  if (!block) return null;
+
+  // Benchmark due trumps a session-due — baseline/retest are infrequent and tied
+  // to hard windows; sessions happen twice a week and can slide.
+  if (block.benchmarkDue) {
+    const phaseLabel = { baseline: 'Baseline', retest_1: 'Week 2 retest', retest_2: 'Week 4 retest' }[block.benchmarkDue.phase] || 'Benchmark';
+    return (
+      <button
+        onClick={() => onNavigate?.('benchmarks')}
+        className="w-full text-left bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex items-center gap-3 hover:bg-amber-100 transition-colors"
+      >
+        <span className="text-lg">🎯</span>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-amber-800">{phaseLabel} due</p>
+          <p className="text-[10px] text-amber-700/70">
+            "{block.name}" · record by {block.benchmarkDue.windowTo}
+          </p>
+        </div>
+        <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    );
+  }
+
+  if (block.sessionDueToday) {
+    return (
+      <div className="w-full bg-accent/5 border border-accent/20 rounded-xl px-3 py-2 flex items-center gap-3">
+        <span className="text-lg">📋</span>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-gray-900">Block session due today</p>
+          <p className="text-[10px] text-gray-500">"{block.name}" · log when you're done training</p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
 
 const BREAKDOWN_LABELS = {
   consistency: 'Consistency',
@@ -480,6 +525,10 @@ export function Dashboard({ sessions, personalRecords, onViewSession, idpGoals =
 
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
+      {/* 4-week block due-state pill — only renders when the player is in an active block
+          and has something due today. Pushed before the rest of the dashboard so it's the
+          first thing the player sees, but doesn't redesign any existing surface. */}
+      <BlockDuePill onNavigate={onNavigate} />
       <h1 className="text-3xl text-accent tracking-tight text-center font-logo italic">Composed</h1>
 
       {/* Date Browser */}

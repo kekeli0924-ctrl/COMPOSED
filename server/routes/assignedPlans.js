@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getDb } from '../db.js';
 import { requireCoach } from '../auth.js';
 import { validate, assignedPlanSchema, assignedPlanUpdateSchema } from '../validation.js';
+import { emit } from '../events.js';
 
 const router = Router();
 
@@ -50,6 +51,17 @@ router.post('/', requireCoach, validate(assignedPlanSchema), (req, res) => {
   }
   db.prepare(`INSERT INTO assigned_plans (id, coach_id, player_id, date, drills, target_duration, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?)`).run(id, req.userId, playerId, date, JSON.stringify(drills), targetDuration, notes);
+  emit('assigned_plan_created', {
+    userId: req.userId,
+    relatedUserId: playerId,
+    role: 'coach',
+    properties: {
+      planId: id,
+      date,
+      drillCount: Array.isArray(drills) ? drills.length : 0,
+      targetDuration,
+    },
+  });
   const row = db.prepare('SELECT * FROM assigned_plans WHERE id = ?').get(id);
   res.status(201).json(rowToPlan(row));
 });

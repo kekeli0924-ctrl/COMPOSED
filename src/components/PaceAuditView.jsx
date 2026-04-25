@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { computePace } from '../utils/pace';
 import { getPaceLabel as getIdentityPaceLabel } from '../utils/identity';
@@ -6,6 +6,7 @@ import {
   POSITION_WEIGHTS, METRIC_NAMES, formatMetricValue,
   generatePlainEnglishSummary,
 } from '../utils/paceReport';
+import { emit } from '../hooks/useEmit';
 
 const PACE_COLORS = {
   accelerating: '#16A34A',
@@ -33,6 +34,16 @@ export function PaceAuditView({ sessions, position, playerIdentity, onBack, onVi
   const thisWeekSessions = useMemo(() => getThisWeekSessions(sessions), [sessions]);
   const weights = POSITION_WEIGHTS[position] || POSITION_WEIGHTS.General;
   const positionLabel = position || 'General';
+
+  // Pilot telemetry: one emit per mount. Tells us how often users actually drill
+  // into the "why" behind their Pace label — the surface we invested most in.
+  useEffect(() => {
+    emit('pace_audit_opened', {
+      paceLabel: pace?.label || null,
+      position: positionLabel,
+      sessionCount: sessions?.length || 0,
+    });
+  }, []); // intentionally empty — only fire on mount
 
   // Sort metrics by weight (heaviest first) for the movement section
   const sortedMetrics = useMemo(() => {

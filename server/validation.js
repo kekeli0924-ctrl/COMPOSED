@@ -155,6 +155,20 @@ export const parentVisibilitySchema = z.object({
   showIdpGoals: z.boolean().optional(),
 }).strict();
 
+// 4-week technical homework blocks.
+// trainingDays: exactly two distinct day-of-week ints (0=Sun..6=Sat).
+// memberIds: player user IDs that the creating coach actually has on their roster —
+// server re-verifies against coach_players before inserting assigned_plans.
+export const blockCreateSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  startDate: dateStr,
+  trainingDays: z.array(z.number().int().min(0).max(6))
+    .length(2, 'Pick exactly two training days per week')
+    .refine(arr => arr[0] !== arr[1], 'Training days must be distinct'),
+  memberIds: z.array(z.coerce.number().int()).min(1).max(50),
+  drillTemplate: z.array(z.string().max(200)).max(20).optional(),
+}).strict();
+
 // ── Auth schemas ─────────────────────────────────────────────────────────────
 // Username rules match the inline checks in server/auth.js: 3–50 chars,
 // alphanumeric + underscore/hyphen. Password must contain at least one letter

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
+import { emit } from '../hooks/useEmit';
 
 export function SocialFeed() {
   const [friends, setFriends] = useState([]);
@@ -74,6 +75,10 @@ export function SocialFeed() {
   const joinCoach = async () => {
     if (!coachCode.trim()) return;
     setCoachError('');
+    // Pilot telemetry: fires before the server call so we capture every attempt,
+    // even ones that fail (wrong code, expired, already linked). coach_player_linked
+    // (server-side) fires only on success — the pair gives us a conversion funnel.
+    emit('invite_link_opened', { source: 'social_feed' });
     try {
       const res = await fetch('/api/roster/join', {
         method: 'POST',

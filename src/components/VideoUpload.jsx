@@ -3,6 +3,7 @@ import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { processVideoForAnalysis, checkVideoProcessingSupport, terminateFFmpeg, formatFileSize } from '../utils/ffmpeg';
 import { useVideoAnalysis } from '../contexts/VideoAnalysisContext';
+import { humanizeVideoError } from '../utils/videoFailure';
 
 const CONFIDENCE_COLORS = {
   high: 'text-green-600 bg-green-50',
@@ -209,12 +210,13 @@ export function VideoUpload({ onAnalysisComplete, onQuickSave }) {
       clearTimeout(timer);
 
       if (!analyzeRes.ok) {
-        let errMsg = 'Analysis failed';
-        try { const d = await analyzeRes.json(); errMsg = d.error || errMsg; } catch { /* non-JSON body */ }
-        setError(errMsg);
+        let rawErr = 'Analysis failed';
+        try { const d = await analyzeRes.json(); rawErr = d.error || rawErr; } catch { /* non-JSON body */ }
+        const { headline } = humanizeVideoError(rawErr);
+        setError(headline);
         setStatus('error');
         setProcessing(false);
-        va.failWithFallback("AI couldn't analyze this one — you can still log it manually.");
+        va.failWithFallback(rawErr);
         return;
       }
     } catch (err) {
@@ -276,10 +278,11 @@ export function VideoUpload({ onAnalysisComplete, onQuickSave }) {
           va.completeAnalysis(data.result);
         } else if (data.status === 'error') {
           clearInterval(pollingRef.current);
-          const errMsg = data.error || "AI couldn't analyze this one — you can still log it manually.";
-          setError(errMsg);
+          const rawErr = data.error || 'AI failed';
+          const { headline } = humanizeVideoError(rawErr);
+          setError(headline);
           setProcessing(false);
-          va.failWithFallback(errMsg);
+          va.failWithFallback(rawErr);
         }
       } catch {
         // Network error — tolerate transient failures

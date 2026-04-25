@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Composed — privacy statement for the pre-launch pilot." />
+<meta name="theme-color" content="#050505" />
+<title>Privacy — Composed</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23050505'/><text x='50' y='72' font-size='72' font-family='Georgia,serif' font-style='italic' font-weight='500' fill='%23C2A56B' text-anchor='middle'>C</text></svg>" />
+<style>
+  :root {
+    --bg: #050505;
+    --fg: #F5F5F2;
+    --fg-mute: #A7A7AD;
+    --fg-soft: #6e6e73;
+    --line: rgba(245,245,242,0.08);
+    --accent: #C2A56B;
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: 18px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  main { max-width: 42rem; margin: 0 auto; padding: 6rem max(1.5rem, 5vw) 8rem; }
+  nav.top {
+    padding: 1rem max(1.5rem, 5vw);
+    border-bottom: 1px solid var(--line);
+  }
+  nav.top a.logo {
+    font-family: var(--serif);
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: var(--fg);
+  }
+  nav.top a.logo em { font-style: italic; color: var(--accent); }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 1.25rem;
+  }
+  h1 {
+    font-family: var(--sans);
+    font-size: clamp(2.2rem, 5vw, 3.2rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    margin-bottom: 2.5rem;
+  }
+  h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    margin-top: 2.75rem;
+    margin-bottom: 0.75rem;
+    color: var(--fg);
+  }
+  p, li { color: var(--fg-mute); margin-bottom: 1rem; }
+  p strong { color: var(--fg); font-weight: 500; }
+  ul { margin: 0 0 1rem 1.25rem; }
+  li { margin-bottom: 0.5rem; }
+  .meta {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--fg-soft);
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .back {
+    display: inline-block;
+    margin-top: 3rem;
+    font-size: 0.9rem;
+    color: var(--fg-mute);
+  }
+</style>
+</head>
+<body>
+<nav class="top">
+  <a href="index.html" class="logo"><em>C</em>omposed</a>
+</nav>
+<main>
+  <div class="eyebrow">Privacy</div>
+  <h1>What we collect, and what we don't.</h1>
+
+  <p>
+    Composed is pre-launch. This page describes how the app is designed to handle data once the pilot begins. It will be updated before any youth player data is collected.
+  </p>
+
+  <h2>Who holds the toggles</h2>
+  <p>
+    The <strong>player</strong> controls what parents and coaches see. Three switches — ratings, coach feedback, development goals — live in the player's settings. The parent dashboard renders only what the player has turned on. The coach's roster sees session compliance only, never private notes.
+  </p>
+
+  <h2>Video footage</h2>
+  <p>
+    Training clips are recorded on the player's phone. <strong>Compression and frame extraction happen on-device</strong> before upload — raw video never leaves the phone.
+  </p>
+  <p>
+    Extracted frames are sent to <strong>Google Gemini</strong> (via <code>@google/genai</code>) for stat extraction — shots taken, on target, goals, foot usage, pass accuracy. Gemini returns structured counts; Composed stores the counts, not the frames. Raw frames are discarded after analysis.
+  </p>
+
+  <h2>What gets stored</h2>
+  <ul>
+    <li>Player identity (first name / handle), position, age band.</li>
+    <li>Session logs (duration, date, counted stats).</li>
+    <li>Coach assignments and roster membership (pilot only).</li>
+    <li>Privacy toggle state — what the player has chosen to share.</li>
+  </ul>
+
+  <h2>What we don't do</h2>
+  <ul>
+    <li>No third-party tracking or advertising pixels.</li>
+    <li>No selling or licensing of player data.</li>
+    <li>No parent-side analytics that bypass the player's toggles.</li>
+    <li>No retention of raw video after on-device analysis.</li>
+  </ul>
+
+  <h2>Youth data</h2>
+  <p>
+    Composed is built for competitive youth players. In jurisdictions where parental consent is required for minors (e.g. COPPA in the US, GDPR-K in the EU), the pilot will operate under club-administered consent — coaches enroll the team, parents confirm per player before the child's account is activated.
+  </p>
+
+  <h2>Questions</h2>
+  <p>
+    Email <a href="mailto:hello@composed.soccer?subject=Privacy%20question">hello@composed.soccer</a> — privacy questions go to the same address as pilot interest and get a human reply.
+  </p>
+
+  <div class="meta">Pre-launch · subject to change before pilot begins</div>
+  <a href="index.html" class="back">← Back to Composed</a>
+</main>
+</body>
+</html>

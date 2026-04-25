@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Composed — a soccer training companion for youth players who train between team sessions. Position-weighted progress. Counted from your footage. Coach-led pilots." />
+<meta name="theme-color" content="#0D0D0D" />
+<title>Composed — Stop Guessing. Start Proving.</title>
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230D0D0D'/><text x='50' y='70' font-size='72' font-family='Georgia,serif' font-style='italic' font-weight='400' fill='%23F0EBE1' text-anchor='middle'>C</text></svg>" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #0D0D0D;                          /* reference page bg */
+    --bg-warm: #2A1A0A;                     /* brass-ember reveal (ball-lands-in-goal) */
+    --bg-deep: #060606;
+    --ink: #F0EBE1;                         /* ivory/bone — primary ink */
+    --ink-soft: rgba(240, 235, 225, 0.30);  /* body copy at rest */
+    --ink-mute: rgba(240, 235, 225, 0.55);
+    --ink-quiet: rgba(240, 235, 225, 0.12); /* ghost outlines */
+    --accent: #C94A5C;                      /* coral emphasis — used sparingly */
+    --brass: #C2A56B;                       /* existing Composed brass */
+    --rim: rgba(74, 36, 16, 0.55);          /* warm rust vignette */
+    --line: rgba(240, 235, 225, 0.08);
+    --line-soft: rgba(240, 235, 225, 0.04);
+
+    --serif: "Instrument Serif", ui-serif, Georgia, serif;
+    --mono:  "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.55;
+    letter-spacing: 0.14em;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+    transition: background-color 900ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  body.warm-ground { background-color: var(--bg-warm); }
+  ::selection { background: var(--ink); color: var(--bg); }
+  img { max-width: 100%; display: block; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  :focus-visible { outline: 1px solid var(--ink); outline-offset: 4px; border-radius: 1px; }
+
+  /* ── Atmospheric layers (fixed overlays) ── */
+  .grain {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 400;
+    opacity: 0.12;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.94  0 0 0 0 0.92  0 0 0 0 0.88  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-size: 320px 320px;
+  }
+  .vignette {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 401;
+    box-shadow: inset 0 0 180px 12px var(--rim), inset 0 0 0 1px rgba(74,36,16,0.35);
+  }
+  body.warm-ground .vignette { box-shadow: inset 0 0 180px 12px rgba(193,145,74,0.35), inset 0 0 0 1px rgba(193,145,74,0.25); }
+
+  /* ── Right-edge persistent pill (jump to pilot CTA) ── */
+  .edge-pill {
+    position: fixed; right: 0; top: 42%;
+    z-index: 60;
+    background: var(--ink);
+    color: var(--bg);
+    padding: 1rem 0.65rem 2.2rem;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    text-align: center;
+    border-radius: 2px 0 0 2px;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.4);
+    transition: transform 0.28s ease;
+  }
+  .edge-pill:hover { transform: translateX(-3px); }
+  .edge-pill .pill-key {
+    transform: rotate(180deg);
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+    font-family: var(--serif);
+    font-size: 15px;
+    letter-spacing: 0;
+  }
+
+  /* ── Floating circular "scroll" badge ── */
+  .scroll-badge {
+    position: fixed;
+    top: 2.2rem; left: 2.2rem;
+    z-index: 55;
+    width: 92px; height: 92px;
+    pointer-events: none;
+    opacity: 0.78;
+    transition: opacity 0.45s ease, transform 0.45s ease;
+  }
+  .scroll-badge.fade { opacity: 0; transform: scale(0.8); }
+  .scroll-badge .sb-ring { animation: sbSpin 28s linear infinite; transform-origin: 46px 46px; }
+  .scroll-badge text {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.26em;
+    fill: var(--ink-mute);
+    text-transform: uppercase;
+  }
+  .scroll-badge .sb-arrow {
+    stroke: var(--ink);
+    stroke-width: 1;
+    fill: none;
+  }
+  @keyframes sbSpin { to { transform: rotate(360deg); } }
+
+  /* ── Top nav (tiny) ── */
+  nav.top {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 50;
+    padding: 1.6rem clamp(1.5rem, 4vw, 3rem);
+    display: flex; justify-content: space-between; align-items: center;
+    pointer-events: none;
+  }
+  nav.top > * { pointer-events: auto; }
+  nav.top .logo {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    color: var(--ink);
+  }
+  nav.top .logo em {
+    font-style: italic;
+    color: var(--ink);
+  }
+  nav.top .nav-contact {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    padding: 0.55rem 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  nav.top .nav-contact:hover { color: var(--ink); border-color: var(--ink-mute); }
+
+  /* ── Typography system ── */
+  .display-hero {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(3.8rem, 10vw, 8rem);
+    line-height: 0.92;
+    letter-spacing: -0.025em;
+  }
+  .display-hero .serif-it { font-style: italic; font-weight: 400; }
+  .chapter-head {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(3rem, 7.2vw, 6.4rem);
+    line-height: 0.98;
+    letter-spacing: -0.022em;
+  }
+  .chapter-head em { font-style: italic; }
+  .mega-num {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(5rem, 14vw, 14rem);
+    line-height: 0.85;
+    letter-spacing: -0.03em;
+    font-variant-numeric: lining-nums;
+  }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    font-weight: 400;
+  }
+  .copy-mono {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    max-width: 42ch;
+  }
+  .copy-mono strong {
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: 0.12em;
+  }
+  .rule-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  /* Horizontal hairlines separating stat rows (hero score-strip style) */
+  .rule-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 2rem;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .rule-row:first-of-type { border-top: 1px solid var(--line); }
+  .rule-row .rr-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .rule-row .rr-value {
+    font-family: var(--serif);
+    font-size: clamp(1.8rem, 2.4vw, 2.4rem);
+    line-height: 1;
+    color: var(--ink);
+  }
+
+  /* ── Reveal system ── */
+  .rev {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.9s cubic-bezier(0.2, 0.8, 0.3, 1), transform 0.9s cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  .rev.in { opacity: 1; transform: translateY(0); }
+  .rev.d1 { transition-delay: 0.08s; }
+  .rev.d2 { transition-delay: 0.18s; }
+  .rev.d3 { transition-delay: 0.30s; }
+  .rev.d4 { transition-delay: 0.42s; }
+  .rev.d5 { transition-delay: 0.54s; }
+  .rev.d6 { transition-delay: 0.68s; }
+
+  /* Text mask-up reveal (for chapter heads) */
+  .mask-up {
+    display: inline-block;
+    overflow: hidden;
+  }
+  .mask-up > span {
+    display: inline-block;
+    transform: translateY(110%);
+    transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  .mask-up.in > span { transform: translateY(0); }
+
+  /* ── HERO ── */
+  header.hero {
+    min-height: 100vh;
+    min-height: 100svh;
+    position: relative;
+    padding: clamp(4rem, 8vh, 7rem) clamp(1.5rem, 4vw, 3rem) clamp(2rem, 4vh, 4rem);
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: 3rem;
+  }
+  .hero-stage {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 56vh;
+  }
+  /* Ghost serif "Pace." behind the subject */
+  .hero-ghost-word {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    color: var(--ink-quiet);
+    font-family: var(--serif);
+    font-size: clamp(10rem, 30vw, 28rem);
+    line-height: 1;
+    letter-spacing: -0.04em;
+    opacity: 0.35;
+    user-select: none;
+  }
+  .hero-ghost-word em { font-style: italic; }
+  /* Central subject visual — duotone soccer ball SVG cut out on black */
+  .hero-subject {
+    position: relative;
+    width: clamp(18rem, 32vw, 30rem);
+    aspect-ratio: 1;
+    z-index: 1;
+    filter: grayscale(1) contrast(1.02);
+  }
+  .hero-subject svg { width: 100%; height: 100%; display: block; }
+  .hero-copy-top {
+    position: absolute;
+    top: 1rem;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0 clamp(1rem, 3vw, 3rem);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .hero-copy-top > * { pointer-events: auto; }
+  .hero-tagline {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(1rem, 1.4vw, 1.35rem);
+    color: var(--ink);
+    max-width: 14em;
+    line-height: 1.3;
+  }
+  .hero-copy-main {
+    position: relative;
+    z-index: 2;
+    max-width: 44rem;
+    align-self: end;
+    padding: 0 clamp(0.5rem, 2vw, 2rem);
+  }
+  .hero-lede {
+    margin-top: 1.8rem;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    max-width: 48ch;
+  }
+  .hero-lede strong { color: var(--ink); font-weight: 500; }
+  .hero-ctas {
+    margin-top: 2rem;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .cta {
+    display: inline-flex; align-items: center; gap: 0.5em;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    padding: 0.9rem 1.4rem;
+    border-radius: 999px;
+    transition: background 0.22s, color 0.22s, border-color 0.22s;
+    cursor: pointer;
+  }
+  .cta.primary {
+    background: var(--ink);
+    color: var(--bg);
+    border: 1px solid var(--ink);
+  }
+  .cta.primary:hover { background: transparent; color: var(--ink); }
+  .cta.ghost {
+    color: var(--ink-mute);
+    border: 1px solid var(--line);
+  }
+  .cta.ghost:hover { border-color: var(--ink-mute); color: var(--ink); }
+  .cta .arrow { transition: transform 0.22s ease; display: inline-block; }
+  .cta:hover .arrow { transform: translateX(3px); }
+
+  /* Hero bottom score-strip */
+  .hero-strip {
+    display: grid;
+    grid-template-columns: 1.1fr auto;
+    gap: clamp(2rem, 6vw, 6rem);
+    align-items: end;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .hs-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-width: 38rem;
+    width: 100%;
+  }
+  .hs-top-kicker {
+    margin-bottom: 1rem;
+  }
+  .hs-footer-note {
+    margin-top: 0.85rem;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .hs-right {
+    text-align: right;
+    padding-bottom: 0.3rem;
+  }
+  .hs-mega {
+    font-family: var(--serif);
+    font-size: clamp(4.5rem, 8vw, 8.5rem);
+    line-height: 0.85;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    margin-bottom: 0.45rem;
+  }
+  .hs-mega em { font-style: italic; }
+  .hs-mega-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  @media (max-width: 800px) {
+    .hero-copy-top { flex-direction: column; gap: 1rem; }
+    .hero-strip { grid-template-columns: 1fr; gap: 2rem; }
+    .hs-right { text-align: left; }
+  }
+
+  /* ── CHAPTER 2 · Ball-to-goal ── */
+  .goal-stage {
+    height: 260vh;
+    position: relative;
+  }
+  .goal-sticky {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 5vh clamp(1.5rem, 4vw, 3rem);
+    overflow: hidden;
+  }
+  .goal-inner {
+    width: 100%;
+    max-width: 80rem;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: clamp(1rem, 3vh, 2rem);
+    align-items: center;
+    justify-items: center;
+    text-align: center;
+  }
+  .goal-head { max-width: 22ch; margin: 0 auto; }
+  .goal-scene {
+    position: relative;
+    width: min(100%, 52rem);
+    aspect-ratio: 16 / 8;
+  }
+  .goal-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    overflow: visible;
+  }
+  .goal-posts, .goal-net {
+    stroke: var(--ink-mute);
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .goal-posts { stroke-width: 2; stroke: var(--ink); opacity: 0.6; }
+  .goal-net-vert, .goal-net-horiz {
+    stroke: var(--ink-mute);
+    stroke-width: 0.6;
+    fill: none;
+    opacity: 0.5;
+    transform-origin: center top;
+    transition: transform 300ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  body.warm-ground .goal-net-vert,
+  body.warm-ground .goal-net-horiz { stroke: rgba(240, 235, 225, 0.4); }
+  /* When the ball lands, the net sways briefly */
+  .goal-scene.ball-landed .goal-net-vert { transform: scaleY(1.03); }
+
+  /* The ball */
+  .ball {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%) translateY(var(--ball-y, -22rem));
+    width: clamp(3.2rem, 6vw, 5rem);
+    height: clamp(3.2rem, 6vw, 5rem);
+    will-change: transform;
+    transition: transform 80ms linear;
+  }
+  .ball svg { width: 100%; height: 100%; display: block; filter: grayscale(1); }
+
+  .goal-footer-note {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    max-width: 34rem;
+  }
+
+  /* ── CHAPTER 3 · Pace rotation (sticky) ── */
+  .pace-stage {
+    height: 440vh;
+    position: relative;
+  }
+  .pace-sticky {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 4vh clamp(1.5rem, 4vw, 3rem);
+    overflow: hidden;
+  }
+  .pace-inner {
+    width: 100%;
+    max-width: 84rem;
+    display: grid;
+    grid-template-columns: 0.95fr 1.05fr;
+    gap: clamp(2rem, 5vw, 5rem);
+    align-items: center;
+  }
+  @media (max-width: 900px) {
+    .pace-inner { grid-template-columns: 1fr; gap: 2.5rem; }
+  }
+
+  .pace-left {
+    position: relative;
+    aspect-ratio: 1.1 / 1;
+    max-height: 72vh;
+  }
+  /* Ghost numeral hovers behind the tactical diagram (bam-83-style) */
+  .pace-ghost-num {
+    position: absolute;
+    left: -1rem; bottom: -1rem;
+    font-family: var(--serif);
+    font-size: clamp(9rem, 22vw, 22rem);
+    line-height: 0.85;
+    color: var(--ink-quiet);
+    opacity: 0.55;
+    pointer-events: none;
+    user-select: none;
+    transition: opacity 0.6s ease;
+    z-index: 0;
+  }
+  /* Tactical pitch diagram */
+  .pitch-svg {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 1;
+  }
+  .pitch-line {
+    fill: none;
+    stroke: var(--ink-mute);
+    stroke-width: 1.2;
+    stroke-linecap: round;
+  }
+  .pitch-dot {
+    fill: var(--ink-quiet);
+    transition: fill 0.55s ease, r 0.55s ease, opacity 0.55s ease;
+  }
+  .pitch-dot.active {
+    fill: var(--ink);
+    r: 7;
+  }
+  .pitch-dot.active.dominant-accent {
+    fill: var(--accent);
+  }
+  .pitch-zone {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.2;
+    stroke-dasharray: 3 3;
+    opacity: 0;
+    transition: opacity 0.55s ease;
+  }
+  .pitch-zone.active { opacity: 0.7; }
+
+  .pace-right {
+    display: flex;
+    flex-direction: column;
+    gap: 1.6rem;
+  }
+  .pace-kicker { letter-spacing: 0.28em; }
+  .pace-num-line {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+  }
+  .pace-num {
+    font-family: var(--serif);
+    font-size: clamp(6rem, 12vw, 12rem);
+    line-height: 0.85;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    transition: color 0.5s ease;
+  }
+  .pace-num.accent-hit { color: var(--accent); }
+  .pace-num-unit {
+    font-family: var(--mono);
+    font-size: 18px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .pace-sub-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .pace-body {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.7;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    max-width: 38ch;
+    min-height: 5.5em;
+    transition: opacity 0.28s ease;
+  }
+  .pace-body strong { color: var(--ink); font-weight: 500; }
+
+  .pace-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem 1rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    margin-top: 0.5rem;
+  }
+  .pace-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    transition: color 0.35s ease;
+  }
+  .pace-stat-val {
+    font-family: var(--serif);
+    font-size: clamp(1.8rem, 2.6vw, 2.6rem);
+    line-height: 1;
+    color: var(--ink);
+  }
+  .pace-stat-val.dominant { color: var(--accent); }
+  .pace-stat-lab {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  /* Position ticker (where-are-we-in-the-rotation label, bottom of sticky) */
+  .pace-progress-label {
+    position: absolute;
+    bottom: 4vh;
+    left: clamp(1.5rem, 4vw, 3rem);
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .pace-progress-label .ppl-count {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  /* ── CHAPTER 4 · Phone-video-to-proof scattered cards ── */
+  .video-proof {
+    min-height: 140vh;
+    position: relative;
+    padding: 10vh clamp(1.5rem, 4vw, 3rem);
+  }
+  .vp-intro {
+    max-width: 48rem;
+    margin: 0 auto 6rem;
+    text-align: left;
+  }
+  .vp-intro .kicker { margin-bottom: 1rem; }
+  .vp-intro h2 { margin-bottom: 1rem; max-width: 20ch; }
+  .vp-intro p { margin-top: 1.2rem; color: var(--ink-soft); max-width: 50ch; }
+
+  .vp-cards {
+    position: relative;
+    max-width: 82rem;
+    margin: 0 auto;
+    min-height: 60vh;
+  }
+  .vp-card {
+    background: rgba(240, 235, 225, 0.02);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 1.5rem 1.6rem;
+    max-width: 22rem;
+    position: relative;
+  }
+  .vp-card .vp-card-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 0.9rem;
+  }
+  .vp-card .vp-card-body {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    letter-spacing: 0.09em;
+    color: var(--ink-soft);
+  }
+  .vp-card .vp-card-body strong { color: var(--ink); font-weight: 500; }
+  .vp-card .vp-card-stat {
+    display: block;
+    font-family: var(--serif);
+    font-size: clamp(2.4rem, 4vw, 3.6rem);
+    line-height: 1;
+    color: var(--ink);
+    margin: 1.1rem 0 0.3rem;
+  }
+  .vp-card .vp-card-stat-unit {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-left: 0.3rem;
+  }
+  .vp-card.accent .vp-card-stat { color: var(--accent); }
+
+  /* Absolute-positioned scatter across the chapter — asymmetric like bam quotes */
+  .vp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: clamp(1.5rem, 3vw, 3rem) clamp(2rem, 4vw, 4rem);
+    align-items: start;
+  }
+  .vp-grid .vp-card:nth-child(1) { transform: translateY(-1rem); margin-left: 0.5rem; }
+  .vp-grid .vp-card:nth-child(2) { transform: translateY(4.5rem); margin: 0 auto; }
+  .vp-grid .vp-card:nth-child(3) { transform: translateY(0.5rem); margin-right: 0.5rem; }
+  .vp-grid .vp-card:nth-child(4) { transform: translateY(2.5rem); margin-left: 2rem; }
+  .vp-grid .vp-card:nth-child(5) { transform: translateY(-1.5rem); margin: 0 auto; }
+  .vp-grid .vp-card:nth-child(6) { transform: translateY(3rem); margin-right: 2rem; }
+  @media (max-width: 800px) {
+    .vp-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+    .vp-grid .vp-card { transform: none !important; margin: 0 !important; }
+  }
+
+  /* ── CHAPTER 5 · Coach ── */
+  .ch-coach {
+    min-height: 100vh;
+    position: relative;
+    padding: 15vh clamp(1.5rem, 4vw, 3rem);
+    display: flex;
+    align-items: center;
+  }
+  .coach-inner {
+    max-width: 84rem;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: clamp(3rem, 6vw, 6rem);
+    align-items: center;
+    width: 100%;
+  }
+  @media (max-width: 900px) {
+    .coach-inner { grid-template-columns: 1fr; gap: 3rem; }
+  }
+  .coach-text .kicker { margin-bottom: 1rem; }
+  .coach-text h2 { margin-bottom: 1.5rem; max-width: 16ch; }
+  .coach-text p { color: var(--ink-soft); margin-bottom: 1rem; max-width: 42ch; }
+  .coach-text p strong { color: var(--ink); font-weight: 500; }
+
+  /* Roster diagram — flat editorial, not a device shell */
+  .coach-roster {
+    position: relative;
+  }
+  .roster-wrap {
+    border-left: 1px solid var(--line);
+    padding-left: clamp(1.5rem, 3vw, 2.5rem);
+  }
+  .roster-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 0.25rem;
+  }
+  .roster-head-kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .roster-head-count {
+    font-family: var(--serif);
+    font-size: 1.7rem;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .roster-row {
+    display: grid;
+    grid-template-columns: 2.2rem 1fr auto auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 1.05rem 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .roster-row:last-child { border-bottom: none; }
+  .roster-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--ink-mute);
+    justify-self: center;
+  }
+  .roster-dot.ok { background: var(--ink); }
+  .roster-dot.warn { background: var(--accent); opacity: 0.7; }
+  .roster-name {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    color: var(--ink);
+  }
+  .roster-role {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .roster-pace {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .roster-pace.warn { color: var(--accent); }
+
+  /* ── CHAPTER 6 · Parent ── */
+  .ch-parent {
+    min-height: 90vh;
+    padding: 15vh clamp(1.5rem, 4vw, 3rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .parent-inner {
+    max-width: 48rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+  }
+  .parent-inner h2 { max-width: 20ch; }
+  .parent-inner p { color: var(--ink-soft); max-width: 46ch; text-align: center; }
+  .parent-inner p strong { color: var(--ink); font-weight: 500; }
+  .parent-toggles {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    margin-top: 1rem;
+    width: 100%;
+    max-width: 26rem;
+    border-top: 1px solid var(--line);
+  }
+  .parent-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.95rem 0;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  .parent-toggle .pt-state {
+    display: inline-block;
+    width: 2.2rem;
+    height: 1.05rem;
+    border: 1px solid var(--ink-mute);
+    border-radius: 999px;
+    position: relative;
+  }
+  .parent-toggle .pt-state::before {
+    content: "";
+    position: absolute;
+    top: 1px; left: 1px;
+    width: calc(1.05rem - 4px);
+    height: calc(1.05rem - 4px);
+    border-radius: 50%;
+    background: var(--ink-mute);
+    transition: transform 0.25s ease, background 0.25s ease;
+  }
+  .parent-toggle.on .pt-state { border-color: var(--ink); }
+  .parent-toggle.on .pt-state::before {
+    background: var(--ink);
+    transform: translateX(1.2rem);
+  }
+
+  /* ── CHAPTER 7 · Three roles strip ── */
+  .ch-roles {
+    min-height: 70vh;
+    padding: 15vh clamp(1.5rem, 4vw, 3rem);
+    position: relative;
+  }
+  .roles-grid {
+    max-width: 88rem;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+  }
+  @media (max-width: 800px) {
+    .roles-grid { grid-template-columns: 1fr; gap: 3rem; }
+  }
+  .roles-col {
+    padding: 0 clamp(1rem, 2.5vw, 2.5rem);
+    border-left: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .roles-col:first-child { border-left: none; }
+  @media (max-width: 800px) {
+    .roles-col { border-left: none; border-top: 1px solid var(--line); padding: 2rem 0 0; }
+  }
+  .roles-col h3 {
+    font-family: var(--serif);
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    line-height: 0.95;
+    color: var(--ink);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+  .roles-col.primary h3 { font-style: italic; }
+  .roles-col .kicker { margin-bottom: 0.25rem; }
+  .roles-col p {
+    color: var(--ink-soft);
+    line-height: 1.65;
+    letter-spacing: 0.09em;
+  }
+
+  /* ── CHAPTER 8 · Closing CTA ── */
+  .ch-close {
+    min-height: 80vh;
+    position: relative;
+    padding: 15vh clamp(1.5rem, 4vw, 3rem) 12vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .close-inner {
+    max-width: 52rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.6rem;
+  }
+  .close-inner h2 { max-width: 18ch; }
+  .close-inner .close-lede {
+    color: var(--ink-soft);
+    max-width: 42ch;
+    line-height: 1.7;
+    text-align: center;
+  }
+  .close-inner .close-lede strong { color: var(--ink); font-weight: 500; }
+  .close-cta-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .close-sig {
+    margin-top: 2rem;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(1.5rem, 2.2vw, 2.2rem);
+    color: var(--ink);
+  }
+
+  /* ── Footer ── */
+  footer.foot {
+    padding: 3rem clamp(1.5rem, 4vw, 3rem);
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  footer.foot .foot-logo {
+    font-family: var(--serif);
+    font-size: 1.4rem;
+    color: var(--ink);
+  }
+  footer.foot .foot-logo em { font-style: italic; }
+  footer.foot .foot-note {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  /* ── Chapter separator hairline ── */
+  .chapter-rule {
+    height: 1px;
+    background: var(--line);
+    max-width: 80rem;
+    margin: 0 auto;
+  }
+
+  /* ── Reduced motion: degrade gracefully ── */
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    body { transition: none; }
+    .rev { opacity: 1 !important; transform: none !important; transition: none !important; }
+    .mask-up > span { transform: translateY(0) !important; transition: none !important; }
+    .scroll-badge .sb-ring { animation: none !important; }
+    .ball { transition: none !important; }
+    .goal-net-vert, .goal-net-horiz { transition: none !important; }
+    .pace-num, .pace-stat-val { transition: none !important; }
+    .pitch-dot, .pitch-zone { transition: none !important; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Narrow viewport: disable some motion + layered flourishes */
+  @media (max-width: 560px) {
+    .scroll-badge { display: none; }
+    .edge-pill { display: none; }
+    .hero-ghost-word { opacity: 0.2; font-size: 50vw; }
+  }
+</style>
+</head>
+
+<body>
+
+<!-- Atmospheric overlays: grain + warm vignette -->
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<!-- Floating circular "scroll" badge, top-left -->
+<a href="#chapter-goal" class="scroll-badge" aria-label="Scroll to see the work" id="scrollBadge">
+  <svg viewBox="0 0 92 92">
+    <g class="sb-ring">
+      <defs>
+        <path id="sb-path" d="M 46 46 m -36 0 a 36 36 0 1 1 72 0 a 36 36 0 1 1 -72 0"/>
+      </defs>
+      <text><textPath href="#sb-path" startOffset="0">SCROLL TO SEE THE WORK · SCROLL TO SEE THE WORK · </textPath></text>
+    </g>
+    <line class="sb-arrow" x1="46" y1="39" x2="46" y2="53"/>
+    <polyline class="sb-arrow" points="41,49 46,54 51,49"/>
+  </svg>
+</a>
+
+<!-- Right-edge pill — persistent jump to pilot CTA -->
+<a class="edge-pill" href="#pilot" aria-label="Pilot open · April 2026"><span class="pill-key">P.</span>Pilot</a>
+
+<!-- Tiny top nav -->
+<nav class="top" aria-label="Primary">
+  <a class="logo" href="#top"><em>C</em>omposed</a>
+  <a class="nav-contact" href="#pilot">Contact</a>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     HERO — mega ghost serif + duotone ball + score-strip
+     ══════════════════════════════════════════════════════════════════ -->
+<header class="hero" id="top">
+  <div class="hero-stage">
+    <div class="hero-ghost-word" aria-hidden="true"><em>Pace.</em></div>
+
+    <div class="hero-copy-top">
+      <p class="hero-tagline rev d1">Stay Composed.</p>
+      <p class="kicker rev d2">Composed · 2026</p>
+    </div>
+
+    <!-- Duotone-rendered soccer ball (SVG, no external asset) -->
+    <div class="hero-subject rev d2" aria-hidden="true">
+      <svg viewBox="0 0 300 300">
+        <defs>
+          <radialGradient id="ball-lit" cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stop-color="#f0ebe1"/>
+            <stop offset="42%" stop-color="#a49e8f"/>
+            <stop offset="75%" stop-color="#3a342a"/>
+            <stop offset="100%" stop-color="#0b0907"/>
+          </radialGradient>
+          <filter id="ballgrain">
+            <feTurbulence type="fractalNoise" baseFrequency="2.2" numOctaves="1" stitchTiles="stitch"/>
+            <feColorMatrix values="0 0 0 0 0.94   0 0 0 0 0.92   0 0 0 0 0.88   0 0 0 0.35 0"/>
+            <feComposite in2="SourceGraphic" operator="in"/>
+          </filter>
+        </defs>
+        <circle cx="150" cy="150" r="138" fill="url(#ball-lit)"/>
+        <circle cx="150" cy="150" r="138" fill="#000" opacity="0" filter="url(#ballgrain)"/>
+        <!-- Pentagonal panel lines, classic ball -->
+        <g stroke="#1a1714" stroke-width="1.5" fill="none" opacity="0.78" stroke-linejoin="round" stroke-linecap="round">
+          <polygon points="150,82 180,108 170,148 130,148 120,108" fill="#141210"/>
+          <line x1="150" y1="82" x2="150" y2="38"/>
+          <line x1="180" y1="108" x2="222" y2="96"/>
+          <line x1="170" y1="148" x2="205" y2="180"/>
+          <line x1="130" y1="148" x2="95" y2="180"/>
+          <line x1="120" y1="108" x2="78" y2="96"/>
+          <path d="M 95 180 Q 76 208 60 206" fill="none"/>
+          <path d="M 205 180 Q 224 208 240 206" fill="none"/>
+          <path d="M 78 96 Q 62 78 54 52" fill="none"/>
+          <path d="M 222 96 Q 238 78 246 52" fill="none"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <div class="hero-copy-main" style="grid-row: 1;">
+    <h1 class="display-hero rev d3">
+      Stop Guessing.<br><span class="serif-it">Start Proving.</span>
+    </h1>
+    <p class="hero-lede rev d4">
+      The hours you put in alone — in the backyard, on the wall, in the empty park — <strong>finally count.</strong>
+      Real measurement for youth players who train between team sessions.
+    </p>
+    <div class="hero-ctas rev d5">
+      <a class="cta primary" href="#chapter-goal">See how it works <span class="arrow">→</span></a>
+      <a class="cta ghost" href="#pilot">For coaches</a>
+    </div>
+  </div>
+
+  <!-- Score-strip (bam83 grammar: label | stat rows + mega numeral right) -->
+  <div class="hero-strip rev d6">
+    <div class="hs-left">
+      <div class="hs-top-kicker kicker">Youth soccer · Position-weighted</div>
+      <div class="rule-row"><span class="rr-label">Pre-launch · pilot open</span><span class="rr-value">April 2026</span></div>
+      <div class="rule-row"><span class="rr-label">Position weight tables</span><span class="rr-value">6</span></div>
+      <div class="rule-row"><span class="rr-label">Roles supported</span><span class="rr-value">3</span></div>
+      <p class="hs-footer-note">Player · Coach · Parent · Parent visibility player-controlled</p>
+    </div>
+    <div class="hs-right">
+      <div class="hs-mega"><em>Pace.</em></div>
+      <div class="hs-mega-label">Position-weighted improvement velocity</div>
+    </div>
+  </div>
+</header>
+
+<hr class="chapter-rule" aria-hidden="true">
+
+<!-- ══════════════════════════════════════════════════════════════════
+     CHAPTER 2 — BALL INTO GOAL (sticky, scroll-bound, dark→brass reveal)
+     ══════════════════════════════════════════════════════════════════ -->
+<section class="goal-stage" id="chapter-goal" data-chapter="goal">
+  <div class="goal-sticky">
+    <div class="goal-inner">
+      <p class="kicker rev" data-reveal>Chapter one · The work</p>
+      <h2 class="chapter-head goal-head">
+        <span class="mask-up"><span>The work nobody</span></span><br>
+        <span class="mask-up"><span><em>can see.</em> Yet.</span></span>
+      </h2>
+      <div class="goal-scene" id="goalScene">
+        <svg class="goal-svg" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMax meet">
+          <!-- Goal frame -->
+          <g class="goal-posts">
+            <!-- Posts + crossbar as one rounded rectangle opening -->
+            <line x1="180" y1="70" x2="180" y2="360"/>
+            <line x1="820" y1="70" x2="820" y2="360"/>
+            <line x1="180" y1="70" x2="820" y2="70"/>
+            <!-- Ground line -->
+            <line x1="80" y1="360" x2="920" y2="360" stroke-width="1.3" opacity="0.4"/>
+          </g>
+          <!-- Net: vertical lines -->
+          <g id="netVerts">
+            <line class="goal-net-vert" x1="200" y1="72" x2="220" y2="358"/>
+            <line class="goal-net-vert" x1="240" y1="72" x2="260" y2="358"/>
+            <line class="goal-net-vert" x1="290" y1="72" x2="302" y2="358"/>
+            <line class="goal-net-vert" x1="340" y1="72" x2="346" y2="358"/>
+            <line class="goal-net-vert" x1="390" y1="72" x2="392" y2="358"/>
+            <line class="goal-net-vert" x1="440" y1="72" x2="438" y2="358"/>
+            <line class="goal-net-vert" x1="490" y1="72" x2="484" y2="358"/>
+            <line class="goal-net-vert" x1="540" y1="72" x2="532" y2="358"/>
+            <line class="goal-net-vert" x1="590" y1="72" x2="580" y2="358"/>
+            <line class="goal-net-vert" x1="640" y1="72" x2="628" y2="358"/>
+            <line class="goal-net-vert" x1="690" y1="72" x2="676" y2="358"/>
+            <line class="goal-net-vert" x1="740" y1="72" x2="722" y2="358"/>
+            <line class="goal-net-vert" x1="780" y1="72" x2="760" y2="358"/>
+          </g>
+          <!-- Net: horizontal lines -->
+          <g id="netHoriz">
+            <line class="goal-net-horiz" x1="185" y1="130" x2="815" y2="130"/>
+            <line class="goal-net-horiz" x1="192" y1="180" x2="808" y2="180"/>
+            <line class="goal-net-horiz" x1="198" y1="230" x2="802" y2="230"/>
+            <line class="goal-net-horiz" x1="205" y1="280" x2="795" y2="280"/>
+            <line class="goal-net-horiz" x1="210" y1="330" x2="790" y2="330"/>
+          </g>
+          <!-- Field mark: central penalty spot as subtle reference -->
+          <circle cx="500" cy="360" r="3" fill="var(--ink-mute)" opacity="0.3"/>
+        </svg>
+
+        <!-- Ball — positioned absolutely, Y-bound to scroll -->
+        <div class="ball" id="ball">
+          <svg viewBox="0 0 100 100">
+            <defs>
+              <radialGradient id="ball2-lit" cx="32%" cy="28%" r="78%">
+                <stop offset="0%" stop-color="#f0ebe1"/>
+                <stop offset="48%" stop-color="#958d7c"/>
+                <stop offset="85%" stop-color="#2a251d"/>
+                <stop offset="100%" stop-color="#0a0806"/>
+              </radialGradient>
+            </defs>
+            <circle cx="50" cy="50" r="46" fill="url(#ball2-lit)"/>
+            <g stroke="#141210" stroke-width="1.1" fill="none" opacity="0.8" stroke-linejoin="round">
+              <polygon points="50,28 60,37 56,50 44,50 40,37" fill="#100e0b"/>
+              <line x1="50" y1="28" x2="50" y2="12"/>
+              <line x1="60" y1="37" x2="72" y2="32"/>
+              <line x1="56" y1="50" x2="66" y2="60"/>
+              <line x1="44" y1="50" x2="34" y2="60"/>
+              <line x1="40" y1="37" x2="28" y2="32"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <p class="goal-footer-note rev" data-reveal>
+        Training between team sessions. Backyard repetitions.
+        The work that gets noticed when the goal gets scored — not before.
+      </p>
+    </div>
+  </div>
+</section>
+
+<hr class="chapter-rule" aria-hidden="true">
+
+<!-- ══════════════════════════════════════════════════════════════════
+     CHAPTER 3 — PACE (sticky scroll-bound rotation through 4 positions)
+     ══════════════════════════════════════════════════════════════════ -->
+<section class="pace-stage" id="chapter-pace">
+  <div class="pace-sticky">
+    <div class="pace-inner">
+      <!-- Left: tactical pitch diagram with ghost numeral behind -->
+      <div class="pace-left">
+        <div class="pace-ghost-num" id="paceGhostNum">1</div>
+        <svg class="pitch-svg" viewBox="0 0 600 520" preserveAspectRatio="xMidYMid meet">
+          <!-- Half-pitch outline (vertical orientation) -->
+          <g class="pitch-line">
+            <!-- Outer -->
+            <rect x="60" y="30" width="480" height="460" rx="4" fill="none"/>
+            <!-- Centerline (top edge of half-pitch we're showing) -->
+            <line x1="60" y1="30" x2="540" y2="30"/>
+            <!-- 18-yard box -->
+            <rect x="180" y="360" width="240" height="130" fill="none"/>
+            <!-- 6-yard box -->
+            <rect x="240" y="430" width="120" height="60" fill="none"/>
+            <!-- Penalty arc -->
+            <path d="M 260 360 A 40 40 0 0 0 340 360" fill="none"/>
+            <!-- Penalty spot -->
+            <circle cx="300" cy="400" r="2" fill="var(--ink-mute)"/>
+            <!-- Center circle (partial, top of viewport) -->
+            <path d="M 255 30 A 45 45 0 0 0 345 30" fill="none"/>
+          </g>
+
+          <!-- Role-zone highlights (toggled per position) -->
+          <g id="pitchZones">
+            <!-- Striker: attacking third, inside 18-yard box -->
+            <path class="pitch-zone" data-zone="Striker" d="M 200 380 h 200 v 100 h -200 z" />
+            <!-- Winger: wide attacking channels -->
+            <path class="pitch-zone" data-zone="Winger" d="M 80 180 h 80 v 280 h -80 z M 440 180 h 80 v 280 h -80 z" />
+            <!-- CAM: between lines, arc-adjacent -->
+            <path class="pitch-zone" data-zone="CAM" d="M 220 280 h 160 v 110 h -160 z" />
+            <!-- CDM: deeper midfield -->
+            <path class="pitch-zone" data-zone="CDM" d="M 200 140 h 200 v 110 h -200 z" />
+            <!-- CB: defensive third -->
+            <path class="pitch-zone" data-zone="CB" d="M 170 40 h 260 v 90 h -260 z" />
+            <!-- GK: inside 6-yard -->
+            <path class="pitch-zone" data-zone="GK" d="M 240 430 h 120 v 60 h -120 z" />
+          </g>
+
+          <!-- Position dots: one per role, fixed position on pitch, light up when active -->
+          <g id="pitchDots">
+            <circle class="pitch-dot" data-pos="Striker" data-dom="shooting" cx="300" cy="430" r="5"/>
+            <circle class="pitch-dot" data-pos="Winger" data-dom="load" cx="120" cy="320" r="5"/>
+            <circle class="pitch-dot" data-pos="Winger-r" data-dom="load" cx="480" cy="320" r="5"/>
+            <circle class="pitch-dot" data-pos="CAM" data-dom="passing" cx="300" cy="335" r="5"/>
+            <circle class="pitch-dot" data-pos="CDM" data-dom="passing" cx="300" cy="195" r="5"/>
+            <circle class="pitch-dot" data-pos="CB" data-dom="passing" cx="240" cy="85" r="5"/>
+            <circle class="pitch-dot" data-pos="CB-r" data-dom="passing" cx="360" cy="85" r="5"/>
+            <circle class="pitch-dot" data-pos="GK" data-dom="load" cx="300" cy="465" r="5"/>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Right: stat block with headline, number, body, 3-stat row -->
+      <div class="pace-right">
+        <div class="pace-kicker kicker" id="paceKicker">What is Pace</div>
+        <div class="pace-num-line">
+          <div class="pace-num" id="paceNum">—</div>
+          <div class="pace-num-unit">%</div>
+        </div>
+        <div class="pace-sub-label" id="paceSubLabel">Improvement velocity · weekly</div>
+        <p class="pace-body" id="paceBody">
+          Pace measures the <strong>rate of your improvement</strong> — week over week, session over session.
+          It's not where you are. It's where you're going. And it's weighted to the position you play.
+        </p>
+        <div class="pace-stats" id="paceStats">
+          <div class="pace-stat" data-metric="shooting"><span class="pace-stat-val">20%</span><span class="pace-stat-lab">Shooting</span></div>
+          <div class="pace-stat" data-metric="passing"><span class="pace-stat-val">20%</span><span class="pace-stat-lab">Passing</span></div>
+          <div class="pace-stat" data-metric="consistency"><span class="pace-stat-val">20%</span><span class="pace-stat-lab">Consistency</span></div>
+          <div class="pace-stat" data-metric="duration"><span class="pace-stat-val">20%</span><span class="pace-stat-lab">Duration</span></div>
+          <div class="pace-stat" data-metric="load"><span class="pace-stat-val">20%</span><span class="pace-stat-lab">Load</span></div>
+          <div class="pace-stat"><span class="pace-stat-val">—</span><span class="pace-stat-lab">Position</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="pace-progress-label" aria-hidden="true">
+      <span id="paceProgressIndex" class="ppl-count">01</span>
+      <span>of 07 · <span id="paceProgressLabel">Default model</span></span>
+    </div>
+  </div>
+</section>
+
+<hr class="chapter-rule" aria-hidden="true">
+
+<!-- ══════════════════════════════════════════════════════════════════
+     CHAPTER 4 — VIDEO TO PROOF (scattered evidence cards)
+     ══════════════════════════════════════════════════════════════════ -->
+<section class="video-proof" id="chapter-video">
+  <div class="vp-intro rev" data-reveal>
+    <div class="kicker">Chapter three · Phone video into proof</div>
+    <h2 class="chapter-head">
+      <span>Your camera roll</span><br>
+      <span class="serif-it">becomes the record.</span>
+    </h2>
+    <p class="copy-mono">
+      No smart ball. No tripod. No device ecosystem to buy into. You record a drill on your phone the way you already do —
+      and the video becomes <strong>real stats</strong>, counted and confirmable, before it ever leaves the device.
+    </p>
+  </div>
+
+  <div class="vp-cards">
+    <div class="vp-grid">
+      <div class="vp-card rev" data-reveal data-delay="0">
+        <div class="vp-card-tag">Record · from the phone</div>
+        <div class="vp-card-body">
+          Up to 500 MB · MP4 · MOV · WebM · AVI. Drop the clip on the page or pick from camera roll. <strong>Nothing is sent yet.</strong>
+        </div>
+        <div class="vp-card-stat">4<span class="vp-card-stat-unit">formats</span></div>
+      </div>
+
+      <div class="vp-card accent rev" data-reveal data-delay="120">
+        <div class="vp-card-tag">Compress · in the app</div>
+        <div class="vp-card-body">
+          <strong>FFmpeg.wasm</strong> transcodes to 720p H.264 on-device. Nothing about your session touches a server until you choose to log it.
+        </div>
+        <div class="vp-card-stat">720<span class="vp-card-stat-unit">p · client-side</span></div>
+      </div>
+
+      <div class="vp-card rev" data-reveal data-delay="240">
+        <div class="vp-card-tag">Extract · key frames</div>
+        <div class="vp-card-body">
+          10 to 50 frames pulled per minute of footage. Enough for a model to read the movement without draining the phone battery.
+        </div>
+        <div class="vp-card-stat">10–50<span class="vp-card-stat-unit">frames/min</span></div>
+      </div>
+
+      <div class="vp-card rev" data-reveal data-delay="80">
+        <div class="vp-card-tag">Count · frame by frame</div>
+        <div class="vp-card-body">
+          Shots, goals, left- and right-foot splits, pass attempts — <strong>read off the video</strong>, not typed in after the fact.
+        </div>
+        <div class="vp-card-stat">5<span class="vp-card-stat-unit">metric types</span></div>
+      </div>
+
+      <div class="vp-card rev" data-reveal data-delay="200">
+        <div class="vp-card-tag">Pre-fill · the session form</div>
+        <div class="vp-card-body">
+          Every count drops into a draft session log. You see exactly what the model counted, alongside the raw numbers.
+        </div>
+        <div class="vp-card-stat">14 / 8 / 3<span class="vp-card-stat-unit">shots · on-target · goals</span></div>
+      </div>
+
+      <div class="vp-card rev" data-reveal data-delay="320">
+        <div class="vp-card-tag">Confirm · before it saves</div>
+        <div class="vp-card-body">
+          You <strong>edit anything that's off</strong>. You tap confirm. Only then does it become part of your Pace. The model assists; it doesn't author.
+        </div>
+        <div class="vp-card-stat">You<span class="vp-card-stat-unit">own the save</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="chapter-rule" aria-hidden="true">
+
+<!-- ══════════════════════════════════════════════════════════════════
+     CHAPTER 5 — COACH
+     ══════════════════════════════════════════════════════════════════ -->
+<section class="ch-coach" id="chapter-coach">
+  <div class="coach-inner">
+    <div class="coach-text">
+      <div class="kicker rev" data-reveal>Chapter four · For the coach</div>
+      <h2 class="chapter-head rev" data-reveal>
+        <span>See who's</span><br>
+        <span class="serif-it">actually doing</span><br>
+        <span>the work.</span>
+      </h2>
+      <p class="copy-mono rev" data-reveal>
+        Between team sessions is where the gap gets built — and it's the hardest thing for a coach to see.
+        <strong>Squad Pulse</strong> shows who's training, who's slipping, and what each player's Pace is doing this week.
+      </p>
+      <p class="copy-mono rev" data-reveal>
+        Pilot-shaped. Start a block, attach a roster, set a benchmark cadence. One shareable proof artifact every two weeks.
+        <strong>No mandatory chat. No forced push.</strong>
+      </p>
+    </div>
+    <div class="coach-roster rev" data-reveal>
+      <div class="roster-wrap">
+        <div class="roster-head">
+          <span class="roster-head-kicker">Squad · this week</span>
+          <span class="roster-head-count">6</span>
+        </div>
+        <div class="roster-row">
+          <span class="roster-dot ok"></span>
+          <div><div class="roster-name">Ava</div><div class="roster-role">Striker</div></div>
+          <span class="roster-role">3 sessions</span>
+          <span class="roster-pace">ACCEL</span>
+        </div>
+        <div class="roster-row">
+          <span class="roster-dot ok"></span>
+          <div><div class="roster-name">Jordan</div><div class="roster-role">CAM</div></div>
+          <span class="roster-role">2 sessions</span>
+          <span class="roster-pace">STEADY</span>
+        </div>
+        <div class="roster-row">
+          <span class="roster-dot warn"></span>
+          <div><div class="roster-name">Theo</div><div class="roster-role">CDM</div></div>
+          <span class="roster-role">0 sessions</span>
+          <span class="roster-pace warn">SLIPPING</span>
+        </div>
+        <div class="roster-row">
+          <span class="roster-dot ok"></span>
+          <div><div class="roster-name">Maya</div><div class="roster-role">Winger</div></div>
+          <span class="roster-role">4 sessions</span>
+          <span class="roster-pace">ACCEL</span>
+        </div>
+        <div class="roster-row">
+          <span class="roster-dot ok"></span>
+          <div><div class="roster-name">Jamal</div><div class="roster-role">CB</div></div>
+          <span class="roster-role">2 sessions</span>
+          <span class="roster-pace">STEADY</span>
+        </div>
+        <div class="roster-row">
+          <span class="roster-dot ok"></span>
+          <div><div class="roster-name">Noa</div><div class="roster-role">GK</div></div>
+          <span class="roster-role">1 session</span>
+          <span class="roster-pace">STEADY</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="chapter-rule" aria-hidden="true">
+
+<!-- ══════════════════════════════════════════════════════════════════
+     CHAPTER 6 — PARENT (quieter, narrower, centered)
+     ══════════════════════════════════════════════════════════════════ -->
+<section class="ch-parent" id="chapter-parent">
+  <div class="parent-inner">
+    <div class="kicker rev" data-reveal>Chapter five · For the parent</div>
+    <h2 class="chapter-head rev" data-reveal>
+      <span>Context.</span><br>
+      <span class="serif-it">Not a control panel.</span>
+    </h2>
+    <p class="copy-mono rev" data-reveal>
+      A parent account shows training streaks, sessions logged, and Pace direction —
+      <strong>no ratings unless the player chooses.</strong> No private reflections. No coach-shared notes unless the player opts in.
+    </p>
+    <div class="parent-toggles rev" data-reveal>
+      <div class="parent-toggle on">
+        <span>Show streaks & duration</span>
+        <span class="pt-state" aria-hidden="true"></span>
+      </div>
+      <div class="parent-toggle on">
+        <span>Show shot & pass accuracy</span>
+        <span class="pt-state" aria-hidden="true"></span>
+      </div>
+      <div class="parent-toggle">
+        <span>Show coach feedback</span>
+        <span class="pt-state" aria-hidden="true"></span>
+      </div>
+      <div class="parent-toggle">
+        <span>Show IDP goals</span>
+        <span class="pt-state" aria-hidden="true"></span>
+      </div>
+    </div>
+    <p class="copy-mono rev" data-reveal style="text-align: center; margin-top: 1rem;">
+      The player flips each switch. You read what they chose to share.
+    </p>
+  </div>
+</section>
+
+<hr class="chapter-rule" aria-hidden="true">
+
+<!-- ══════════════════════════════════════════════════════════════════
+     CHAPTER 7 — THREE ROLES STRIP
+     ══════════════════════════════════════════════════════════════════ -->
+<section class="ch-roles">
+  <div class="roles-grid">
+    <div class="roles-col primary rev" data-reveal>
+      <div class="kicker">Player</div>
+      <h3>The one<br>doing<br>the work.</h3>
+      <p class="copy-mono">
+        Log or record a session. See your Pace move.
+        <strong>Every visibility toggle is yours.</strong>
+      </p>
+    </div>
+    <div class="roles-col rev" data-reveal>
+      <div class="kicker">Coach</div>
+      <h3>The one<br>running<br>the block.</h3>
+      <p class="copy-mono">
+        Squad Pulse, pilot setup, benchmark cadence, shareable proof artifacts on a clean two-week rhythm.
+      </p>
+    </div>
+    <div class="roles-col rev" data-reveal>
+      <div class="kicker">Parent</div>
+      <h3>The one<br>watching<br>quietly.</h3>
+      <p class="copy-mono">
+        Privacy-controlled dashboard. Context without the commentary.
+      </p>
+    </div>
+  </div>
+</section>
+
+<hr class="chapter-rule" aria-hidden="true">
+
+<!-- ══════════════════════════════════════════════════════════════════
+     CHAPTER 8 — CLOSING CTA
+     ══════════════════════════════════════════════════════════════════ -->
+<section class="ch-close" id="pilot">
+  <div class="close-inner">
+    <div class="kicker rev" data-reveal>Closing · April 2026</div>
+    <h2 class="chapter-head rev" data-reveal>
+      <span>Run a four-week</span><br>
+      <span class="serif-it">block with us.</span>
+    </h2>
+    <p class="close-lede copy-mono rev" data-reveal style="text-align:center;">
+      Composed is pre-launch. We're onboarding a small cohort of competitive youth teams for the first pilot block.
+      <strong>Tell us your roster, your age group, and what you're actually trying to improve.</strong>
+    </p>
+    <div class="close-cta-row rev" data-reveal>
+      <a class="cta primary" href="mailto:hello@composed.soccer?subject=Pilot%20interest%20%E2%80%94%20%5BClub%20%2F%20Team%20name%5D&body=Club%20or%20team%3A%0A%0AAge%20group%3A%0A%0ARoster%20size%3A%0A%0AHow%20you%20currently%20handle%20between-session%20training%3A%0A%0AWhat%20you're%20trying%20to%20actually%20improve%3A%0A">
+        Bring Composed to your squad <span class="arrow">→</span>
+      </a>
+      <button class="cta ghost" id="copyBtn" type="button">Copy outreach template</button>
+    </div>
+    <div class="close-sig rev" data-reveal>Stay Composed.</div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="foot-logo"><em>C</em>omposed</div>
+  <div class="foot-note">A soccer training companion · Pre-launch · 2026</div>
+</footer>
+
+<script>
+(function() {
+  'use strict';
+
+  const prefersReduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ── Reveal system ────────────────────────────────────────────────
+  // Tag generic reveal elements so they animate in on viewport entry.
+  const rev = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      const delay = parseInt(e.target.dataset.delay || '0', 10);
+      setTimeout(() => e.target.classList.add('in'), delay);
+      rev.unobserve(e.target);
+    });
+  }, { threshold: 0.18, rootMargin: '0px 0px -8% 0px' });
+
+  document.querySelectorAll('.rev, [data-reveal]').forEach(el => {
+    if (!el.classList.contains('rev')) el.classList.add('rev');
+    rev.observe(el);
+  });
+
+  // Mask-up for chapter heads
+  const maskIO = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        maskIO.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.4 });
+  document.querySelectorAll('.mask-up').forEach(el => maskIO.observe(el));
+
+  // ── Floating scroll-badge: fade out once the user has scrolled past hero ──
+  const scrollBadge = document.getElementById('scrollBadge');
+  const heroEl = document.querySelector('header.hero');
+
+  function updateBadge() {
+    if (!scrollBadge || !heroEl) return;
+    const heroRect = heroEl.getBoundingClientRect();
+    const past = heroRect.bottom < window.innerHeight * 0.3;
+    scrollBadge.classList.toggle('fade', past);
+  }
+
+  // ── Ball-into-goal mechanic ──────────────────────────────────────
+  const goalStage = document.querySelector('.goal-stage');
+  const goalScene = document.getElementById('goalScene');
+  const ballEl = document.getElementById('ball');
+
+  function updateGoal() {
+    if (!goalStage || !ballEl || !goalScene) return;
+    const rect = goalStage.getBoundingClientRect();
+    const scrollable = goalStage.offsetHeight - window.innerHeight;
+    const scrolled = -rect.top;
+    const progress = Math.max(0, Math.min(1, scrolled / scrollable));
+
+    // Map progress (0..1) → ball.Y:
+    //   - 0.00 - 0.20: ball hidden above frame (off-screen)
+    //   - 0.20 - 0.65: ball descends into the goal (hits at 0.65)
+    //   - 0.65 - 1.00: ball stays resting in the goal
+    let t;
+    if (progress < 0.20) {
+      t = 0;
+    } else if (progress < 0.65) {
+      t = (progress - 0.20) / 0.45;
+      // ease-in (gravity feel) — accelerate toward impact
+      t = t * t;
+    } else {
+      t = 1;
+    }
+    // ballY maps from about -22rem (above) to +6rem (nestled near bottom)
+    const startY = -22;
+    const endY = 6;
+    const y = startY + (endY - startY) * t;
+    ballEl.style.setProperty('--ball-y', y + 'rem');
+
+    // Background reveal + net-sway: only while INSIDE the goal-stage AND ball landed.
+    // Once the user scrolls past the goal chapter, the page returns to dark so the
+    // Pace chapter can land on the default ground.
+    const insideGoal = rect.bottom > window.innerHeight * 0.2 && rect.top < window.innerHeight * 0.2;
+    const landed = progress >= 0.65 && insideGoal;
+    document.body.classList.toggle('warm-ground', landed);
+    goalScene.classList.toggle('ball-landed', progress >= 0.65);
+  }
+
+  // ── Pace rotation: 7 stages — default + 6 positions ──────────────
+  // Weights sourced from src/utils/pace.js (POSITION_WEIGHTS).
+  const POSITIONS = [
+    { key: 'Default', label: 'Default model',
+      kicker: 'What is Pace',
+      sub: 'Equal weights · no position set',
+      body: 'Most training apps give every player the <strong>same score</strong>. A striker and a holding midfielder become the same number. It flattens the difference between what players are actually doing.',
+      weights: { shooting: 20, passing: 20, consistency: 20, duration: 20, load: 20 },
+      dom: null, posCode: '—', num: '20' },
+    { key: 'Striker', label: 'Striker',
+      kicker: 'Weighted by position',
+      sub: 'Shooting-led · volume matters',
+      body: 'A striker gets punished harder for missed finishing. <strong>40% of a striker\'s Pace</strong> comes from shooting — because that\'s what gets paid when the minute counts.',
+      weights: { shooting: 40, passing: 10, consistency: 20, duration: 10, load: 20 },
+      dom: 'shooting', posCode: '09', num: '40' },
+    { key: 'Winger', label: 'Winger',
+      kicker: 'Weighted by position',
+      sub: 'Load-led · it\'s a running position',
+      body: 'Wingers run. A lot. Their Pace leans on <strong>load</strong> and consistency — high-volume sprinting is the job description. Missed shots are noted, not punished.',
+      weights: { shooting: 25, passing: 15, consistency: 20, duration: 15, load: 25 },
+      dom: 'load', posCode: '07', num: '25' },
+    { key: 'CAM', label: 'CAM · creator',
+      kicker: 'Weighted by position',
+      sub: 'Passing-led · finishing second',
+      body: 'A creator gets rewarded for <strong>passing first</strong>. 30% passing, then finishing — the number tracks whether you\'re actually finding the runs ahead of you.',
+      weights: { shooting: 25, passing: 30, consistency: 20, duration: 10, load: 15 },
+      dom: 'passing', posCode: '10', num: '30' },
+    { key: 'CDM', label: 'CDM · controller',
+      kicker: 'Weighted by position',
+      sub: 'Passing-led · shot-neutral',
+      body: 'Not penalized for flat shot accuracy. A controller\'s Pace is <strong>35% passing, 5% shooting</strong> — because the job isn\'t to finish, it\'s to keep the next pass honest.',
+      weights: { shooting: 5, passing: 35, consistency: 25, duration: 15, load: 20 },
+      dom: 'passing', posCode: '06', num: '35' },
+    { key: 'CB', label: 'Centre-back',
+      kicker: 'Weighted by position',
+      sub: 'Passing + duration-led',
+      body: 'Distribution and minutes. A centre-back\'s Pace tracks <strong>passing</strong> and time on the ball — how many minutes did you play, and how cleanly did the ball move through you?',
+      weights: { shooting: 5, passing: 30, consistency: 25, duration: 20, load: 20 },
+      dom: 'passing', posCode: '04', num: '30' },
+    { key: 'GK', label: 'Goalkeeper',
+      kicker: 'Weighted by position',
+      sub: 'Consistency + load-led',
+      body: 'Not judged like a shooter. A keeper\'s Pace is <strong>30% consistency, 30% load</strong> — show up, do the work, and take the reps seriously. Shooting % is noise.',
+      weights: { shooting: 5, passing: 15, consistency: 30, duration: 20, load: 30 },
+      dom: 'load', posCode: '01', num: '30' },
+  ];
+
+  const paceKicker = document.getElementById('paceKicker');
+  const paceNum = document.getElementById('paceNum');
+  const paceSubLabel = document.getElementById('paceSubLabel');
+  const paceBody = document.getElementById('paceBody');
+  const paceStats = document.getElementById('paceStats');
+  const pitchDots = document.querySelectorAll('.pitch-dot');
+  const pitchZones = document.querySelectorAll('.pitch-zone');
+  const paceGhostNum = document.getElementById('paceGhostNum');
+  const paceProgressIndex = document.getElementById('paceProgressIndex');
+  const paceProgressLabel = document.getElementById('paceProgressLabel');
+  const paceStage = document.querySelector('.pace-stage');
+
+  function snapText(el, val) {
+    if (!el) return;
+    if (prefersReduce) { el.textContent = val; return; }
+    el.style.transition = 'opacity 180ms ease';
+    el.style.opacity = '0';
+    setTimeout(() => {
+      el.textContent = val;
+      el.style.opacity = '';
+    }, 180);
+  }
+
+  function applyPosition(posIdx) {
+    const pos = POSITIONS[posIdx];
+    // Text updates with brief crossfade
+    snapText(paceKicker, pos.kicker);
+    snapText(paceSubLabel, pos.sub);
+    // Big numeral — direct swap (it's a visual anchor, not a counter)
+    if (paceNum) {
+      paceNum.textContent = pos.num;
+      paceNum.classList.toggle('accent-hit', pos.dom === 'shooting');
+    }
+    // Body — swap with opacity
+    if (paceBody) {
+      paceBody.style.opacity = '0';
+      setTimeout(() => {
+        paceBody.innerHTML = pos.body;
+        paceBody.style.opacity = '';
+      }, 220);
+    }
+    // Pace stats — update each stat's % + dominant treatment
+    if (paceStats) {
+      const metrics = ['shooting','passing','consistency','duration','load'];
+      metrics.forEach((m) => {
+        const cell = paceStats.querySelector(`[data-metric="${m}"]`);
+        if (!cell) return;
+        const val = cell.querySelector('.pace-stat-val');
+        val.textContent = (pos.weights[m] != null ? pos.weights[m] : '—') + '%';
+        val.classList.toggle('dominant', !!pos.dom && pos.dom === m);
+      });
+      // Position column
+      const last = paceStats.querySelector('.pace-stat:last-child');
+      if (last) last.querySelector('.pace-stat-val').textContent = pos.posCode;
+    }
+    // Pitch dots — light up the relevant role
+    pitchDots.forEach(d => {
+      const match = d.dataset.pos === pos.key || (pos.key === 'Winger' && d.dataset.pos === 'Winger-r') || (pos.key === 'CB' && d.dataset.pos === 'CB-r');
+      d.classList.toggle('active', match);
+      // dominant-accent highlight for shooting-led roles only
+      d.classList.toggle('dominant-accent', match && pos.dom === 'shooting');
+    });
+    pitchZones.forEach(z => {
+      z.classList.toggle('active', z.dataset.zone === pos.key);
+    });
+    // Ghost numeral — large faded digit, 1-indexed
+    if (paceGhostNum) paceGhostNum.textContent = (posIdx + 1);
+    if (paceProgressIndex) paceProgressIndex.textContent = String(posIdx + 1).padStart(2, '0');
+    if (paceProgressLabel) paceProgressLabel.textContent = pos.label;
+  }
+
+  let lastPosIdx = -1;
+  function updatePace() {
+    if (!paceStage) return;
+    const rect = paceStage.getBoundingClientRect();
+    const scrollable = paceStage.offsetHeight - window.innerHeight;
+    const scrolled = -rect.top;
+    const progress = Math.max(0, Math.min(1, scrolled / scrollable));
+    // Map progress to one of 7 stages, equal slices
+    const idx = Math.min(POSITIONS.length - 1, Math.floor(progress * POSITIONS.length));
+    if (idx !== lastPosIdx) {
+      lastPosIdx = idx;
+      applyPosition(idx);
+    }
+  }
+  applyPosition(0);  // initial state
+
+  // ── Unified scroll loop (rAF-throttled) ───────────────────────────
+  let ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      updateBadge();
+      updateGoal();
+      updatePace();
+      ticking = false;
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
+  onScroll();
+
+  // ── Copy outreach template button ─────────────────────────────────
+  const copyBtn = document.getElementById('copyBtn');
+  if (copyBtn) {
+    const TEMPLATE = `Subject: Pilot interest — [Club / Team name]
+
+Club or team:
+Age group:
+Roster size:
+How you currently handle between-session training:
+What you're trying to actually improve:
+
+(Anything else you want us to know:)`;
+    copyBtn.addEventListener('click', () => {
+      const orig = copyBtn.textContent;
+      const showResult = (text) => {
+        copyBtn.textContent = text;
+        setTimeout(() => { copyBtn.textContent = orig; }, 2200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(TEMPLATE).then(
+          () => showResult('Copied — paste anywhere'),
+          () => showResult('Copy failed — long-press to copy')
+        );
+      } else {
+        showResult('Copy failed');
+      }
+    });
+  }
+
+})();
+</script>
+</body>
+</html>

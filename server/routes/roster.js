@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { getDb } from '../db.js';
 import { requireCoach } from '../auth.js';
 import { validate, redeemInviteSchema } from '../validation.js';
+import { emit } from '../events.js';
 
 const router = Router();
 
@@ -12,6 +13,11 @@ router.post('/invite', requireCoach, (req, res) => {
   const code = crypto.randomBytes(4).toString('hex').toUpperCase();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   db.prepare('INSERT INTO invite_codes (code, coach_id, expires_at) VALUES (?, ?, ?)').run(code, req.userId, expiresAt);
+  emit('invite_code_created', {
+    userId: req.userId,
+    role: 'coach',
+    properties: { code, expiresAt },
+  });
   res.status(201).json({ code, expiresAt });
 });
 
@@ -59,6 +65,12 @@ router.post('/join', validate(redeemInviteSchema), (req, res) => {
   db.prepare('UPDATE invite_codes SET used_by = ?, used_at = datetime(\'now\') WHERE code = ?').run(req.userId, invite.code);
 
   const coach = db.prepare('SELECT id, username FROM users WHERE id = ?').get(invite.coach_id);
+  emit('coach_player_linked', {
+    userId: req.userId,
+    relatedUserId: invite.coach_id,
+    role: req.userRole,
+    properties: { code: invite.code },
+  });
   res.json({ coachId: coach.id, coachName: coach.username });
 });
 

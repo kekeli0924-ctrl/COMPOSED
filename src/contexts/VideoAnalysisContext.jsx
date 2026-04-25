@@ -10,6 +10,8 @@
  * fallback logic — it doesn't replace it.
  */
 import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { emit } from '../hooks/useEmit.js';
+import { humanizeVideoError, RECOVER_MANUAL_EVENT } from '../utils/videoFailure.js';
 
 // ── State machine ────────────────────────────────────────────────────────────
 // Transitions: idle → compressing → uploading → analyzing → complete
@@ -50,6 +52,8 @@ export function VideoAnalysisProvider({ children }) {
   const [partialData, setPartialData] = useState(null);
   // Video ID on the server (if upload succeeded before failure)
   const [videoId, setVideoId] = useState(null);
+  // Humanized failure copy — populated by failWithFallback, consumed by AnalysisBanner
+  const [humanized, setHumanized] = useState(null);
 
   const cancelledRef = useRef(false);
   const lastProgressRef = useRef(Date.now());
@@ -89,11 +93,37 @@ export function VideoAnalysisProvider({ children }) {
   }, []);
 
   const failWithFallback = useCallback((errorMsg, partial = null) => {
+    const h = humanizeVideoError(errorMsg);
     setError(errorMsg);
+    setHumanized(h);
     if (partial) setPartialData(partial);
     setState(STATES.FAILED);
-    setProgress(p => ({ ...p, message: errorMsg, stage: 'failed' }));
+    setProgress(p => ({ ...p, message: h.headline, stage: 'failed' }));
+    // Pilot telemetry: every fallback tells us the video pipeline is leaking users
+    // out to manual logging. Without this we can't tell whether the pipeline is the
+    // reason video adoption is low, or something else. Pass rawError so the event
+    // log retains the technical reason even though the user sees friendly copy.
+    emit('video_analysis_fallback_to_manual', { rawError: errorMsg, headline: h.headline, hasPartialData: !!partial });
   }, []);
+
+  // User tapped "Log manually" in the banner. Fires a window event that App.jsx
+  // listens for — App decides where to route and resets context state.
+  const recoverManual = useCallback(() => {
+    try {
+      window.dispatchEvent(new CustomEvent(RECOVER_MANUAL_EVENT, {
+        detail: { partial: partialData }
+      }));
+    } catch { /* ignore — recover-UI still dismisses */ }
+    // Clear the banner so the user isn't looking at a stale failure.
+    cancelledRef.current = false;
+    setState(STATES.IDLE);
+    setProgress({ message: '', percentage: 0, stage: '' });
+    setError(null);
+    setResult(null);
+    setHumanized(null);
+    setVideoId(null);
+    // Keep partialData in case the form handler wants it — it's cleared on reset()
+  }, [partialData]);
 
   const cancel = useCallback(() => {
     cancelledRef.current = true;
@@ -111,6 +141,15 @@ export function VideoAnalysisProvider({ children }) {
     setResult(null);
     setPartialData(null);
     setVideoId(null);
+    setHumanized(null);
+  }, []);
+
+  const dismissFailure = useCallback(() => {
+    // Clear just the failure state without triggering recovery.
+    setState(STATES.IDLE);
+    setError(null);
+    setHumanized(null);
+    setProgress({ message: '', percentage: 0, stage: '' });
   }, []);
 
   const updateProgress = useCallback((msg, pct) => {
@@ -125,6 +164,7 @@ export function VideoAnalysisProvider({ children }) {
     state,
     progress,
     error,
+    humanized,
     result,
     partialData,
     videoId,
@@ -140,6 +180,8 @@ export function VideoAnalysisProvider({ children }) {
     failWithFallback,
     cancel,
     reset,
+    recoverManual,
+    dismissFailure,
     updateProgress,
     storeVideoId,
 
@@ -164,6 +206,7 @@ export function useVideoAnalysis() {
       state: STATES.IDLE,
       progress: { message: '', percentage: 0, stage: '' },
       error: null,
+      humanized: null,
       result: null,
       partialData: null,
       videoId: null,
@@ -177,6 +220,8 @@ export function useVideoAnalysis() {
       failWithFallback: () => {},
       cancel: () => {},
       reset: () => {},
+      recoverManual: () => {},
+      dismissFailure: () => {},
       updateProgress: () => {},
       storeVideoId: () => {},
       THRESHOLDS,

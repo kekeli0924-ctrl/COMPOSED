@@ -734,6 +734,83 @@ const migrations = [
         ON users(google_id) WHERE google_id IS NOT NULL`);
     } catch { /* ignore */ }
   }},
+  { version: 26, up: (db) => {
+    // First-party pilot instrumentation: one append-only events table.
+    // Deliberately schemaless in `properties` (JSON TEXT) so adding new event types
+    // or fields doesn't require a migration — the cost is that reads need to parse.
+    // For a pilot (~dozens of users, thousands of rows) this is fine; if we ever
+    // grow past a million rows we'll denormalize hot columns.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_name TEXT NOT NULL,
+        occurred_at TEXT NOT NULL DEFAULT (datetime('now')),
+        user_id INTEGER,
+        related_user_id INTEGER,
+        role TEXT,
+        properties TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_events_name ON events(event_name);
+      CREATE INDEX IF NOT EXISTS idx_events_occurred_at ON events(occurred_at);
+      CREATE INDEX IF NOT EXISTS idx_events_user ON events(user_id);
+    `);
+  }},
+  { version: 27, up: (db) => {
+    // 4-week technical homework blocks.
+    //
+    // ONE new table, zero ALTERs to existing tables. Design notes:
+    //   - member_ids lives inline as a JSON array — pilot scale (~dozens of rows,
+    //     tiny arrays) doesn't justify a second join table. If this grows beyond a
+    //     pilot we'd normalize to block_members(block_id, player_id).
+    //   - No block_id on assigned_plans or benchmarks. Block membership of a given
+    //     assigned_plan is DERIVED: same coach, player in member_ids, date within
+    //     [start_date, start_date+27]. Benchmark phase is derived from date windows:
+    //       baseline    = start_date ± 7d
+    //       retest_1    = start_date + 14d ± 5d
+    //       retest_2    = start_date + 28d ± 5d
+    //     This keeps schema minimal at the cost of misattributing benchmarks logged
+    //     outside the windows — acceptable for a supervised pilot.
+    //   - training_days is a JSON array of two day-of-week ints (0=Sun..6=Sat).
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS blocks (
+        id TEXT PRIMARY KEY,
+        coach_id INTEGER NOT NULL REFERENCES users(id),
+        name TEXT NOT NULL DEFAULT '4-Week Block',
+        start_date TEXT NOT NULL,
+        training_days TEXT NOT NULL,
+        member_ids TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_blocks_coach ON blocks(coach_id);
+    `);
+  }},
+  { version: 28, up: (db) => {
+    // Snapshot-based public digest / proof URLs for 4-week blocks.
+    //
+    // Snapshots are written once at generation time and never recomputed —
+    // that's the whole point. The public viewer reads JSON from `snapshot`
+    // without touching any other table. Revoke = set `revoked_at`; the public
+    // endpoint then returns 410.
+    //
+    // `slug` is 128 bits of URL-safe random (unguessable) and is the public
+    // identifier — never exposed in listings to unauthenticated clients.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS block_digests (
+        id TEXT PRIMARY KEY,
+        block_id TEXT NOT NULL REFERENCES blocks(id),
+        coach_id INTEGER NOT NULL REFERENCES users(id),
+        slug TEXT NOT NULL UNIQUE,
+        title TEXT NOT NULL,
+        week_label TEXT,
+        snapshot TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        revoked_at TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_block_digests_block ON block_digests(block_id);
+      CREATE INDEX IF NOT EXISTS idx_block_digests_slug ON block_digests(slug);
+    `);
+  }},
 ];
 
 function runMigrations(db) {

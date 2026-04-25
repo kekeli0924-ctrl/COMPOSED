@@ -10,6 +10,7 @@ import { analyzeVideo, analyzeWithFrames, isConfigured } from '../services/video
 import { Server as TusServer } from '@tus/server';
 import { FileStore } from '@tus/file-store';
 import { enforceDailyQuota } from '../middleware/quota.js';
+import { emit } from '../events.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, '..', 'data', 'uploads');
@@ -169,6 +170,11 @@ router.post('/:videoId/analyze', enforceDailyQuota('video-analyze', 20, 'Daily v
 
   // Respond immediately, run analysis in background
   db.prepare('UPDATE video_analyses SET status = ? WHERE id = ?').run('analyzing', video.id);
+  emit('video_analysis_started', {
+    userId: req.userId,
+    role: req.userRole,
+    properties: { videoId: video.id, fileSize: video.file_size, originalName: video.original_name },
+  });
   res.json({ status: 'analyzing', videoId: video.id });
 
   (async () => {
@@ -196,11 +202,22 @@ router.post('/:videoId/analyze', enforceDailyQuota('video-analyze', 20, 'Daily v
       db.prepare(`UPDATE video_analyses SET status = 'complete', analysis_result = ?, clip_timestamp = ?, completed_at = datetime('now') WHERE id = ?`)
         .run(JSON.stringify(result), clipTimestamp, video.id);
 
+      const kickCount = (result?.kicks_detail || result?.kicks || []).length;
+      emit('video_analysis_completed', {
+        userId: req.userId,
+        role: req.userRole,
+        properties: { videoId: video.id, kickCount, outcome: 'success' },
+      });
       logger.info('Video analysis complete', { videoId: video.id, clipTimestamp });
     } catch (err) {
       logger.error('Video analysis failed', { videoId: video.id, error: err.message });
       db.prepare(`UPDATE video_analyses SET status = 'error', error_message = ? WHERE id = ?`)
         .run(err.message, video.id);
+      emit('video_analysis_completed', {
+        userId: req.userId,
+        role: req.userRole,
+        properties: { videoId: video.id, outcome: 'error', errorMessage: err.message },
+      });
     }
   })();
 });

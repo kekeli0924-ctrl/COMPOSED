@@ -1,0 +1,2196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Composed — a soccer training companion for serious youth players who train between team sessions. Position-weighted Pace, counted from footage, coach-led pilots." />
+<meta name="theme-color" content="#EDE7DC" />
+<title>Composed — Stop Guessing. Start Proving.</title>
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23EDE7DC'/><text x='50' y='70' font-size='72' font-family='Georgia,serif' font-style='italic' font-weight='400' fill='%231A1614' text-anchor='middle'>C</text></svg>" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+
+<link rel="preload" as="video" href="assets/hero-video.mp4" type="video/mp4">
+
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Composed — Stop Guessing. Start Proving." />
+<meta property="og:description" content="A soccer training companion for serious youth players who train between team sessions." />
+<meta name="twitter:card" content="summary_large_image" />
+
+<style>
+  /* ── Tokens (light default) ──────────────── */
+  :root {
+    --bg: #EDE7DC;
+    --bg-wrong: #ECE5D7;
+    --bg-pace-top: #EEE8DB;
+    --bg-pace-bot: #E9E1D1;
+    --bg-payoff-dark: #050403;
+    --bg-video: #E5E0D2;
+    --bg-coach: #EEE7D9;
+    --bg-ai: #060504;
+    --bg-blocks: #EBE4D5;
+    --bg-parent: #EFE9DC;
+    --bg-built: #EDE7DC;
+    --bg-close: #E3D9C6;
+
+    --fg: #1A1614;
+    --fg-mute: #5C574F;
+    --fg-soft: #7A736A;
+
+    --fg-dark: #F5F0E8;
+    --fg-mute-dark: #A7A5A0;
+    --fg-soft-dark: #8A857F;
+
+    --accent: #C2A56B;
+    --accent-hover: #8F7644;
+    --accent-deep: #8B7A5E;
+    --coral: #B43E3E;
+
+    --line: rgba(26, 22, 20, 0.10);
+    --line-soft: rgba(26, 22, 20, 0.05);
+    --line-dark: rgba(245, 240, 232, 0.08);
+
+    --serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Inter, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+    --max: 80rem;
+    --narrow: 56rem;
+    --pad-x: max(1.5rem, 5vw);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: 18px;
+    line-height: 1.6;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-variant-numeric: tabular-nums;
+    overflow-x: hidden;
+    transition: background-color 900ms var(--ease-in-out), color 900ms var(--ease-in-out);
+  }
+  body.to-dark { background: var(--bg-payoff-dark); color: var(--fg-dark); }
+  ::selection { background: var(--accent); color: var(--bg); }
+
+  img, video { max-width: 100%; display: block; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  .serif { font-family: var(--serif); font-weight: 400; }
+  .serif em, em.serif-it { font-style: italic; font-weight: 400; }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  .eyebrow {
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--accent-deep);
+  }
+  body.to-dark .eyebrow { color: var(--accent); }
+
+  h1, h2, h3 { font-family: var(--serif); font-weight: 400; color: var(--fg); }
+  h1 em, h2 em, h3 em { font-style: italic; }
+  body.to-dark h1, body.to-dark h2, body.to-dark h3 { color: var(--fg-dark); }
+
+  .h-display {
+    font-size: clamp(3.5rem, 8.5vw, 8.5rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+  .h-chapter {
+    font-size: clamp(2.25rem, 5.2vw, 4.5rem);
+    line-height: 1.07;
+    letter-spacing: -0.015em;
+  }
+  .h-chapter-sm {
+    font-size: clamp(1.75rem, 3.8vw, 3rem);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+
+  p.lede {
+    font-family: var(--sans);
+    font-size: clamp(1rem, 1.3vw, 1.25rem);
+    color: var(--fg-mute);
+    line-height: 1.55;
+    max-width: 32em;
+    font-weight: 400;
+  }
+  p.lede strong { color: var(--fg); font-weight: 500; }
+  body.to-dark p.lede { color: var(--fg-mute-dark); }
+  body.to-dark p.lede strong { color: var(--fg-dark); }
+
+  .skip-link {
+    position: absolute;
+    left: 1rem;
+    top: -3rem;
+    z-index: 200;
+    padding: 0.65rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--bg);
+    background: var(--fg);
+    border-radius: 999px;
+    transition: top 0.15s ease;
+  }
+  .skip-link:focus-visible { top: 1rem; outline-offset: 2px; }
+
+  .scroll-progress {
+    position: fixed;
+    top: 0; left: 0;
+    height: 1px;
+    width: 0%;
+    background: rgba(139, 122, 94, 0.7);
+    z-index: 100;
+    transition: width 60ms linear;
+    pointer-events: none;
+  }
+  body.to-dark .scroll-progress,
+  body.hero-visible .scroll-progress { background: rgba(194, 165, 107, 0.7); }
+
+  nav.top {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 50;
+    padding: 1rem var(--pad-x);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: transparent;
+    transition: background 300ms ease, border-color 300ms ease, color 600ms ease;
+    border-bottom: 1px solid transparent;
+  }
+  nav.top.scrolled {
+    background: rgba(237, 231, 220, 0.8);
+    backdrop-filter: saturate(1.4) blur(20px);
+    -webkit-backdrop-filter: saturate(1.4) blur(20px);
+    border-bottom-color: var(--line);
+  }
+  body.hero-visible nav.top,
+  body.to-dark nav.top { background: transparent; }
+  body.hero-visible nav.top.scrolled,
+  body.to-dark nav.top.scrolled {
+    background: rgba(10, 8, 6, 0.6);
+    border-bottom-color: var(--line-dark);
+  }
+  nav.top .logo {
+    font-family: var(--serif);
+    font-size: 1.5rem;
+    letter-spacing: -0.01em;
+    color: var(--fg);
+  }
+  nav.top .logo em { font-style: italic; color: inherit; }
+  body.hero-visible nav.top .logo,
+  body.to-dark nav.top .logo { color: var(--fg-dark); }
+
+  nav.top .nav-links { display: flex; gap: 1.75rem; align-items: center; }
+  nav.top .nav-links a {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--fg-mute);
+    transition: color 200ms ease;
+  }
+  nav.top .nav-links a:hover { color: var(--fg); }
+  body.hero-visible nav.top .nav-links a,
+  body.to-dark nav.top .nav-links a { color: var(--fg-mute-dark); }
+  body.hero-visible nav.top .nav-links a:hover,
+  body.to-dark nav.top .nav-links a:hover { color: var(--fg-dark); }
+  @media (max-width: 760px) { nav.top .nav-links { display: none; } }
+
+  nav.top .nav-cta {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--fg-mute);
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    transition: all 200ms ease;
+  }
+  nav.top .nav-cta:hover { color: var(--fg); border-color: rgba(26, 22, 20, 0.28); }
+  body.hero-visible nav.top .nav-cta,
+  body.to-dark nav.top .nav-cta { color: var(--fg-mute-dark); border-color: var(--line-dark); }
+  body.hero-visible nav.top .nav-cta:hover,
+  body.to-dark nav.top .nav-cta:hover { color: var(--fg-dark); border-color: rgba(245, 240, 232, 0.3); }
+
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.9rem 1.6rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border-radius: 999px;
+    transition: all 250ms var(--ease-out);
+    white-space: nowrap;
+    cursor: pointer;
+    font-family: var(--sans);
+  }
+  .cta-primary {
+    border: 1px solid var(--accent);
+    color: var(--accent-deep);
+    background: transparent;
+  }
+  .cta-primary:hover { background: var(--accent); color: var(--bg); }
+  .cta-ghost {
+    color: var(--fg-mute);
+    background: transparent;
+    border: 1px solid transparent;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .cta-ghost:hover { color: var(--accent-deep); }
+  .cta .arrow { transition: transform 250ms var(--ease-out); }
+  .cta:hover .arrow { transform: translateX(3px); }
+
+  .hero .cta-primary { color: var(--accent); }
+  .hero .cta-primary:hover { background: var(--accent); color: var(--bg-payoff-dark); }
+  .hero .cta-ghost { color: var(--fg-mute-dark); }
+  .hero .cta-ghost:hover { color: var(--accent); }
+
+  section, .stage {
+    padding: clamp(5rem, 12vh, 9rem) var(--pad-x);
+    position: relative;
+  }
+  .container { max-width: var(--max); margin: 0 auto; width: 100%; }
+  .narrow { max-width: var(--narrow); margin: 0 auto; width: 100%; }
+
+  .enter { opacity: 0; transition: opacity 400ms ease-out; }
+  .enter.shown { opacity: 1; }
+
+  hr.rule {
+    border: none;
+    width: 1px;
+    height: 96px;
+    margin: 0 auto;
+    background: rgba(139, 122, 94, 0.25);
+    display: block;
+  }
+  body.to-dark hr.rule { background: rgba(194, 165, 107, 0.2); }
+
+  /* ═══ HERO ═══ */
+  header.hero {
+    min-height: 100vh;
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6rem var(--pad-x) 5rem;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-payoff-dark);
+    isolation: isolate;
+  }
+  .hero-bg-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 35%;
+    z-index: 0;
+    opacity: 0;
+    transition: opacity 1600ms ease-out;
+  }
+  .hero-bg-video.on { opacity: 1; }
+  .hero-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(5, 4, 3, 0.55) 0%, rgba(5, 4, 3, 0.25) 40%, rgba(5, 4, 3, 0.35) 70%, rgba(5, 4, 3, 0.7) 100%),
+      radial-gradient(ellipse 80% 60% at 50% 55%, transparent 0%, rgba(5, 4, 3, 0.35) 100%);
+  }
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 42rem;
+    margin: 0 auto;
+    text-align: center;
+    color: var(--fg-dark);
+  }
+  .hero-eyebrow {
+    display: inline-block;
+    margin-bottom: 1.75rem;
+    color: var(--accent);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out);
+  }
+  .hero-eyebrow.on { opacity: 1; transform: translateY(0); }
+
+  h1.hero-headline {
+    color: var(--fg-dark);
+    margin-bottom: 1.75rem;
+    text-wrap: balance;
+  }
+  .char-mask {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: baseline;
+    line-height: 1.05;
+  }
+  .char {
+    display: inline-block;
+    transform: translateY(5rem) scale(0.92);
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  .char.in {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    transition: transform 850ms var(--ease-out), opacity 500ms ease-out;
+  }
+  .char-space { display: inline-block; width: 0.28em; }
+  .word { display: inline-block; white-space: nowrap; }
+
+  p.hero-subhead {
+    font-family: var(--sans);
+    font-size: clamp(1rem, 1.3vw, 1.25rem);
+    color: var(--fg-mute-dark);
+    line-height: 1.55;
+    max-width: 34em;
+    margin: 0 auto 2.25rem;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 600ms ease-out, transform 600ms var(--ease-out);
+  }
+  p.hero-subhead.on { opacity: 1; transform: translateY(0); }
+  p.hero-subhead strong { color: var(--fg-dark); font-weight: 500; }
+
+  .hero-ctas {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .hero-ctas .cta {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 500ms ease-out, transform 500ms var(--ease-out), background 250ms var(--ease-out), color 250ms var(--ease-out);
+  }
+  .hero-ctas .cta.on { opacity: 1; transform: translateY(0); }
+
+
+  /* ═══ HOW IT WORKS ═══ */
+  .ch-how {
+    background: var(--bg);
+    padding-top: clamp(6rem, 13vh, 10rem);
+    padding-bottom: clamp(6rem, 13vh, 10rem);
+  }
+  .how-head { max-width: 48rem; margin: 0 auto 3.5rem; text-align: center; }
+  .how-head .eyebrow { margin-bottom: 1rem; }
+  .how-head h2 { margin-bottom: 1.25rem; max-width: 18ch; margin-left: auto; margin-right: auto; }
+  .how-head p.lede { margin: 0 auto; }
+
+  .how-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+    max-width: var(--max);
+    margin: 0 auto;
+  }
+  @media (max-width: 1000px) { .how-grid { grid-template-columns: repeat(2, 1fr); gap: 2rem; } }
+  @media (max-width: 600px) { .how-grid { grid-template-columns: 1fr; } }
+
+  .how-tile { display: flex; flex-direction: column; gap: 1rem; }
+  .how-visual {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: #14100d;
+  }
+  .how-visual img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .how-badge {
+    position: absolute;
+    top: 0.85rem;
+    left: 0.85rem;
+    min-width: 1.8rem;
+    height: 1.8rem;
+    padding: 0 0.55rem;
+    border-radius: 7px;
+    background: rgba(10, 8, 6, 0.7);
+    color: var(--fg-dark);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.04em;
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    z-index: 2;
+  }
+
+  .how-title {
+    font-family: var(--serif);
+    font-size: clamp(1.25rem, 1.5vw, 1.5rem);
+    color: var(--fg);
+    font-weight: 400;
+    line-height: 1.1;
+  }
+  .how-desc {
+    font-size: 0.92rem;
+    color: var(--fg-mute);
+    line-height: 1.5;
+    font-family: var(--sans);
+    max-width: 30ch;
+  }
+
+  /* Placeholder tile — awaiting Nano Banana render */
+  .how-placeholder {
+    background: linear-gradient(145deg, #0d0a08 0%, #1a1512 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .how-placeholder::before {
+    content: "";
+    position: absolute;
+    inset: 1rem;
+    border: 1px dashed rgba(194, 165, 107, 0.28);
+    border-radius: 0.6rem;
+    pointer-events: none;
+  }
+  .how-placeholder-label {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(245, 240, 232, 0.42);
+    line-height: 1.8;
+    padding: 0 1rem;
+  }
+
+  /* Step 4 schematic — mini parent digest phone inside the tile */
+  .how-schematic {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, #0d0a08 0%, #1a1512 100%);
+    padding: 1.25rem;
+  }
+  .how-mini-phone {
+    width: min(78%, 10rem);
+    aspect-ratio: 9 / 17;
+    border-radius: 1rem;
+    padding: 0.3rem;
+    background: linear-gradient(145deg, #2a2a2a 0%, #161616 100%);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.5);
+  }
+  .how-mini-phone-screen {
+    width: 100%;
+    height: 100%;
+    border-radius: 0.75rem;
+    background: #060607;
+    padding: 0.5rem 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    color: var(--fg-dark);
+  }
+  .how-mini-wordmark {
+    font-family: var(--serif);
+    font-size: 0.65rem;
+    color: var(--fg-dark);
+  }
+  .how-mini-wordmark em { font-style: italic; color: inherit; }
+  .how-mini-url {
+    font-family: var(--mono);
+    font-size: 0.4rem;
+    letter-spacing: 0.05em;
+    color: rgba(245, 240, 232, 0.4);
+    word-break: break-all;
+    text-align: left;
+  }
+  .how-mini-pace {
+    font-family: var(--sans);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+    text-align: center;
+    margin-top: 0.2rem;
+  }
+  .how-mini-sub {
+    font-family: var(--mono);
+    font-size: 0.42rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(245, 240, 232, 0.5);
+    text-align: center;
+  }
+  .how-mini-days {
+    margin-top: auto;
+    padding-top: 0.35rem;
+    border-top: 1px solid rgba(245, 240, 232, 0.05);
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+  .how-mini-day { aspect-ratio: 1; border-radius: 2px; background: rgba(245, 240, 232, 0.06); }
+  .how-mini-day.on { background: var(--accent); }
+
+  /* ═══ WRONG METRIC ═══ */
+  .ch-wrong {
+    background: var(--bg-wrong);
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+  }
+  .ch-wrong .narrow { text-align: center; }
+  .ch-wrong .eyebrow { margin-bottom: 1.25rem; }
+  .ch-wrong h2 { margin-bottom: 1.75rem; max-width: 22ch; margin-left: auto; margin-right: auto; }
+  .ch-wrong p.lede { margin: 0 auto; }
+
+  /* ═══ PACE INTRO (dark, matching photo) ═══ */
+  .ch-pace-intro {
+    background: transparent;
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+  .ch-pace-intro::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 50% 40% at 72% 55%, rgba(194, 165, 107, 0.10), transparent 72%);
+    pointer-events: none;
+  }
+  .pace-intro-grid {
+    width: 100%;
+    max-width: var(--max);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: clamp(2.5rem, 5vw, 5rem);
+    align-items: center;
+  }
+  @media (max-width: 900px) {
+    .pace-intro-grid { grid-template-columns: 1fr; gap: 3rem; }
+  }
+  .pace-intro-copy .eyebrow { margin-bottom: 1.1rem; }
+  .pace-intro-copy h2 { margin-bottom: 1.25rem; max-width: 18ch; }
+  .pace-intro-copy p.lede { margin-bottom: 2.25rem; }
+  .pace-chart-wrap { width: 100%; max-width: 30rem; }
+  .pace-chart { width: 100%; height: auto; display: block; }
+  .pace-chart-line {
+    fill: none;
+    stroke: var(--accent-deep);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 1200;
+    stroke-dashoffset: 1200;
+    transition: stroke-dashoffset 1.4s var(--ease-out);
+  }
+  .pace-chart-line.draw { stroke-dashoffset: 0; }
+  .pace-chart-axis { stroke: rgba(26, 22, 20, 0.08); stroke-width: 1; }
+
+  .pace-intro-visual {
+    position: relative;
+    width: 100%;
+    max-width: 26rem;
+    margin: 0 auto;
+    aspect-ratio: 1073 / 1600;
+  }
+  .pace-intro-visual img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    -webkit-mask-image: radial-gradient(ellipse 70% 80% at 50% 50%, #000 78%, transparent 100%);
+    mask-image: radial-gradient(ellipse 70% 80% at 50% 50%, #000 78%, transparent 100%);
+  }
+  /* Pace Intro chart: lighter brass on dark bg */
+  body.to-dark .pace-chart-line { stroke: var(--accent); }
+  body.to-dark .pace-chart-axis { stroke: rgba(245, 240, 232, 0.08); }
+
+  /* ═══ PACE ROTATION (light) ═══ */
+  .pace-stage {
+    height: 320vh;
+    position: relative;
+    background: linear-gradient(180deg, var(--bg-pace-top) 0%, var(--bg-pace-bot) 100%);
+  }
+  .pace-sticky {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 3rem var(--pad-x);
+    overflow: hidden;
+  }
+  .pace-inner {
+    width: 100%;
+    max-width: 60rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(1.75rem, 3.5vh, 2.75rem);
+  }
+  .pace-head { text-align: center; max-width: 40rem; }
+  .pace-head .eyebrow { display: inline-block; margin-bottom: 0.9rem; }
+  .pace-head h2 { margin-bottom: 1.1rem; max-width: 20ch; margin-left: auto; margin-right: auto; }
+  .pace-caption {
+    font-family: var(--sans);
+    font-size: clamp(1rem, 1.2vw, 1.2rem);
+    color: var(--fg-mute);
+    max-width: 32em;
+    line-height: 1.55;
+    min-height: 3em;
+    margin: 0 auto;
+    transition: opacity 320ms ease;
+  }
+  .pace-caption strong { color: var(--fg); font-weight: 500; }
+
+  .pace-viz {
+    width: 100%;
+    max-width: 44rem;
+    background: rgba(255, 253, 248, 0.6);
+    border: 1px solid var(--line);
+    border-radius: 1.25rem;
+    padding: clamp(1.5rem, 3vw, 2.25rem);
+    transition: transform 700ms var(--ease-out), opacity 600ms ease;
+    box-shadow: 0 12px 30px rgba(26, 22, 20, 0.06);
+  }
+  .pace-stage.collapsing .pace-viz {
+    transform: scale(0.68);
+    opacity: 0.2;
+  }
+  .pace-viz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1.75rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .pace-viz-label {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--fg-soft);
+  }
+  .pace-viz-position {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    color: var(--accent-deep);
+    letter-spacing: 0.03em;
+  }
+  .pace-bars { display: flex; flex-direction: column; gap: 0.9rem; }
+  .pace-bar-row {
+    display: grid;
+    grid-template-columns: 6rem 1fr 3.2rem;
+    gap: 0.9rem;
+    align-items: center;
+  }
+  @media (max-width: 500px) {
+    .pace-bar-row { grid-template-columns: 4.8rem 1fr 2.6rem; gap: 0.6rem; }
+  }
+  .pace-bar-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-mute);
+    transition: color 500ms ease;
+  }
+  .pace-bar-track {
+    height: 6px;
+    background: rgba(26, 22, 20, 0.07);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .pace-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+    border-radius: 999px;
+    width: 50%;
+    transition: width 500ms var(--ease-out);
+  }
+  .pace-bar-pct {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    color: var(--fg);
+    text-align: right;
+    transition: color 500ms ease;
+  }
+  .pace-bar-row.dominant .pace-bar-label { color: var(--fg); }
+  .pace-bar-row.dominant .pace-bar-pct { color: var(--accent-deep); }
+  .pace-bar-row.dominant .pace-bar-label::after {
+    content: " · DOMINANT";
+    color: var(--accent-deep);
+    font-weight: 600;
+    font-size: 0.58rem;
+    letter-spacing: 0.22em;
+    margin-left: 0.25em;
+  }
+
+  .pace-viz-footer {
+    margin-top: 1.75rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .pace-viz-footer span {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--fg-soft);
+  }
+  .pace-viz-footer .val { font-family: var(--mono); letter-spacing: 0.06em; color: var(--fg-mute); }
+
+  /* ═══ PACE PAYOFF (dark) ═══ */
+  .ch-pace-payoff {
+    background: transparent;
+    color: var(--fg-dark);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(5rem, 10vh, 8rem) var(--pad-x);
+    position: relative;
+  }
+  .ch-pace-payoff::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 55% 40% at 50% 55%, rgba(194, 165, 107, 0.11), transparent 70%),
+      radial-gradient(ellipse 70% 50% at 50% 50%, rgba(5, 4, 3, 0.3), transparent 75%);
+    pointer-events: none;
+  }
+  .payoff-inner {
+    max-width: 46rem;
+    margin: 0 auto;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    position: relative;
+  }
+  .payoff-eyebrow {
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .payoff-photo-wrap {
+    position: relative;
+    width: min(100%, 28rem);
+    aspect-ratio: 1073 / 1600;
+    opacity: 0;
+    transform: scale(1.04);
+    transition: opacity 1600ms ease-out, transform 1600ms var(--ease-out);
+  }
+  .payoff-photo-wrap::before {
+    content: "";
+    position: absolute;
+    inset: -10%;
+    background: radial-gradient(ellipse 50% 42% at 50% 50%, rgba(194, 165, 107, 0.22), rgba(194, 165, 107, 0.06) 48%, transparent 78%);
+    filter: blur(40px);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .ch-pace-payoff.shown .payoff-photo-wrap { opacity: 1; transform: scale(1); }
+  .payoff-photo {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    -webkit-mask-image: radial-gradient(ellipse 70% 80% at 50% 50%, #000 78%, transparent 100%);
+    mask-image: radial-gradient(ellipse 70% 80% at 50% 50%, #000 78%, transparent 100%);
+  }
+  .payoff-quote {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(1.15rem, 1.7vw, 1.5rem);
+    line-height: 1.45;
+    color: var(--fg-mute-dark);
+    max-width: 32em;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 700ms ease-out 800ms, transform 700ms var(--ease-out) 800ms;
+  }
+  .ch-pace-payoff.shown .payoff-quote { opacity: 1; transform: translateY(0); }
+
+  /* ═══ VIDEO → PROOF ═══ */
+  .video-stage {
+    height: 280vh;
+    position: relative;
+    background: var(--bg-video);
+  }
+  .video-sticky {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem var(--pad-x);
+    overflow: hidden;
+  }
+  .video-shell {
+    width: 100%;
+    max-width: 76rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(2rem, 3.5vh, 3rem);
+  }
+  .video-intro { max-width: 52rem; }
+  .video-intro .eyebrow { margin-bottom: 1rem; }
+  .video-intro h2 { margin-bottom: 1rem; max-width: 14ch; }
+  .video-intro p.lede { max-width: 42em; }
+
+  .analysis-board {
+    width: 100%;
+    max-width: 66rem;
+    align-self: center;
+    background: #0D0E12;
+    color: var(--fg-dark);
+    border: 1px solid rgba(245, 240, 232, 0.08);
+    border-radius: 1.1rem;
+    padding: clamp(1.25rem, 2.5vw, 2rem);
+    display: grid;
+    grid-template-rows: auto auto auto;
+    gap: clamp(1.25rem, 2.5vw, 2rem);
+    box-shadow: 0 30px 80px rgba(26, 22, 20, 0.25), 0 10px 30px rgba(26, 22, 20, 0.15);
+    position: relative;
+  }
+  .analysis-board::before {
+    content: "";
+    position: absolute;
+    inset: 1.25rem;
+    background-image:
+      linear-gradient(rgba(245, 240, 232, 0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245, 240, 232, 0.015) 1px, transparent 1px);
+    background-size: 32px 32px;
+    border-radius: 0.6rem;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+  .board-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; position: relative; z-index: 1; }
+  .board-zone { transition: transform 500ms var(--ease-out), opacity 500ms ease; }
+  .board-capture { display: flex; align-items: center; gap: 0.85rem; opacity: 0.4; transform: scale(0.9); }
+  .capture-phone { position: relative; width: 2.6rem; height: 3.8rem; color: rgba(245, 240, 232, 0.45); }
+  .capture-phone svg { width: 100%; height: 100%; display: block; }
+  .capture-rec {
+    position: absolute;
+    top: 0.7rem;
+    right: 0.35rem;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: #D94848;
+    box-shadow: 0 0 8px rgba(217, 72, 72, 0.5);
+  }
+  .analysis-board.state-1 .board-capture { opacity: 1; transform: scale(1.15); }
+  .analysis-board.state-1 .capture-rec { animation: recPulse 1.4s ease-in-out infinite; }
+  @keyframes recPulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(217, 72, 72, 0.5); }
+    50%      { opacity: 0.55; box-shadow: 0 0 14px rgba(217, 72, 72, 0.75); }
+  }
+  .board-frame-counter { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.2em; color: var(--fg-soft-dark); text-transform: uppercase; display: inline-flex; align-items: center; gap: 0.5rem; padding-top: 0.2rem; }
+  .counter-value { color: var(--accent); font-weight: 600; font-size: 0.95rem; letter-spacing: 0.03em; min-width: 3.2em; text-align: right; }
+  .zone-label { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.26em; color: var(--accent); font-weight: 600; text-transform: uppercase; opacity: 0.75; }
+  .board-filmstrip { display: flex; flex-direction: column; gap: 0.6rem; opacity: 0.4; transform: scale(0.96); position: relative; z-index: 1; }
+  .filmstrip-header { display: flex; justify-content: space-between; align-items: center; padding: 0 0.1rem; }
+  .filmstrip-frames { display: grid; grid-template-columns: repeat(10, 1fr); gap: 0.4rem; }
+  @media (max-width: 720px) { .filmstrip-frames { grid-template-columns: repeat(5, 1fr); gap: 0.3rem; } }
+  .filmstrip-frame {
+    aspect-ratio: 9 / 12;
+    background: linear-gradient(140deg, #141820 0%, #1b2028 100%);
+    border: 1px solid rgba(194, 165, 107, 0.15);
+    border-radius: 0.28rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 260ms ease, background 260ms ease, box-shadow 260ms ease;
+  }
+  .filmstrip-frame::after {
+    content: "";
+    position: absolute;
+    bottom: 28%;
+    left: 34%;
+    width: 22%;
+    height: 26%;
+    border-radius: 50%;
+    background: rgba(194, 165, 107, 0.22);
+    transition: background 260ms ease;
+  }
+  .filmstrip-frame.lit {
+    border-color: rgba(194, 165, 107, 0.55);
+    background: linear-gradient(140deg, #1f2028 0%, #272834 100%);
+    box-shadow: 0 0 10px rgba(194, 165, 107, 0.15);
+  }
+  .filmstrip-frame.lit::after { background: rgba(194, 165, 107, 0.6); }
+  .analysis-board.state-2 .board-filmstrip { opacity: 1; transform: scale(1.02); }
+
+  .board-results { display: flex; flex-direction: column; gap: 0.55rem; opacity: 0.4; transform: scale(0.96); position: relative; z-index: 1; }
+  .results-header { display: flex; justify-content: space-between; align-items: center; padding: 0 0.1rem 0.4rem; border-bottom: 1px solid rgba(245, 240, 232, 0.08); }
+  .results-tag { font-family: var(--mono); font-size: 0.6rem; color: var(--fg-soft-dark); letter-spacing: 0.14em; text-transform: uppercase; }
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0.5rem 0.1rem;
+    border-bottom: 1px solid rgba(245, 240, 232, 0.04);
+    opacity: 0.35;
+    transform: translateY(3px);
+    transition: opacity 400ms ease, transform 400ms ease;
+  }
+  .result-row:last-of-type { border-bottom: none; }
+  .result-label { font-size: 0.88rem; color: var(--fg-mute-dark); font-family: var(--sans); }
+  .result-value { font-family: var(--mono); font-size: 1rem; color: var(--fg-dark); font-weight: 500; }
+  .result-value.accent .result-num { color: var(--accent); }
+  .analysis-board.state-3 .board-results { opacity: 1; transform: scale(1.02); }
+  .analysis-board.state-3 .result-row { opacity: 1; transform: translateY(0); }
+  .analysis-board.state-3 .result-row[data-idx="0"] { transition-delay: 0ms; }
+  .analysis-board.state-3 .result-row[data-idx="1"] { transition-delay: 60ms; }
+  .analysis-board.state-3 .result-row[data-idx="2"] { transition-delay: 120ms; }
+  .analysis-board.state-3 .result-row[data-idx="3"] { transition-delay: 180ms; }
+  .analysis-board.state-3 .result-row[data-idx="4"] { transition-delay: 240ms; }
+
+  .board-confirm {
+    position: relative;
+    margin-top: 0.8rem;
+    padding: 0.7rem 1rem;
+    background: transparent;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    font-weight: 600;
+    text-transform: uppercase;
+    text-align: center;
+  }
+  .confirm-border {
+    position: absolute;
+    inset: 0;
+    border-radius: 0.4rem;
+    pointer-events: none;
+    border: 1px solid var(--accent);
+    opacity: 0;
+    transition: opacity 700ms ease-out 400ms;
+  }
+  .analysis-board.state-3 .confirm-border { opacity: 0.6; }
+
+  /* ═══ ASK COMPOSED (AI chat, dark) ═══ */
+  .ch-ai {
+    background: transparent;
+    min-height: 90vh;
+    display: flex;
+    align-items: center;
+    padding-top: clamp(6rem, 13vh, 10rem);
+    padding-bottom: clamp(6rem, 13vh, 10rem);
+    position: relative;
+  }
+  .ch-ai::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 50% 42% at 28% 55%, rgba(194, 165, 107, 0.10), transparent 72%);
+    pointer-events: none;
+  }
+  .ai-grid {
+    width: 100%;
+    max-width: var(--max);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: clamp(2.5rem, 5vw, 5rem);
+    align-items: center;
+    position: relative;
+  }
+  @media (max-width: 900px) { .ai-grid { grid-template-columns: 1fr; gap: 3rem; } }
+  .ai-copy .eyebrow { margin-bottom: 1rem; }
+  .ai-copy h2 { margin-bottom: 1.5rem; max-width: 14ch; }
+  .ai-copy p.lede { margin-bottom: 1rem; }
+  .ai-copy p.lede + p.lede { margin-bottom: 0; }
+
+  .ai-visual {
+    position: relative;
+    width: 100%;
+    max-width: 26rem;
+    margin: 0 auto;
+    aspect-ratio: 1073 / 1600;
+    border-radius: 1.1rem;
+    overflow: hidden;
+  }
+  .ai-visual::before {
+    content: "SCREENSHOT PENDING · ASSETS/AI-CHAT.JPG";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 1rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+    color: rgba(194, 165, 107, 0.55);
+    background: #0d0a06;
+    border: 1px solid rgba(194, 165, 107, 0.15);
+    border-radius: 1.1rem;
+    z-index: 0;
+  }
+  .ai-visual img {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    -webkit-mask-image: radial-gradient(ellipse 70% 80% at 50% 50%, #000 78%, transparent 100%);
+    mask-image: radial-gradient(ellipse 70% 80% at 50% 50%, #000 78%, transparent 100%);
+  }
+
+  /* ═══ COACH ═══ */
+  .ch-coach { background: var(--bg-coach); min-height: 90vh; display: flex; align-items: center; }
+  .coach-grid { width: 100%; max-width: var(--max); margin: 0 auto; display: grid; grid-template-columns: 0.92fr 1.08fr; gap: clamp(2.5rem, 5vw, 5rem); align-items: center; }
+  @media (max-width: 900px) { .coach-grid { grid-template-columns: 1fr; gap: 3rem; } }
+  .coach-text .eyebrow { margin-bottom: 1rem; }
+  .coach-text h2 { margin-bottom: 1.5rem; max-width: 16ch; }
+  .coach-text p.lede { margin-bottom: 1.25rem; }
+  .coach-text p.lede + p.lede { margin-bottom: 0; }
+
+  .roster {
+    background: rgba(255, 253, 248, 0.55);
+    border: 1px solid var(--line);
+    border-radius: 1.1rem;
+    padding: 1.4rem;
+    box-shadow: 0 20px 40px rgba(26, 22, 20, 0.08);
+  }
+  .roster-header { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 1rem; margin-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+  .roster-title { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 500; color: var(--fg-soft); }
+  .roster-count { font-family: var(--mono); font-size: 0.8rem; color: var(--accent-deep); letter-spacing: 0.04em; }
+  .roster-row { display: grid; grid-template-columns: 1.6rem 1fr auto auto; gap: 0.9rem; align-items: center; padding: 0.85rem 0.25rem; border-bottom: 1px solid var(--line-soft); }
+  .roster-row:last-of-type { border-bottom: none; }
+  .roster-row.flagged { background: rgba(180, 62, 62, 0.06); margin: 0 -0.25rem; padding-left: 0.5rem; padding-right: 0.5rem; border-radius: 0.3rem; }
+  .roster-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--accent); margin-left: 0.4rem; }
+  .roster-dot.stalling { background: var(--coral); }
+  .roster-dot.quiet { background: rgba(26, 22, 20, 0.18); }
+  .roster-name { font-size: 0.95rem; color: var(--fg); font-weight: 500; font-family: var(--sans); }
+  .roster-meta { font-family: var(--mono); font-size: 0.72rem; color: var(--fg-mute); }
+  .roster-pill { font-family: var(--mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; padding: 0.2rem 0.55rem; border-radius: 999px; border: 1px solid var(--line); color: var(--fg-mute); }
+  .roster-pill.active { color: var(--accent-deep); border-color: rgba(139, 122, 94, 0.4); }
+  .roster-pill.stalling { color: var(--coral); border-color: rgba(180, 62, 62, 0.35); }
+
+  .programs-tile {
+    background: rgba(255, 253, 248, 0.45);
+    border: 1px solid var(--line);
+    border-radius: 1.1rem;
+    padding: 1.25rem 1.4rem;
+    margin-top: 1.25rem;
+    box-shadow: 0 12px 30px rgba(26, 22, 20, 0.06);
+  }
+  .programs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: 0.9rem;
+    margin-bottom: 0.9rem;
+    border-bottom: 1px solid var(--line);
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .programs-title {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--fg-soft);
+  }
+  .programs-count {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--accent-deep);
+    letter-spacing: 0.04em;
+  }
+  .program-name {
+    font-family: var(--serif);
+    font-size: clamp(1.1rem, 1.35vw, 1.35rem);
+    line-height: 1.15;
+    color: var(--fg);
+    margin-bottom: 0.35rem;
+  }
+  .program-meta {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--fg-mute);
+  }
+  .programs-note {
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--line-soft);
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 0.88rem;
+    color: var(--fg-mute);
+    line-height: 1.4;
+  }
+
+  /* ═══ BLOCKS ═══ */
+  .ch-blocks { background: var(--bg-blocks); min-height: 140vh; padding-top: clamp(7rem, 14vh, 12rem); padding-bottom: clamp(7rem, 14vh, 12rem); }
+  .blocks-head { max-width: 48rem; margin: 0 auto 3.5rem; text-align: center; }
+  .blocks-head .eyebrow { margin-bottom: 1rem; }
+  .blocks-head h2 { margin-bottom: 1.25rem; max-width: 18ch; margin-left: auto; margin-right: auto; }
+  .blocks-head p.lede { margin: 0 auto; }
+  .blocks-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; max-width: var(--max); margin: 0 auto; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  @media (max-width: 900px) { .blocks-board { grid-template-columns: 1fr; border: none; } }
+  .block-panel {
+    padding: clamp(1.5rem, 2.5vw, 2.25rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    position: relative;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 700ms ease-out, transform 700ms var(--ease-out);
+  }
+  .block-panel + .block-panel { border-left: 1px solid var(--line); }
+  @media (max-width: 900px) { .block-panel + .block-panel { border-left: none; border-top: 1px solid var(--line); } }
+  .ch-blocks.shown .block-panel { opacity: 1; transform: translateY(0); }
+  .ch-blocks.shown .block-panel[data-idx="0"] { transition-delay: 0ms; }
+  .ch-blocks.shown .block-panel[data-idx="1"] { transition-delay: 200ms; }
+  .ch-blocks.shown .block-panel[data-idx="2"] { transition-delay: 400ms; }
+  .ch-blocks.shown .block-panel[data-idx="3"] { transition-delay: 600ms; }
+
+  .block-panel .eyebrow { color: var(--accent-deep); opacity: 0.9; }
+  .block-visual { min-height: 13rem; display: flex; align-items: center; justify-content: center; padding: 1rem 0; }
+  .block-caption { font-family: var(--sans); font-size: 0.9rem; color: var(--fg-mute); line-height: 1.5; max-width: 28ch; }
+
+  .block-calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; width: 100%; max-width: 15rem; }
+  .block-cal-cell { aspect-ratio: 1; border-radius: 3px; background: rgba(26, 22, 20, 0.03); border: 1px solid rgba(26, 22, 20, 0.06); }
+  .block-cal-cell.drill { background: rgba(194, 165, 107, 0.22); border-color: rgba(139, 122, 94, 0.45); }
+  .block-cal-cell.retest { background: rgba(194, 165, 107, 0.5); border-color: var(--accent-deep); box-shadow: 0 0 6px rgba(194, 165, 107, 0.3); }
+  .block-cal-label { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-soft); margin-top: 0.6rem; text-align: center; }
+
+  .block-url { font-family: var(--mono); font-size: 0.78rem; color: var(--fg); background: rgba(26, 22, 20, 0.04); border: 1px solid var(--line); border-radius: 0.45rem; padding: 0.75rem 0.9rem; letter-spacing: 0.02em; word-break: break-all; text-align: center; max-width: 16rem; }
+  .block-copy-btn { margin-top: 0.75rem; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.22em; color: var(--accent-deep); text-transform: uppercase; padding: 0.55rem 0.9rem; border: 1px solid rgba(139, 122, 94, 0.45); border-radius: 999px; }
+
+  .block-phone { width: 8rem; aspect-ratio: 9 / 17; border-radius: 1.2rem; padding: 0.35rem; background: linear-gradient(145deg, #2a2a2a 0%, #161616 100%); box-shadow: 0 18px 36px rgba(26, 22, 20, 0.2); }
+  .block-phone-screen { width: 100%; height: 100%; border-radius: 0.9rem; background: #060607; padding: 0.5rem 0.55rem; display: flex; flex-direction: column; gap: 0.45rem; color: var(--fg-dark); }
+  .bp-wordmark { font-family: var(--serif); font-size: 0.7rem; color: var(--fg-dark); }
+  .bp-wordmark em { font-style: italic; color: inherit; }
+  .bp-pace { font-family: var(--sans); font-size: 1.4rem; font-weight: 600; letter-spacing: -0.02em; color: var(--accent); text-align: center; margin-top: 0.3rem; }
+  .bp-pace-sub { font-family: var(--mono); font-size: 0.48rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--fg-soft-dark); text-align: center; }
+  .bp-tier { margin-top: 0.5rem; font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.2em; text-transform: uppercase; text-align: center; color: var(--accent); border: 1px solid rgba(194, 165, 107, 0.35); border-radius: 999px; padding: 0.22rem 0.4rem; }
+  .bp-sessions { margin-top: auto; padding-top: 0.4rem; border-top: 1px solid rgba(245, 240, 232, 0.05); display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .bp-day { aspect-ratio: 1; border-radius: 2px; background: rgba(245, 240, 232, 0.06); }
+  .bp-day.on { background: var(--accent); }
+
+  .block-revoked { display: flex; flex-direction: column; align-items: center; gap: 0.9rem; }
+  .block-revoked .block-url { opacity: 0.4; position: relative; }
+  .block-revoked .block-url::after { content: ""; position: absolute; left: 8%; right: 8%; top: 50%; height: 1px; background: var(--coral); transform: rotate(-6deg); }
+  .block-revoked-msg { font-family: var(--serif); font-style: italic; font-size: 0.88rem; color: var(--fg-mute); text-align: center; max-width: 14rem; }
+
+  /* ═══ PARENT ═══ */
+  .ch-parent { background: var(--bg-parent); min-height: 90vh; display: flex; align-items: center; padding-top: clamp(7rem, 14vh, 11rem); padding-bottom: clamp(7rem, 14vh, 11rem); }
+  .parent-inner { max-width: 42rem; margin: 0 auto; text-align: center; }
+  .parent-inner .eyebrow { margin-bottom: 1rem; }
+  .parent-inner h2 { margin-bottom: 1.5rem; max-width: 16ch; margin-left: auto; margin-right: auto; }
+  .parent-inner p.lede { margin: 0 auto 2.5rem; }
+  .toggles-card { background: rgba(255, 253, 248, 0.6); border: 1px solid var(--line); border-radius: 1.1rem; padding: 1.5rem; max-width: 24rem; margin: 0 auto 2.5rem; text-align: left; box-shadow: 0 18px 36px rgba(26, 22, 20, 0.08); }
+  .toggles-title { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 500; color: var(--fg-soft); margin-bottom: 1rem; }
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-top: 1px solid var(--line-soft); }
+  .toggle-row:first-of-type { border-top: none; }
+  .toggle-name { font-size: 0.95rem; color: var(--fg); font-family: var(--sans); }
+  .toggle-switch { width: 2.3rem; height: 1.3rem; border-radius: 999px; background: rgba(26, 22, 20, 0.12); position: relative; flex-shrink: 0; transition: background 250ms ease; }
+  .toggle-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.3rem - 4px); height: calc(1.3rem - 4px); background: rgba(255, 253, 248, 0.9); border-radius: 50%; transition: all 250ms var(--ease-out); box-shadow: 0 1px 3px rgba(26, 22, 20, 0.15); }
+  .toggle-switch.on { background: rgba(194, 165, 107, 0.55); }
+  .toggle-switch.on::after { left: calc(2.3rem - 1.3rem + 2px); background: var(--accent-deep); }
+  .parent-closer { font-family: var(--serif); font-style: italic; font-size: clamp(1.05rem, 1.4vw, 1.3rem); color: var(--fg-mute); max-width: 36em; margin: 0 auto; line-height: 1.5; }
+  .parent-closer strong { color: var(--fg); font-weight: 400; }
+
+  /* ═══ BUILT WITH ═══ */
+  .ch-built { background: var(--bg-built); padding: clamp(6rem, 13vh, 10rem) var(--pad-x); }
+  .ch-built .intro { max-width: 42rem; margin-bottom: 2.75rem; }
+  .ch-built .eyebrow { margin-bottom: 1rem; }
+  .ch-built h2 { margin-bottom: 1rem; }
+  .stack-list { max-width: var(--max); margin: 0 auto; border-top: 1px solid var(--line); }
+  .stack-row { display: grid; grid-template-columns: 1fr 1.7fr auto; gap: 1.75rem; padding: 1.5rem 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+  @media (max-width: 720px) { .stack-row { grid-template-columns: 1fr auto; grid-template-areas: "name version" "note note"; gap: 0.3rem 1rem; } .stack-row .s-name { grid-area: name; } .stack-row .s-version { grid-area: version; } .stack-row .s-note { grid-area: note; margin-top: 0.4rem; } }
+  .stack-row .s-name { font-family: var(--mono); font-size: 0.95rem; color: var(--fg); font-weight: 500; }
+  .stack-row .s-note { font-size: 0.92rem; color: var(--fg-mute); line-height: 1.5; font-family: var(--sans); }
+  .stack-row .s-version { font-family: var(--mono); font-size: 0.78rem; color: var(--fg-soft); white-space: nowrap; }
+
+  /* ═══ CLOSE CTA ═══ */
+  .ch-close { min-height: 100vh; display: flex; align-items: center; text-align: center; position: relative; overflow: hidden; padding: 6rem var(--pad-x); background: var(--bg-close); }
+  .ch-close::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 55% 45% at 50% 50%, rgba(194, 165, 107, 0.13), transparent 65%); pointer-events: none; }
+  .close-inner { position: relative; max-width: 48rem; margin: 0 auto; }
+  .close-kicker { font-family: var(--serif); font-style: italic; font-size: clamp(1rem, 1.3vw, 1.25rem); color: var(--accent-deep); margin-bottom: 1.25rem; }
+  .close-inner h2 { font-size: clamp(2.75rem, 7vw, 5.5rem); line-height: 0.98; letter-spacing: -0.025em; margin-bottom: 1.5rem; }
+  .close-inner p.lede { margin: 0 auto 2.5rem; }
+  .close-ctas { display: flex; gap: 0.9rem; justify-content: center; flex-wrap: wrap; }
+
+  /* ═══ FOOTER ═══ */
+  footer { padding: 2.5rem var(--pad-x) 3.5rem; border-top: 1px solid var(--line); background: var(--bg); }
+  .f-inner { max-width: var(--max); margin: 0 auto; display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+  .f-logo { font-family: var(--serif); font-size: 1.15rem; color: var(--fg); }
+  .f-logo em { font-style: italic; color: inherit; }
+  .f-links { display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: baseline; }
+  .f-links a { font-size: 0.85rem; color: var(--fg-mute); transition: color 200ms ease; }
+  .f-links a:hover { color: var(--fg); }
+  .f-note { font-size: 0.78rem; color: var(--fg-soft); }
+
+  /* ═══ HOW IT WORKS ═══ */
+  .ch-howitworks {
+    background: var(--bg);
+    padding: clamp(6rem, 12vh, 9rem) var(--pad-x);
+  }
+  .how-head {
+    max-width: 48rem;
+    margin: 0 auto 3.5rem;
+    text-align: center;
+  }
+  .how-head .eyebrow { margin-bottom: 1rem; }
+  .how-head h2 { margin-bottom: 1.25rem; max-width: 16ch; margin-left: auto; margin-right: auto; }
+  .how-head p.lede { margin: 0 auto; }
+  .how-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: clamp(1rem, 2vw, 1.75rem);
+    max-width: var(--max);
+    margin: 0 auto;
+  }
+  @media (max-width: 960px) { .how-grid { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; } }
+  @media (max-width: 540px) { .how-grid { grid-template-columns: 1fr; } }
+  .how-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 700ms ease-out, transform 700ms var(--ease-out);
+  }
+  .ch-how.shown .how-tile { opacity: 1; transform: translateY(0); }
+  .ch-how.shown .how-tile[data-idx="1"] { transition-delay: 0ms; }
+  .ch-how.shown .how-tile[data-idx="2"] { transition-delay: 120ms; }
+  .ch-how.shown .how-tile[data-idx="3"] { transition-delay: 240ms; }
+  .ch-how.shown .how-tile[data-idx="4"] { transition-delay: 360ms; }
+  .how-visual {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    background: #0A0806;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 18px 40px rgba(26, 22, 20, 0.12);
+  }
+  .how-visual img { width: 100%; height: 100%; object-fit: cover; }
+  .how-badge {
+    position: absolute;
+    top: 0.7rem;
+    left: 0.7rem;
+    z-index: 3;
+    min-width: 1.6rem;
+    height: 1.6rem;
+    padding: 0 0.4rem;
+    border-radius: 0.4rem;
+    background: rgba(5, 4, 3, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--fg-dark);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.04em;
+  }
+  .how-placeholder {
+    background: linear-gradient(135deg, #1a1410 0%, #0a0806 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .how-placeholder-label {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(245, 240, 232, 0.38);
+    text-align: center;
+    padding: 1rem;
+    line-height: 1.6;
+  }
+  .how-title {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(1.35rem, 1.8vw, 1.75rem);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    color: var(--fg);
+  }
+  .how-desc {
+    font-family: var(--sans);
+    font-size: 0.92rem;
+    color: var(--fg-mute);
+    line-height: 1.5;
+  }
+
+  /* Step 4 schematic phone (parent digest) */
+  .how-schematic {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+  }
+  .how-mini-phone {
+    width: 65%;
+    aspect-ratio: 9 / 17;
+    border-radius: 1.1rem;
+    padding: 0.3rem;
+    background: linear-gradient(145deg, #2a2a2a 0%, #161616 100%);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.45);
+  }
+  .how-mini-phone-screen {
+    width: 100%;
+    height: 100%;
+    border-radius: 0.85rem;
+    background: #060607;
+    padding: 0.55rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    color: var(--fg-dark);
+  }
+  .how-mini-wordmark { font-family: var(--serif); font-size: 0.62rem; color: var(--fg-dark); }
+  .how-mini-wordmark em { font-style: italic; }
+  .how-mini-url {
+    font-family: var(--mono);
+    font-size: 0.42rem;
+    letter-spacing: 0.04em;
+    color: rgba(245, 240, 232, 0.4);
+    text-align: center;
+    margin-top: 0.1rem;
+  }
+  .how-mini-pace {
+    font-family: var(--sans);
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+    text-align: center;
+    margin-top: 0.35rem;
+  }
+  .how-mini-sub {
+    font-family: var(--mono);
+    font-size: 0.4rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--fg-soft-dark);
+    text-align: center;
+  }
+  .how-mini-days {
+    margin-top: auto;
+    padding-top: 0.3rem;
+    border-top: 1px solid rgba(245, 240, 232, 0.05);
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+  .how-mini-day {
+    aspect-ratio: 1;
+    border-radius: 2px;
+    background: rgba(245, 240, 232, 0.06);
+  }
+  .how-mini-day.on { background: var(--accent); }
+
+  /* ═══ Reduced motion ═══ */
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    body { transition: none; }
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    .char { opacity: 1; transform: none; }
+    .hero-eyebrow, p.hero-subhead, .hero-ctas .cta { opacity: 1; transform: none; }
+    .hero-bg-video { opacity: 1; }
+    .enter { opacity: 1; }
+    .pace-chart-line { stroke-dashoffset: 0; }
+    .ch-pace-payoff .payoff-photo-wrap { opacity: 1; transform: none; }
+    .ch-pace-payoff .payoff-quote { opacity: 1; transform: none; }
+    .analysis-board .result-row { opacity: 1; transform: none; }
+    .block-panel { opacity: 1; transform: none; }
+    .how-tile { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body class="hero-visible">
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+
+<nav class="top" id="topNav" aria-label="Primary">
+  <a href="#top" class="logo"><em>C</em>omposed</a>
+  <div class="nav-links">
+    <a href="#how">How</a>
+    <a href="#pace">Pace</a>
+    <a href="#coach">Coaches</a>
+    <a href="#parents">Parents</a>
+  </div>
+  <a href="#contact" class="nav-cta">Pilot</a>
+</nav>
+
+<main id="main-content">
+
+<!-- ═══ HERO ═══ -->
+<header class="hero" id="top">
+  <video class="hero-bg-video" id="heroVideo" autoplay muted loop playsinline preload="auto" poster="assets/hero-video-poster.jpg" aria-hidden="true">
+    <source src="assets/hero-video.mp4" type="video/mp4">
+  </video>
+  <div class="hero-scrim" aria-hidden="true"></div>
+  <div class="hero-content">
+    <span class="eyebrow hero-eyebrow" id="heroEyebrow">Composed · For serious youth players</span>
+    <h1 class="h-display hero-headline" id="heroHeadline" aria-label="A new era of soccer training."></h1>
+    <p class="hero-subhead" id="heroSubhead">The training companion that measures every hour a youth player trains alone — counted from footage, weighted by position, visible to coaches.</p>
+    <div class="hero-ctas">
+      <a href="#how" class="cta cta-primary" id="heroCtaA">See how it works <span class="arrow">→</span></a>
+    </div>
+  </div>
+</header>
+
+<hr class="rule" aria-hidden="true" />
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="ch-how enter" id="how">
+  <div class="how-head">
+    <div class="eyebrow">How it works</div>
+    <h2 class="h-chapter serif">From a session to a parent-ready summary.</h2>
+    <p class="lede">Four moves, one weekly rhythm. The phone does the heavy lifting — the app turns every training hour into something a coach can act on.</p>
+  </div>
+
+  <div class="how-grid">
+    <article class="how-tile" data-idx="1">
+      <div class="how-visual how-placeholder" aria-hidden="true">
+        <span class="how-badge">01</span>
+        <span class="how-placeholder-label">Record session<br/>photo to generate</span>
+      </div>
+      <h3 class="how-title">Train</h3>
+      <p class="how-desc">Log a session in one tap, or record a video on your phone — backyard, wall, or an empty park.</p>
+    </article>
+
+    <article class="how-tile" data-idx="2">
+      <div class="how-visual" aria-hidden="true">
+        <span class="how-badge">02</span>
+        <img src="assets/hero-phone-stalling.jpg" alt="Composed dashboard showing a weekly Pace score" loading="lazy" decoding="async" />
+      </div>
+      <h3 class="how-title">Measure</h3>
+      <p class="how-desc">Pace weights your metrics to the position you play. Video is compressed and analyzed on-device — shots, passes, foot usage, all counted.</p>
+    </article>
+
+    <article class="how-tile" data-idx="3">
+      <div class="how-visual how-placeholder" aria-hidden="true">
+        <span class="how-badge">03</span>
+        <span class="how-placeholder-label">Coach dashboard<br/>photo to generate</span>
+      </div>
+      <h3 class="how-title">Coach</h3>
+      <p class="how-desc">A coach sees who's training and who's stalling — and can assign a 4-week block to one player or a whole squad.</p>
+    </article>
+
+    <article class="how-tile" data-idx="4">
+      <div class="how-visual" aria-hidden="true">
+        <span class="how-badge">04</span>
+        <div class="how-schematic">
+          <div class="how-mini-phone">
+            <div class="how-mini-phone-screen">
+              <div class="how-mini-wordmark"><em>C</em>omposed</div>
+              <div class="how-mini-url">composed.soccer/r/k7m2-x9p4</div>
+              <div class="how-mini-pace">+12.4%</div>
+              <div class="how-mini-sub">Scorer's Pace · W4</div>
+              <div class="how-mini-days">
+                <span class="how-mini-day on"></span><span class="how-mini-day on"></span><span class="how-mini-day"></span><span class="how-mini-day on"></span><span class="how-mini-day on"></span><span class="how-mini-day"></span><span class="how-mini-day on"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <h3 class="how-title">Share</h3>
+      <p class="how-desc">A revocable link lets parents see the block summary — no app, no account. Coach revokes with one click.</p>
+    </article>
+  </div>
+</section>
+
+<hr class="rule" aria-hidden="true" />
+
+<!-- ═══ WRONG METRIC ═══ -->
+<section class="ch-wrong enter">
+  <div class="narrow">
+    <div class="eyebrow">The wrong metric</div>
+    <h2 class="h-chapter serif">Most apps give every player the <em>same score.</em></h2>
+    <p class="lede">A striker and a holding midfielder are not the same player. A goalkeeper is not a winger. When every position chases the same number, the number stops meaning anything.</p>
+  </div>
+</section>
+
+<hr class="rule" aria-hidden="true" />
+
+<!-- ═══ PACE INTRO (with STALLING artifact) ═══ -->
+<section class="ch-pace-intro enter" id="pace">
+  <div class="pace-intro-grid">
+    <div class="pace-intro-copy">
+      <div class="eyebrow">What is Pace</div>
+      <h2 class="h-chapter serif">Pace isn't a score. It's <em>velocity.</em></h2>
+      <p class="lede">Pace measures the rate of your improvement — week over week, session over session — weighted to the position you play. Two players can have the same Training Score but very different Paces. The score tells you where you are. <strong>Pace tells you where you're going.</strong></p>
+      <div class="pace-chart-wrap" aria-hidden="true">
+        <svg class="pace-chart" id="paceChart" viewBox="0 0 600 200" preserveAspectRatio="none">
+          <line x1="20" y1="180" x2="580" y2="180" class="pace-chart-axis" />
+          <path id="paceChartLine" class="pace-chart-line" d="M 20 164 C 80 158, 130 148, 180 130 S 280 88, 340 64 S 460 28, 580 16" />
+        </svg>
+      </div>
+    </div>
+    <div class="pace-intro-visual" aria-hidden="true">
+      <img src="assets/hero-phone-stalling.jpg" alt="Composed app dashboard showing a -33.7% weekly Pace with STALLING status" width="1073" height="1600" loading="lazy" decoding="async" />
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PACE ROTATION ═══ -->
+<div class="pace-stage" id="paceRotation">
+  <div class="pace-sticky">
+    <div class="pace-inner">
+      <div class="pace-head">
+        <div class="eyebrow" id="paceEyebrow">The default model</div>
+        <h2 class="h-chapter-sm serif" id="paceHeadline">Most apps treat every player the same way.</h2>
+        <p class="pace-caption" id="paceCaption">Five metrics. Equal weights. One number for everyone.</p>
+      </div>
+      <div class="pace-viz" aria-hidden="true">
+        <div class="pace-viz-header">
+          <span class="pace-viz-label" id="paceVizLabel">Default · equal weights</span>
+          <span class="pace-viz-position" id="paceVizPosition">All positions</span>
+        </div>
+        <div class="pace-bars" id="paceBars"></div>
+        <div class="pace-viz-footer">
+          <span>Sums to 100%</span>
+          <span class="val">5 metrics · 6 positions</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PACE PAYOFF (dark) ═══ -->
+<section class="ch-pace-payoff enter" id="pacePayoff" aria-label="Pace payoff">
+  <div class="payoff-inner">
+    <div class="payoff-eyebrow">Your Pace · This week</div>
+    <div class="payoff-photo-wrap">
+      <img class="payoff-photo" src="assets/hero-phone-accelerating.jpg" alt="Composed app dashboard showing a +12.4% weekly Pace with ACCELERATING status" width="1073" height="1600" loading="lazy" decoding="async" />
+    </div>
+    <p class="payoff-quote">Three sharp finishing sessions paid off. The line is climbing &mdash; protect the streak.</p>
+  </div>
+</section>
+
+<!-- ═══ VIDEO → PROOF ═══ -->
+<div class="video-stage" id="videoStage">
+  <div class="video-sticky">
+    <div class="video-shell">
+      <div class="video-intro">
+        <div class="eyebrow">Video → Proof</div>
+        <h2 class="h-chapter serif">From phone video to <em>real stats.</em></h2>
+        <p class="lede">No smart ball. No tripod. No subscription to a device ecosystem. Compression and analysis happen <strong>inside the app</strong> before the video ever leaves the phone.</p>
+      </div>
+      <div class="analysis-board state-1" id="analysisBoard" aria-hidden="true">
+        <div class="board-top">
+          <div class="board-zone board-capture" data-zone="capture">
+            <div class="capture-phone">
+              <svg viewBox="0 0 24 36" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true">
+                <rect x="2" y="2" width="20" height="32" rx="3" />
+                <rect x="5" y="6" width="14" height="22" rx="1" fill="rgba(194,165,107,0.06)" />
+                <circle cx="12" cy="31" r="1.5" fill="rgba(245,240,232,0.4)" />
+              </svg>
+              <span class="capture-rec" aria-hidden="true"></span>
+            </div>
+            <div class="zone-label">Capture</div>
+          </div>
+          <div class="board-frame-counter" aria-hidden="true">
+            <span>Frames analyzed</span>
+            <span class="counter-dot">·</span>
+            <span class="counter-value" id="frameCount">0</span>
+          </div>
+        </div>
+        <div class="board-zone board-filmstrip" data-zone="extract">
+          <div class="filmstrip-header">
+            <span class="zone-label">Extract</span>
+          </div>
+          <div class="filmstrip-frames" id="filmstripFrames">
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+          </div>
+        </div>
+        <div class="board-zone board-results" data-zone="analyze">
+          <div class="results-header">
+            <span class="zone-label">Analyze</span>
+            <span class="results-tag">Counted from frames</span>
+          </div>
+          <div class="result-row" data-idx="0"><span class="result-label">Shots taken</span><span class="result-value"><span class="result-num" data-target="14">0</span></span></div>
+          <div class="result-row" data-idx="1"><span class="result-label">On target</span><span class="result-value"><span class="result-num" data-target="8">0</span></span></div>
+          <div class="result-row" data-idx="2"><span class="result-label">Goals</span><span class="result-value"><span class="result-num" data-target="3">0</span></span></div>
+          <div class="result-row" data-idx="3"><span class="result-label">Left / right foot</span><span class="result-value"><span class="result-num" data-target="5">0</span> / <span class="result-num" data-target="9">0</span></span></div>
+          <div class="result-row" data-idx="4"><span class="result-label">Pass accuracy</span><span class="result-value accent"><span class="result-num" data-target="68">0</span>%</span></div>
+          <div class="board-confirm">
+            <span>Confirm &amp; save</span>
+            <span class="confirm-border" aria-hidden="true"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ASK COMPOSED (AI chat, dark) ═══ -->
+<section class="ch-ai enter" id="ask">
+  <div class="ai-grid">
+    <div class="ai-copy">
+      <div class="eyebrow">Ask Composed</div>
+      <h2 class="h-chapter serif">A coach in your <em>pocket.</em></h2>
+      <p class="lede">Tactical questions between team sessions. Drill ideas when the park's empty. Decision reviews after a tough match.</p>
+      <p class="lede">Ask Composed answers in your position's voice — a scorer gets scorer's logic, a centre-back gets build-up and duels. The model reads your recent sessions and your Pace before it replies.</p>
+    </div>
+    <div class="ai-visual" aria-hidden="true">
+      <img src="assets/ai-chat.jpg" alt="Ask Composed chat interface showing a tactical response to a question about finishing drills" width="1073" height="1600" loading="lazy" decoding="async" onerror="this.style.display='none'" />
+    </div>
+  </div>
+</section>
+
+<!-- ═══ COACH ═══ -->
+<section class="ch-coach enter" id="coach">
+  <div class="coach-grid">
+    <div class="coach-text">
+      <div class="eyebrow">For coaches</div>
+      <h2 class="h-chapter serif">See who's <em>actually</em> doing the work between sessions.</h2>
+      <p class="lede">You can't tell who trained and who didn't. <strong>Squad Pulse</strong> shows sessions logged, compliance with assigned plans, and who's stalling.</p>
+      <p class="lede">One scannable roster — three batched queries on the backend, regardless of squad size.</p>
+    </div>
+    <div aria-hidden="true">
+      <div class="roster">
+        <div class="roster-header">
+          <div class="roster-title">Squad Pulse · this week</div>
+          <div class="roster-count">6 of 8 training</div>
+        </div>
+        <div class="roster-row"><span class="roster-dot"></span><span class="roster-name">Ava M.</span><span class="roster-meta">5 sessions</span><span class="roster-pill active">Accelerating</span></div>
+        <div class="roster-row"><span class="roster-dot"></span><span class="roster-name">Jordan K.</span><span class="roster-meta">4 sessions</span><span class="roster-pill active">Steady</span></div>
+        <div class="roster-row flagged"><span class="roster-dot stalling"></span><span class="roster-name">Theo R.</span><span class="roster-meta">1 session</span><span class="roster-pill stalling">Stalling</span></div>
+        <div class="roster-row"><span class="roster-dot"></span><span class="roster-name">Maya L.</span><span class="roster-meta">4 sessions</span><span class="roster-pill active">Steady</span></div>
+        <div class="roster-row"><span class="roster-dot"></span><span class="roster-name">Jamal P.</span><span class="roster-meta">3 sessions</span><span class="roster-pill active">Steady</span></div>
+        <div class="roster-row"><span class="roster-dot quiet"></span><span class="roster-name">Noa S.</span><span class="roster-meta">2 sessions</span><span class="roster-pill">Quiet week</span></div>
+      </div>
+      <div class="programs-tile" aria-hidden="true">
+        <div class="programs-header">
+          <div class="programs-title">Programs library</div>
+          <div class="programs-count">4 programs · 49 sessions</div>
+        </div>
+        <div class="program-name">4-Week Finishing Mastery</div>
+        <div class="program-meta">Shooting · Intermediate · 3× week</div>
+        <div class="programs-note">Or assemble your own from 76 curated drills.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ BLOCKS ═══ -->
+<section class="ch-blocks enter" id="blocks">
+  <div class="blocks-head">
+    <div class="eyebrow">The 4-week block</div>
+    <h2 class="h-chapter serif">One block. One link. <em>Revocable.</em></h2>
+    <p class="lede">A coach assembles four weeks of training — bookended by LSPT and LSST retests scored against FA England and US Soccer norms — and generates a private link. The parent opens it on any device: no app, no account, no login. The coach revokes it with one click when the block ends.</p>
+  </div>
+  <div class="blocks-board">
+    <div class="block-panel" data-idx="0">
+      <div class="eyebrow">Coach</div>
+      <div class="block-visual">
+        <div>
+          <div class="block-calendar" aria-hidden="true">
+            <span class="block-cal-cell retest"></span><span class="block-cal-cell drill"></span><span class="block-cal-cell drill"></span><span class="block-cal-cell"></span><span class="block-cal-cell drill"></span><span class="block-cal-cell"></span><span class="block-cal-cell"></span>
+            <span class="block-cal-cell"></span><span class="block-cal-cell drill"></span><span class="block-cal-cell retest"></span><span class="block-cal-cell"></span><span class="block-cal-cell drill"></span><span class="block-cal-cell"></span><span class="block-cal-cell"></span>
+            <span class="block-cal-cell drill"></span><span class="block-cal-cell"></span><span class="block-cal-cell drill"></span><span class="block-cal-cell"></span><span class="block-cal-cell drill"></span><span class="block-cal-cell"></span><span class="block-cal-cell"></span>
+            <span class="block-cal-cell drill"></span><span class="block-cal-cell"></span><span class="block-cal-cell drill"></span><span class="block-cal-cell"></span><span class="block-cal-cell drill"></span><span class="block-cal-cell retest"></span><span class="block-cal-cell"></span>
+          </div>
+          <div class="block-cal-label">4 weeks · 28 days</div>
+        </div>
+      </div>
+      <p class="block-caption">Week 1 baseline. Week 2 LSPT retest. Week 4 LSST benchmark.</p>
+    </div>
+    <div class="block-panel" data-idx="1">
+      <div class="eyebrow">URL generated</div>
+      <div class="block-visual">
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div class="block-url">composed.soccer/r/k7m2-x9p4</div>
+          <div class="block-copy-btn">Copy link</div>
+        </div>
+      </div>
+      <p class="block-caption">Frozen snapshot. Read-only. Player names anonymized.</p>
+    </div>
+    <div class="block-panel" data-idx="2">
+      <div class="eyebrow">Parent views</div>
+      <div class="block-visual">
+        <div class="block-phone" aria-hidden="true">
+          <div class="block-phone-screen">
+            <div class="bp-wordmark"><em>C</em>omposed</div>
+            <div class="bp-pace">+12.4%</div>
+            <div class="bp-pace-sub">Scorer's Pace · W4</div>
+            <div class="bp-tier">Competitive</div>
+            <div class="bp-sessions">
+              <span class="bp-day on"></span><span class="bp-day on"></span><span class="bp-day"></span><span class="bp-day on"></span><span class="bp-day on"></span><span class="bp-day"></span><span class="bp-day on"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="block-caption">No app. No account. Works on any device the family already has.</p>
+    </div>
+    <div class="block-panel" data-idx="3">
+      <div class="eyebrow">Revoked</div>
+      <div class="block-visual">
+        <div class="block-revoked">
+          <div class="block-url">composed.soccer/r/k7m2-x9p4</div>
+          <p class="block-revoked-msg">This block summary is no longer available.</p>
+        </div>
+      </div>
+      <p class="block-caption">One click. Coach controls access.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PARENT ═══ -->
+<section class="ch-parent enter" id="parents">
+  <div class="parent-inner">
+    <div class="eyebrow">For parents</div>
+    <h2 class="h-chapter serif"><em>Observation</em>, not direction.</h2>
+    <p class="lede">The player holds the toggles. <strong>Not the parent. Not the coach.</strong> Three privacy switches decide what gets shared — the coach's notes, the player's ratings, the development goals. Default is nothing.</p>
+    <div class="toggles-card" aria-hidden="true">
+      <div class="toggles-title">Privacy · player controls</div>
+      <div class="toggle-row"><span class="toggle-name">Share ratings</span><span class="toggle-switch on" role="img" aria-label="On"></span></div>
+      <div class="toggle-row"><span class="toggle-name">Share coach feedback</span><span class="toggle-switch on" role="img" aria-label="On"></span></div>
+      <div class="toggle-row"><span class="toggle-name">Share development goals</span><span class="toggle-switch" role="img" aria-label="Off"></span></div>
+    </div>
+    <p class="parent-closer">The parent sees what the player <strong>allows them</strong> to see — not the other way around.</p>
+  </div>
+</section>
+
+<hr class="rule" aria-hidden="true" />
+
+<!-- ═══ BUILT WITH ═══ -->
+<section class="ch-built enter">
+  <div class="container">
+    <div class="intro">
+      <div class="eyebrow">Built with</div>
+      <h2 class="h-chapter-sm serif">Real stack. No smoke.</h2>
+      <p class="lede">Every dependency below ships with the app, pulling its weight. Versions are exact.</p>
+    </div>
+    <div class="stack-list">
+      <div class="stack-row"><span class="s-name">React</span><span class="s-note">One codebase. Three roles. Conditional routing instead of three apps.</span><span class="s-version">19.2</span></div>
+      <div class="stack-row"><span class="s-name">Vite</span><span class="s-note">Fast dev server; tight, code-split production build.</span><span class="s-version">7.3</span></div>
+      <div class="stack-row"><span class="s-name">Tailwind CSS</span><span class="s-note">Utility-first styling. No runtime, no CSS-in-JS tax.</span><span class="s-version">4.2</span></div>
+      <div class="stack-row"><span class="s-name">Express</span><span class="s-note">Thin API surface. Helmet, rate limiting, CORS — nothing extra.</span><span class="s-version">5.2</span></div>
+      <div class="stack-row"><span class="s-name">better-sqlite3</span><span class="s-note">Synchronous SQLite. Zero-latency reads. Single-file portability.</span><span class="s-version">12.6</span></div>
+      <div class="stack-row"><span class="s-name">@ffmpeg/ffmpeg</span><span class="s-note">H.264 encoding inside the app — the video never leaves the phone raw.</span><span class="s-version">0.12</span></div>
+      <div class="stack-row"><span class="s-name">tus-js-client</span><span class="s-note">Resumable uploads. Survives the subway tunnel.</span><span class="s-version">4.3</span></div>
+      <div class="stack-row"><span class="s-name">@google/genai</span><span class="s-note">Multimodal model that reads the extracted frames — shots, passes, foot usage.</span><span class="s-version">1.47</span></div>
+      <div class="stack-row"><span class="s-name">vite-plugin-pwa</span><span class="s-note">Installable from a link. Offline-capable. No app store.</span><span class="s-version">1.2</span></div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule" aria-hidden="true" />
+
+<!-- ═══ CLOSE CTA ═══ -->
+<section class="ch-close enter" id="contact">
+  <div class="close-inner">
+    <div class="close-kicker">Stay Composed.</div>
+    <h2 class="serif">Run a 4-week <em>pilot.</em></h2>
+    <p class="lede">Composed is pre-launch. We're onboarding <strong>8 teams</strong> for the first pilot block. Tell us your roster, your age group, and what you're <strong>actually</strong> trying to improve.</p>
+    <div class="close-ctas">
+      <a href="mailto:hello@composed.soccer?subject=Pilot%20interest%20%E2%80%94%20%5BClub%20%2F%20Team%20name%5D&body=Club%20or%20team%3A%0A%0AAge%20group%3A%0A%0ARoster%20size%3A%0A%0AHow%20you%20currently%20handle%20between-session%20training%3A%0A%0AWhat%20you%27re%20trying%20to%20actually%20improve%3A%0A%0A(Anything%20else%20you%20want%20us%20to%20know%3A)%0A" class="cta cta-primary">Bring Composed to your squad <span class="arrow">→</span></a>
+      <button id="copyBtn" class="cta cta-ghost" type="button">Copy outreach template</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="f-inner">
+    <div class="f-logo"><em>C</em>omposed</div>
+    <nav class="f-links" aria-label="Legal">
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="mailto:hello@composed.soccer">Contact</a>
+    </nav>
+    <div class="f-note">A soccer training companion · Pre-launch</div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  const prefersReduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  (function heroVideo() {
+    const v = document.getElementById('heroVideo');
+    if (!v) return;
+    const show = () => v.classList.add('on');
+    if (v.readyState >= 2) show();
+    else v.addEventListener('loadeddata', show, { once: true });
+    v.play().catch(() => show());
+  })();
+
+  (function heroStagger() {
+    const el = document.getElementById('heroHeadline');
+    if (!el) return;
+    const text = 'A new era of soccer training.';
+    const frag = document.createDocumentFragment();
+    const chars = [];
+    const words = text.split(' ');
+    words.forEach((word, wi) => {
+      const wordEl = document.createElement('span');
+      wordEl.className = 'word';
+      for (let i = 0; i < word.length; i++) {
+        const mask = document.createElement('span');
+        mask.className = 'char-mask';
+        const c = document.createElement('span');
+        c.className = 'char';
+        c.textContent = word[i];
+        mask.appendChild(c);
+        wordEl.appendChild(mask);
+        chars.push(c);
+      }
+      frag.appendChild(wordEl);
+      if (wi < words.length - 1) {
+        const s = document.createElement('span');
+        s.className = 'char-space';
+        s.innerHTML = '&nbsp;';
+        frag.appendChild(s);
+      }
+    });
+    el.appendChild(frag);
+
+    if (prefersReduce) {
+      chars.forEach(c => c.classList.add('in'));
+      ['heroEyebrow','heroSubhead','heroCtaA'].forEach(id => document.getElementById(id)?.classList.add('on'));
+      return;
+    }
+    setTimeout(() => document.getElementById('heroEyebrow').classList.add('on'), 0);
+    setTimeout(() => chars.forEach((c, i) => setTimeout(() => c.classList.add('in'), i * 28)), 200);
+    setTimeout(() => document.getElementById('heroSubhead').classList.add('on'), 900);
+    setTimeout(() => document.getElementById('heroCtaA').classList.add('on'), 1100);
+  })();
+
+  const enterIO = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('shown');
+        enterIO.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -5% 0px' });
+  document.querySelectorAll('.enter').forEach(el => enterIO.observe(el));
+
+  const chartLine = document.getElementById('paceChartLine');
+  if (chartLine) {
+    const chartIO = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          chartLine.classList.add('draw');
+          chartIO.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.4 });
+    chartIO.observe(document.getElementById('paceChart'));
+  }
+
+  const heroEl = document.querySelector('header.hero');
+  const heroVisIO = new IntersectionObserver((entries) => {
+    entries.forEach(e => document.body.classList.toggle('hero-visible', e.isIntersecting));
+  }, { threshold: 0.1 });
+  if (heroEl) heroVisIO.observe(heroEl);
+
+  /* Track which dark chapters are in view; body.to-dark if any */
+  const darkTargets = [
+    document.getElementById('pacePayoff'),
+    document.querySelector('.ch-pace-intro'),
+    document.querySelector('.ch-ai')
+  ].filter(Boolean);
+  const darkVis = new WeakSet();
+  const darkIO = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting && e.intersectionRatio > 0.15) darkVis.add(e.target);
+      else darkVis.delete(e.target);
+    });
+    const anyDark = darkTargets.some(t => darkVis.has(t));
+    document.body.classList.toggle('to-dark', anyDark);
+  }, { threshold: [0.15, 0.5, 0.85] });
+  darkTargets.forEach(t => darkIO.observe(t));
+
+  const POSITIONS = [
+    { key: 'Striker',  label: 'Striker',     weights: { shooting: 0.40, passing: 0.10, consistency: 0.20, duration: 0.10, load: 0.20 }, dominant: 'shooting', caption: 'Punished hardest for missed finishing. <strong>40%</strong> of a striker\u2019s Pace comes from shooting.' },
+    { key: 'Winger',   label: 'Winger',      weights: { shooting: 0.25, passing: 0.15, consistency: 0.20, duration: 0.15, load: 0.25 }, dominant: 'load',     caption: 'Crossing accuracy and repeat sprints. Load runs highest for a winger.' },
+    { key: 'CAM',      label: 'CAM',         weights: { shooting: 0.25, passing: 0.30, consistency: 0.20, duration: 0.10, load: 0.15 }, dominant: 'passing',  caption: 'Rewarded for passing volume and creative load. <strong>30%</strong> passing.' },
+    { key: 'CDM',      label: 'CDM',         weights: { shooting: 0.05, passing: 0.35, consistency: 0.25, duration: 0.15, load: 0.20 }, dominant: 'passing',  caption: 'Passing weighted higher than shooting. <strong>35%</strong> passing, <strong>5%</strong> shooting.' },
+    { key: 'CB',       label: 'Centre-back', weights: { shooting: 0.05, passing: 0.30, consistency: 0.25, duration: 0.20, load: 0.20 }, dominant: 'passing',  caption: 'Defensive duels, aerial wins, build-up passing.' },
+    { key: 'GK',       label: 'Goalkeeper',  weights: { shooting: 0.05, passing: 0.15, consistency: 0.30, duration: 0.20, load: 0.30 }, dominant: 'load',     caption: 'Not judged like a shooter. <strong>30%</strong> load, <strong>30%</strong> consistency.' }
+  ];
+  const METRICS = [
+    { key: 'shooting', label: 'Shooting' },
+    { key: 'passing', label: 'Passing' },
+    { key: 'consistency', label: 'Consistency' },
+    { key: 'duration', label: 'Duration' },
+    { key: 'load', label: 'Load' }
+  ];
+  const EQUAL = { shooting: 0.20, passing: 0.20, consistency: 0.20, duration: 0.20, load: 0.20 };
+
+  const paceBars = document.getElementById('paceBars');
+  const paceCaption = document.getElementById('paceCaption');
+  const paceVizPosition = document.getElementById('paceVizPosition');
+  const paceVizLabel = document.getElementById('paceVizLabel');
+  const paceEyebrow = document.getElementById('paceEyebrow');
+  const paceHeadline = document.getElementById('paceHeadline');
+  const paceStage = document.getElementById('paceRotation');
+
+  function buildBars() {
+    paceBars.innerHTML = METRICS.map(m => `
+      <div class="pace-bar-row" data-metric="${m.key}">
+        <span class="pace-bar-label">${m.label}</span>
+        <div class="pace-bar-track"><div class="pace-bar-fill" style="width:50%;"></div></div>
+        <span class="pace-bar-pct">20%</span>
+      </div>
+    `).join('');
+  }
+  buildBars();
+
+  function applyWeights(targets, dominantKey) {
+    METRICS.forEach(m => {
+      const row = paceBars.querySelector(`[data-metric="${m.key}"]`);
+      const fill = row.querySelector('.pace-bar-fill');
+      const pct = row.querySelector('.pace-bar-pct');
+      const tgt = Math.round(targets[m.key] * 100);
+      fill.style.width = (tgt * 2.5) + '%';
+      pct.textContent = tgt + '%';
+      row.classList.toggle('dominant', dominantKey === m.key);
+    });
+  }
+
+  let phaseState = '';
+  function updatePace() {
+    if (!paceStage) return;
+    const rect = paceStage.getBoundingClientRect();
+    const scrollable = paceStage.offsetHeight - window.innerHeight;
+    if (scrollable <= 0) return;
+    const scrolled = -rect.top;
+    const progress = Math.max(0, Math.min(1, scrolled / scrollable));
+
+    let stateKey = '';
+    if (progress < 0.15) {
+      stateKey = 'p1';
+      if (phaseState !== stateKey) {
+        paceEyebrow.textContent = 'The default model';
+        paceHeadline.innerHTML = 'Most apps treat every player the same way.';
+        paceCaption.innerHTML = 'Five metrics. Equal weights. One number for everyone.';
+        paceVizLabel.textContent = 'Default · equal weights';
+        paceVizPosition.textContent = 'All positions';
+        applyWeights(EQUAL, null);
+      }
+    } else if (progress < 0.25) {
+      stateKey = 'p2';
+      if (phaseState !== stateKey) {
+        paceEyebrow.textContent = 'Pace · weighted by position';
+        paceHeadline.innerHTML = 'Composed doesn\u2019t.';
+        paceCaption.innerHTML = 'Each position gets its own weight table. Watch the bars diverge.';
+        paceVizLabel.textContent = 'Weighting · in motion';
+        paceVizPosition.textContent = 'shifting…';
+        applyWeights(POSITIONS[0].weights, null);
+      }
+    } else if (progress < 0.90) {
+      const inner = (progress - 0.25) / 0.65;
+      const idx = Math.min(POSITIONS.length - 1, Math.floor(inner * POSITIONS.length));
+      stateKey = 'p3-' + idx;
+      if (phaseState !== stateKey) {
+        const pos = POSITIONS[idx];
+        paceEyebrow.textContent = 'Pace · weighted by position';
+        paceHeadline.innerHTML = 'Weighted to what the position <em>actually</em> does.';
+        paceVizLabel.textContent = 'Position weighting';
+        paceVizPosition.textContent = pos.label.toUpperCase();
+        paceCaption.innerHTML = pos.caption;
+        applyWeights(pos.weights, pos.dominant);
+      }
+    } else {
+      stateKey = 'p4';
+    }
+    paceStage.classList.toggle('collapsing', progress >= 0.90);
+    phaseState = stateKey;
+  }
+
+  const videoStage = document.getElementById('videoStage');
+  const board = document.getElementById('analysisBoard');
+  const frameCountEl = document.getElementById('frameCount');
+  const filmstripFrames = board ? board.querySelectorAll('.filmstrip-frame') : [];
+  const resultNums = board ? board.querySelectorAll('.result-num') : [];
+  const FRAME_TOTAL = 1247;
+  let lastFrameCount = -1, lastBoardState = -1, resultsAnimatedFor = null;
+  const resultAnims = new Map();
+
+  function animateNum(el, target) {
+    const existing = resultAnims.get(el);
+    if (existing) cancelAnimationFrame(existing);
+    const start = performance.now();
+    const dur = 850;
+    function tick(now) {
+      const t = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = Math.round(target * eased);
+      if (t < 1) resultAnims.set(el, requestAnimationFrame(tick));
+      else resultAnims.delete(el);
+    }
+    resultAnims.set(el, requestAnimationFrame(tick));
+  }
+
+  function updateVideo() {
+    if (!videoStage || !board) return;
+    const rect = videoStage.getBoundingClientRect();
+    const scrollable = videoStage.offsetHeight - window.innerHeight;
+    if (scrollable <= 0) return;
+    const scrolled = -rect.top;
+    const progress = Math.max(0, Math.min(1, scrolled / scrollable));
+
+    const targetFrames = Math.round(FRAME_TOTAL * progress);
+    if (targetFrames !== lastFrameCount) {
+      frameCountEl.textContent = targetFrames.toLocaleString();
+      lastFrameCount = targetFrames;
+    }
+
+    let state = 1;
+    if (progress >= 0.66) state = 3;
+    else if (progress >= 0.33) state = 2;
+
+    if (state === 2 && filmstripFrames.length) {
+      const inner = Math.max(0, Math.min(1, (progress - 0.33) / 0.33));
+      const lit = Math.floor(inner * filmstripFrames.length);
+      filmstripFrames.forEach((f, i) => f.classList.toggle('lit', i < lit));
+    } else if (state === 3) {
+      filmstripFrames.forEach(f => f.classList.add('lit'));
+    } else {
+      filmstripFrames.forEach(f => f.classList.remove('lit'));
+    }
+
+    if (state === lastBoardState) return;
+    lastBoardState = state;
+    board.classList.remove('state-1', 'state-2', 'state-3');
+    board.classList.add('state-' + state);
+
+    if (state === 3 && resultsAnimatedFor !== 3) {
+      resultNums.forEach(n => {
+        const t = parseInt(n.dataset.target, 10) || 0;
+        if (prefersReduce) { n.textContent = t; return; }
+        animateNum(n, t);
+      });
+      resultsAnimatedFor = 3;
+    }
+    if (state !== 3) resultsAnimatedFor = null;
+    if (state === 1) resultNums.forEach(n => n.textContent = '0');
+  }
+
+  const nav = document.getElementById('topNav');
+  const scrollProgress = document.getElementById('scrollProgress');
+  function updateNav() {
+    if (!nav) return;
+    if (window.scrollY > 30) nav.classList.add('scrolled');
+    else nav.classList.remove('scrolled');
+  }
+  function updateScrollProgress() {
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    const pct = total > 0 ? (window.scrollY / total) * 100 : 0;
+    scrollProgress.style.width = pct + '%';
+  }
+
+  let ticking = false;
+  function onScroll() {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        updateScrollProgress();
+        updateNav();
+        updatePace();
+        updateVideo();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
+  onScroll();
+
+  const copyBtn = document.getElementById('copyBtn');
+  const TEMPLATE = `Subject: Pilot interest — [Club / Team name]
+
+Club or team:
+Age group:
+Roster size:
+How you currently handle between-session training:
+What you're trying to actually improve:
+
+(Anything else you want us to know:)`;
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      const orig = copyBtn.textContent;
+      const show = (t) => {
+        copyBtn.textContent = t;
+        setTimeout(() => { copyBtn.textContent = orig; }, 2000);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(TEMPLATE)
+          .then(() => show('Copied — paste anywhere'))
+          .catch(() => show('Copy failed'));
+      } else {
+        show('Copy unavailable');
+      }
+    });
+  }
+})();
+</script>
+
+</body>
+</html>

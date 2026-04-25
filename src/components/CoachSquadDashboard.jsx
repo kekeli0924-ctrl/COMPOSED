@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Card } from './ui/Card';
 import { getToken } from '../hooks/useApi';
+import { apiFetch } from '../hooks/useApi';
 
 // ── Status colors ────────────────────────────────────────────────────────────
 // Reuses the same green/amber/red scheme the rest of the app uses for Pace
@@ -23,18 +24,23 @@ function complianceDot(sessionsThisWeek, compliancePct) {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function CoachSquadDashboard({ onSelectPlayer }) {
+export function CoachSquadDashboard({ onSelectPlayer, onStartBlock, onOpenBlock }) {
   const [pulse, setPulse] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [blocks, setBlocks] = useState([]);
 
   useEffect(() => {
     const token = getToken();
-    fetch('/api/coach/squad-pulse', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => setPulse(data))
-      .catch(() => {})
+    Promise.all([
+      fetch('/api/coach/squad-pulse', {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(r => r.ok ? r.json() : null),
+      apiFetch('/blocks').catch(() => []),
+    ])
+      .then(([pulseData, blocksData]) => {
+        setPulse(pulseData);
+        setBlocks(Array.isArray(blocksData) ? blocksData : []);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -107,6 +113,42 @@ export function CoachSquadDashboard({ onSelectPlayer }) {
             <span className="text-red-500 font-medium"> · {header.slipping} slipping</span>
           )}
         </p>
+      </div>
+
+      {/* 4-week block — entry card (always) + active-block list (if any) */}
+      <div className="space-y-2">
+        {blocks.filter(b => b.status === 'active').map(b => (
+          <button
+            key={b.id}
+            onClick={() => onOpenBlock?.(b.id)}
+            className="w-full text-left bg-accent/5 border border-accent/20 rounded-xl px-3 py-2.5 flex items-center gap-3 hover:bg-accent/10 transition-colors"
+          >
+            <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+              <span className="text-accent text-sm">●</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">{b.name}</p>
+              <p className="text-[10px] text-gray-500">
+                {b.startDate} → {b.endDate} · {b.memberCount} player{b.memberCount !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <svg className="w-3.5 h-3.5 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        ))}
+        <button
+          onClick={onStartBlock}
+          className="w-full text-left bg-surface border border-dashed border-gray-200 rounded-xl px-3 py-2.5 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+        >
+          <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+            <span className="text-gray-400 text-sm">+</span>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-800">Start 4-week block</p>
+            <p className="text-[10px] text-gray-400">Technical homework + baseline/retest benchmarks</p>
+          </div>
+        </button>
       </div>
 
       {/* Roster list — compact rows, sorted by urgency */}

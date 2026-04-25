@@ -35,6 +35,11 @@ import { SessionComments } from './components/SessionComments';
 import { ParentDashboard } from './components/ParentDashboard';
 import { DashboardIcon, PaceIcon, PlusIcon, ListIcon, SocialIcon, CalendarIcon, TargetIcon, BrainIcon, RosterIcon, SettingsIcon, ScoutIcon } from './components/NavIcons';
 import { PaceTab } from './components/PaceTab';
+import { PilotMetrics } from './components/PilotMetrics';
+import { BlockSetupFlow } from './components/BlockSetupFlow';
+import { BlockDetail } from './components/BlockDetail';
+import { BenchmarksTab } from './components/BenchmarksTab';
+import { PublicDigest } from './components/PublicDigest';
 import { SessionDetail } from './components/SessionDetail';
 import { Toast } from './components/ui/Toast';
 import { Button } from './components/ui/Button';
@@ -55,7 +60,8 @@ const PLAYER_TABS = [
   { id: 'plan', label: 'Plan', icon: CalendarIcon },
   { id: 'scouting', label: 'Scout', icon: ScoutIcon },
   { id: 'drills', label: 'Drills', icon: TargetIcon },
-  { id: 'social', label: 'Community', icon: SocialIcon },
+  // Community hidden for pilot 2026-04-16 — restore by uncommenting.
+  // { id: 'social', label: 'Community', icon: SocialIcon },
 ];
 
 const COACH_TABS = [
@@ -66,6 +72,17 @@ const COACH_TABS = [
 ];
 
 function App() {
+  // ── Public digest route ─────────────────────
+  // Handled BEFORE any auth logic so unauthenticated viewers can read a shared
+  // snapshot. Uses a pure pathname check — no router library needed for one route.
+  // Matches /r/:slug where :slug is URL-safe base64 (A-Z a-z 0-9 _ -).
+  const publicSlugMatch = typeof window !== 'undefined'
+    ? window.location.pathname.match(/^\/r\/([A-Za-z0-9_-]+)\/?$/)
+    : null;
+  if (publicSlugMatch) {
+    return <PublicDigest slug={publicSlugMatch[1]} />;
+  }
+
   // ── Auth state ──────────────────────────────
   const [authUser, setAuthUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -110,6 +127,22 @@ function App() {
     const handler = () => { setAuthUser(null); clearTokens(); setAuthFlow('login'); };
     window.addEventListener('auth-failure', handler);
     return () => window.removeEventListener('auth-failure', handler);
+  }, []);
+
+  // Video-failure recovery → route user into SessionLogger with any salvaged draft.
+  // Fired by AnalysisBanner's "Log manually" CTA via VideoAnalysisContext.recoverManual().
+  useEffect(() => {
+    const handler = (e) => {
+      // partial is currently unused by SessionLogger but we stash it on editSession
+      // if it carries anything useful — at worst the manual form starts clean.
+      const partial = e?.detail?.partial;
+      if (partial && typeof partial === 'object') {
+        setEditSession(partial);
+      }
+      setActiveTab('log');
+    };
+    window.addEventListener('composed:recover-manual', handler);
+    return () => window.removeEventListener('composed:recover-manual', handler);
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -333,6 +366,8 @@ function AppMain({ authUser, onLogout, pendingFirstSession, onFirstSessionConsum
   const [activeTab, setActiveTab] = useState('dashboard');
   const [previousTab, setPreviousTab] = useState('dashboard');
   const [selectedCoachPlayer, setSelectedCoachPlayer] = useState(null);
+  // 4-week block state: which block the coach is currently viewing. null = list view.
+  const [selectedBlockId, setSelectedBlockId] = useState(null);
   const [editSession, setEditSession] = useState(null);
   const [viewSession, setViewSession] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
@@ -1038,7 +1073,11 @@ function AppMain({ authUser, onLogout, pendingFirstSession, onFirstSessionConsum
           {/* Coach role → Squad Pulse as their Dashboard landing screen.
               Players → the Step 3 Pace-hero Dashboard. */}
           {userRole === 'coach' ? (
-            <CoachSquadDashboard onSelectPlayer={(player) => { setSelectedCoachPlayer(player); navigateToTab('roster'); }} />
+            <CoachSquadDashboard
+              onSelectPlayer={(player) => { setSelectedCoachPlayer(player); navigateToTab('roster'); }}
+              onStartBlock={() => navigateToTab('block-setup')}
+              onOpenBlock={(id) => { setSelectedBlockId(id); navigateToTab('block-detail'); }}
+            />
           ) : (
             <Dashboard sessions={sessions} personalRecords={personalRecords} onViewSession={handleViewSession} idpGoals={idpGoals} weeklyGoal={settings.weeklyGoal ?? 3} ageGroup={settings.ageGroup} skillLevel={settings.skillLevel} onOpenSettings={() => navigateToTab('profile')} onNavigateToLog={() => setActiveTab('log')} onStartPlan={handleStartPlan} onStartManual={handleStartManual} onUploadVideo={handleUploadVideo} onStartTraining={handleStartTraining} onViewMetric={handleViewMetric} assignedPlans={assignedPlans} trainingPlans={trainingPlans} settings={settings} myCoach={myCoach} onNavigate={navigateToTab} onDismissGettingStarted={() => setSettings(prev => ({ ...prev, gettingStartedComplete: 1 }))} activeProgram={activeProgram} scoutingReports={scoutingReports} />
           )}
@@ -1072,6 +1111,35 @@ function AppMain({ authUser, onLogout, pendingFirstSession, onFirstSessionConsum
         </div>
         {activeTab === 'team-leaderboard' && (
           <TeamLeaderboard onBack={() => setActiveTab(previousTab || 'dashboard')} />
+        )}
+        {activeTab === 'block-setup' && (
+          <BlockSetupFlow
+            onCancel={() => setActiveTab(previousTab || 'dashboard')}
+            onCreated={(block) => { setSelectedBlockId(block.id); setActiveTab('block-detail'); }}
+          />
+        )}
+        {activeTab === 'block-detail' && selectedBlockId && (
+          <BlockDetail
+            blockId={selectedBlockId}
+            onBack={() => { setSelectedBlockId(null); setActiveTab(previousTab || 'dashboard'); }}
+          />
+        )}
+        {activeTab === 'benchmarks' && (
+          <BenchmarksTab onBack={() => setActiveTab(previousTab || 'dashboard')} />
+        )}
+        {activeTab === 'pilot-metrics' && (
+          <div className="space-y-4">
+            <button
+              onClick={() => setActiveTab(previousTab || 'profile')}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-accent transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              Back
+            </button>
+            <PilotMetrics />
+          </div>
         )}
         <div className={activeTab === 'pace' ? '' : 'hidden'}>
           <PaceTab sessions={sessions} onViewMetric={handleViewMetric} ageGroup={settings.ageGroup} skillLevel={settings.skillLevel} playerIdentity={settings.playerIdentity} position={Array.isArray(settings.position) ? settings.position[0] : settings.position} idpGoals={idpGoals} parentVisibility={parentVisibility} settings={settings} />
@@ -1161,7 +1229,8 @@ function AppMain({ authUser, onLogout, pendingFirstSession, onFirstSessionConsum
         <div className={activeTab === 'social' ? '' : 'hidden'}>
           <div className="space-y-5 max-w-3xl mx-auto">
             <h2 className="text-xl font-bold text-gray-900">Community</h2>
-            <CoachChat coachId={myCoach?.coachId} coachName={myCoach?.coachName} />
+            {/* CoachChat hidden for pilot 2026-04-16 — commented out to stop polling. Restore by uncommenting. */}
+            {/* <CoachChat coachId={myCoach?.coachId} coachName={myCoach?.coachName} /> */}
             <SocialFeed />
           </div>
         </div>
@@ -1502,6 +1571,14 @@ function AppMain({ authUser, onLogout, pendingFirstSession, onFirstSessionConsum
 
             <hr className="border-gray-100" />
 
+            {/* Pilot metrics — founder-only; server returns 403 to everyone else */}
+            <button
+              onClick={() => navigateToTab('pilot-metrics')}
+              className="w-full py-2 text-[11px] font-medium text-gray-300 hover:text-gray-500 transition-colors"
+            >
+              Pilot metrics
+            </button>
+
             {/* Log Out */}
             <button
               onClick={onLogout}
@@ -1586,9 +1663,10 @@ function AppMain({ authUser, onLogout, pendingFirstSession, onFirstSessionConsum
         {viewSession && (
           <>
             <SessionDetail session={viewSession} />
-            <div className="mt-4 pt-4 border-t border-gray-100">
+            {/* SessionComments hidden for pilot 2026-04-16 — restore by uncommenting. */}
+            {/* <div className="mt-4 pt-4 border-t border-gray-100">
               <SessionComments sessionId={viewSession.id} />
-            </div>
+            </div> */}
           </>
         )}
       </Modal>

@@ -1,0 +1,2782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Composed — a soccer training companion that measures the work youth players do alone. Position-weighted progress. Counted from your footage. No proprietary hardware." />
+<meta name="theme-color" content="#050505" />
+<title>Composed — Stop Guessing. Start Proving.</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23050505'/><text x='50' y='72' font-size='72' font-family='Georgia,serif' font-style='italic' font-weight='500' fill='%23C2A56B' text-anchor='middle'>C</text></svg>" />
+<style>
+  :root {
+    --bg: #050505;
+    --bg-elevated: #0B0B0D;
+    --bg-warm: #0a0806;
+    --bg-cool: #06080c;
+    --bg-soft: #0a0a0a;
+    --bg-deep: #030303;
+    --fg: #F5F5F2;
+    --fg-mute: #A7A7AD;
+    --fg-soft: #6e6e73;
+    --line: rgba(245,245,242,0.08);
+    --line-soft: rgba(245,245,242,0.04);
+    --accent: #C2A56B;
+    --accent-hover: #D4B77D;
+    --accent-soft: rgba(194,165,107,0.12);
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: 19px;
+    line-height: 1.6;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-variant-numeric: tabular-nums;
+    overflow-x: hidden;
+  }
+  ::selection { background: var(--accent); color: var(--bg-deep); }
+
+  img { max-width: 100%; display: block; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /* ── Typography ─────────────────────────── */
+  .display {
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 0.95;
+    font-size: clamp(3rem, 9vw, 7.5rem);
+  }
+  .h2 {
+    font-weight: 600;
+    letter-spacing: -0.028em;
+    line-height: 1.04;
+    font-size: clamp(2.25rem, 5.5vw, 4.25rem);
+  }
+  .h3 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+  }
+  .eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--accent);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .eyebrow.visible { opacity: 1; transform: translateY(0); }
+
+  p.body {
+    font-size: clamp(1.05rem, 1.35vw, 1.3rem);
+    color: var(--fg-mute);
+    line-height: 1.6;
+    max-width: 38em;
+  }
+  p.body strong { color: var(--fg); font-weight: 500; }
+
+  /* ── Emphasis utilities (varied per chapter) ─── */
+  .serif-it {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+  }
+  .brass-shift { color: var(--accent); }
+  .bold-italic { font-weight: 700; font-style: italic; }
+  .brass-underline {
+    font-weight: 600;
+    background-image: linear-gradient(transparent 88%, var(--accent) 88%, var(--accent) 94%, transparent 94%);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    padding-bottom: 0.05em;
+  }
+
+  /* ── Layout ─────────────────────────────── */
+  section, .stage {
+    padding: clamp(6rem, 14vh, 11rem) max(1.5rem, 5vw);
+    position: relative;
+  }
+  .container { max-width: 80rem; margin: 0 auto; width: 100%; }
+  .narrow { max-width: 56rem; margin: 0 auto; width: 100%; }
+
+  /* ── Scroll progress bar ─────────────────── */
+  .scroll-progress {
+    position: fixed;
+    top: 0; left: 0;
+    height: 1px;
+    width: 0%;
+    background: rgba(194, 165, 107, 0.6);
+    z-index: 100;
+    transition: width 60ms linear;
+    pointer-events: none;
+  }
+
+  /* ── Threading pace line ── subtle continuity, fixed to left edge ── */
+  .threading-line {
+    position: fixed;
+    top: 0;
+    left: max(0.75rem, 2vw);
+    height: 100vh;
+    width: 40px;
+    pointer-events: none;
+    z-index: 30;
+    opacity: 0.25;
+    transition: opacity 320ms ease;
+  }
+  /* Fade the line during scrollytelling chapters where it would compete */
+  body.thread-quiet .threading-line { opacity: 0.03; }
+  /* Hidden entirely during the three named handoffs */
+  body.handoff-active .threading-line { opacity: 0; }
+  .threading-path {
+    stroke: var(--accent);
+    stroke-width: 1;
+    stroke-linecap: round;
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+  }
+  @media (max-width: 720px) {
+    .threading-line { display: none; }
+  }
+
+  /* ── Handoff 1: mask-sweep (hero → wrong metric) ── */
+  .mask-sweep {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 55;
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+  .mask-sweep.active { opacity: 1; }
+  .mask-sweep-line {
+    position: absolute;
+    left: 0; right: 0;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, var(--accent) 20%, var(--accent) 80%, transparent 100%);
+    box-shadow: 0 0 14px rgba(194,165,107,0.35);
+    transform: translateY(0);
+    will-change: transform;
+  }
+  /* Hero lift out during mask-sweep */
+  body.handoff-1-active header.hero {
+    transition: clip-path 500ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity 400ms ease;
+    clip-path: inset(0 0 100% 0);
+  }
+  body.handoff-1-active .hero-phone {
+    transition: transform 500ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity 400ms ease;
+    transform: scale(0.9);
+    opacity: 0.3;
+  }
+
+  /* ── Handoff 2/3: dark ↔ light dissolve ── */
+  /* The body's background shifts to ivory when we're inside the payoff chapter
+     zone. Using a body class keeps overlays in sync. */
+  body.payoff-lit {
+    background-color: #F2EDE4;
+    transition: background-color 900ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+  body.payoff-lit .threading-line { opacity: 0; }
+
+  /* Extra: on exiting the payoff toward the video stage, scale+fade the payoff card */
+  body.payoff-exiting #pacePayoff .payoff-artifact,
+  body.payoff-exiting #pacePayoff .payoff-quote {
+    transform: scale(0.95);
+    opacity: 0;
+    transition: transform 700ms ease, opacity 700ms ease;
+  }
+
+  /* ── Vertical hairline divider ────────────── */
+  .chapter-rule {
+    border: none;
+    width: 1px;
+    height: 120px;
+    margin: 0 auto;
+    background: rgba(194, 165, 107, 0.2);
+    display: block;
+  }
+
+  /* ── Nav ─────────────────────────────────── */
+  nav.top {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 50;
+    padding: 1rem max(1.5rem, 5vw);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(5,5,5,0);
+    transition: background 0.3s ease, border-color 0.3s ease;
+    border-bottom: 1px solid transparent;
+  }
+  nav.top.scrolled {
+    background: rgba(5,5,5,0.72);
+    backdrop-filter: saturate(1.4) blur(20px);
+    -webkit-backdrop-filter: saturate(1.4) blur(20px);
+    border-bottom-color: var(--line);
+  }
+  nav.top .logo {
+    font-family: var(--serif);
+    font-size: 1.6rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--fg);
+  }
+  nav.top .logo em { font-style: italic; color: var(--accent); font-weight: 500; }
+  nav.top .nav-cta {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--fg-mute);
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    transition: all 0.2s;
+  }
+  nav.top .nav-cta:hover { color: var(--fg); border-color: rgba(245,245,242,0.25); }
+
+  /* ── CTA buttons (bordered) ──────────────── */
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.9rem 1.6rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border-radius: 999px;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .cta.primary {
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    background: transparent;
+  }
+  .cta.primary:hover {
+    background: var(--accent);
+    color: var(--bg-deep);
+  }
+  .cta.secondary {
+    border: 1px solid var(--line);
+    color: var(--fg-mute);
+    background: transparent;
+  }
+  .cta.secondary:hover {
+    border-color: var(--fg-mute);
+    color: var(--fg);
+  }
+  .cta .arrow { display: inline-block; transition: transform 0.25s ease; }
+  .cta:hover .arrow { transform: translateX(3px); }
+
+  /* ── Hero ────────────────────────────────── */
+  header.hero {
+    min-height: 100vh;
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    padding: 10rem max(1.5rem, 5vw) 6rem;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  header.hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 80% 30%, rgba(194,165,107,0.08), transparent 60%),
+      radial-gradient(ellipse 50% 50% at 15% 85%, rgba(194,165,107,0.04), transparent 60%);
+    pointer-events: none;
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: clamp(3rem, 7vw, 7rem);
+    align-items: center;
+    width: 100%;
+    position: relative;
+  }
+  @media (max-width: 960px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 4rem; }
+  }
+  .hero h1 { margin-bottom: 1.5rem; }
+  .hero h1 .line1, .hero h1 .line2 {
+    display: block;
+    opacity: 0;
+  }
+  .hero h1 .line1 { animation: heroLineIn 0.7s cubic-bezier(0.2, 0.8, 0.3, 1) 0.12s forwards; }
+  .hero h1 .line2 {
+    transform: translateY(4px);
+    animation: heroLineIn2 0.7s cubic-bezier(0.2, 0.8, 0.3, 1) 0.30s forwards;
+  }
+  @keyframes heroLineIn { to { opacity: 1; } }
+  @keyframes heroLineIn2 { to { opacity: 1; transform: translateY(0); } }
+  .hero .tagline {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(1.1rem, 1.4vw, 1.4rem);
+    color: var(--accent);
+    margin-bottom: 2rem;
+    letter-spacing: 0.02em;
+    opacity: 0;
+    animation: heroLineIn 0.7s ease-out 0.05s forwards;
+  }
+  .hero .lede {
+    font-size: clamp(1.15rem, 1.5vw, 1.5rem);
+    color: var(--fg-mute);
+    max-width: 30em;
+    line-height: 1.5;
+    margin-bottom: 2.5rem;
+    font-weight: 400;
+    opacity: 0;
+    animation: heroLineIn 0.7s ease-out 0.45s forwards;
+  }
+  .hero .lede strong { color: var(--fg); font-weight: 500; }
+  .cta-row {
+    display: flex; gap: 0.8rem; flex-wrap: wrap;
+    opacity: 0;
+    animation: heroLineIn 0.7s ease-out 0.6s forwards;
+  }
+
+  .hero-phone {
+    position: relative;
+    width: min(100%, 22rem);
+    aspect-ratio: 9 / 19.5;
+    margin: 0 auto;
+    border-radius: 2.6rem;
+    padding: 0.55rem;
+    background: linear-gradient(145deg, #2a2a2a 0%, #161616 100%);
+    box-shadow:
+      0 30px 60px rgba(0,0,0,0.5),
+      0 0 0 1px rgba(245,245,242,0.04),
+      inset 0 1px 0 rgba(245,245,242,0.06);
+    transform: rotate(-1.5deg);
+    transition: transform 0.2s ease-out;
+    will-change: transform;
+  }
+  @media (hover: none) {
+    .hero-phone { transition: none; }
+  }
+  .hero-phone::before {
+    content: "";
+    position: absolute;
+    top: 0.6rem; left: 50%;
+    transform: translateX(-50%);
+    width: 30%; height: 0.9rem;
+    background: #000;
+    border-radius: 999px;
+    z-index: 2;
+  }
+  .hero-phone .phone-screen {
+    width: 100%; height: 100%;
+    border-radius: 2.05rem;
+    overflow: hidden;
+    background: #FAFAF8;
+    position: relative;
+  }
+  .hero-phone .phone-screen img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: top;
+  }
+
+  /* ── Editorial phone: content rendered in CSS/SVG (no screenshot) ── */
+  .hero-phone .phone-screen.ph-screen-editorial {
+    background: linear-gradient(180deg, #060607 0%, #0C0C0F 55%, #060607 100%);
+    color: var(--fg);
+    padding: 0.9rem 0.95rem 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+  .ph-status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0.3rem;
+    margin-top: 0.15rem;
+    height: 0.9rem;
+    color: var(--fg-mute);
+    font-family: var(--sans);
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .ph-status-icons { display: inline-flex; align-items: center; gap: 4px; }
+  .ph-status-icons svg { display: block; }
+  .ph-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.2rem 0.3rem 0.1rem;
+  }
+  .ph-wordmark {
+    font-family: var(--serif);
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    color: var(--fg);
+  }
+  .ph-wordmark em {
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .ph-today {
+    font-family: var(--mono);
+    font-size: 0.56rem;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    border: 1px solid rgba(194,165,107,0.35);
+    border-radius: 999px;
+    padding: 0.2rem 0.55rem;
+    text-transform: uppercase;
+  }
+  .ph-hero-ring {
+    position: relative;
+    width: 68%;
+    max-width: 9.8rem;
+    aspect-ratio: 1;
+    margin: 0.4rem auto 0.1rem;
+  }
+  .ph-ring-svg {
+    width: 100%; height: 100%;
+    transform: rotate(-90deg);
+    display: block;
+  }
+  .ph-ring-track {
+    fill: none;
+    stroke: rgba(245,245,242,0.08);
+    stroke-width: 3;
+  }
+  .ph-ring-fill {
+    fill: none;
+    stroke: #C94B4B;        /* coral-red: semantic STALLING color */
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 33.7 100;  /* 33.7% arc */
+    stroke-dashoffset: 0;
+  }
+  .ph-ring-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0.15rem;
+  }
+  .ph-ring-pct {
+    font-family: var(--sans);
+    font-size: clamp(1.5rem, 3.8vw, 2.1rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: #D85E5E;
+    line-height: 1;
+  }
+  .ph-ring-unit {
+    font-size: 0.55em;
+    font-weight: 500;
+    color: #D85E5E;
+    margin-left: 0.05em;
+  }
+  .ph-ring-state {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.24em;
+    color: #D85E5E;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .ph-kicker-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.14em;
+    color: var(--fg-soft);
+    text-transform: uppercase;
+    margin-top: 0.1rem;
+  }
+  .ph-kicker-dot { color: rgba(245,245,242,0.25); }
+  .ph-coach-note {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--fg-mute);
+    text-align: center;
+    line-height: 1.4;
+    margin: 0.65rem 0.35rem 0;
+    padding: 0.7rem 0.6rem;
+    border-top: 1px solid rgba(245,245,242,0.05);
+    border-bottom: 1px solid rgba(245,245,242,0.05);
+  }
+  .ph-tabs {
+    margin-top: auto;
+    padding-top: 0.55rem;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.15rem;
+    border-top: 1px solid rgba(245,245,242,0.05);
+  }
+  .ph-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--fg-soft);
+    opacity: 0.4;
+    padding: 0.45rem 0;
+    transition: opacity 0.2s;
+  }
+  .ph-tab svg { width: 1.05rem; height: 1.05rem; display: block; }
+  .ph-tab.active { color: var(--accent); opacity: 1; }
+
+  /* ── Hero ticker (small counted-up stat under CTA row) ── */
+  .hero-ticker {
+    margin-top: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--fg-soft);
+    opacity: 0;
+    animation: heroLineIn 0.7s ease-out 0.9s forwards;
+  }
+  .hero-ticker-dot { opacity: 0.4; }
+  .hero-ticker-value {
+    color: var(--accent);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Wrong Metric chapter ─────────────────── */
+  .ch-wrong {
+    background: var(--bg);
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+  }
+  .ch-wrong h2 { max-width: 24ch; }
+  .ch-wrong .follow {
+    margin-top: 2.5rem;
+    font-size: clamp(1rem, 1.2vw, 1.2rem);
+    color: var(--fg-mute);
+    max-width: 36em;
+    line-height: 1.6;
+  }
+
+  /* ── Pace Intro chapter ───────────────────── */
+  .ch-pace-intro {
+    background:
+      radial-gradient(ellipse 70% 50% at 50% 60%, rgba(194,165,107,0.05), transparent 65%),
+      var(--bg);
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+  }
+  .pace-intro-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3.5rem;
+    width: 100%;
+    max-width: 80rem;
+    margin: 0 auto;
+  }
+  .pace-intro-text { max-width: 36em; }
+  .pace-intro-text h2 { margin-top: 1rem; margin-bottom: 1.5rem; }
+  .pace-intro-text p { font-size: clamp(1.05rem, 1.3vw, 1.25rem); color: var(--fg-mute); line-height: 1.6; }
+  .pace-chart-wrap {
+    width: 60%;
+    max-width: 720px;
+    margin: 0;
+  }
+  @media (max-width: 720px) { .pace-chart-wrap { width: 100%; } }
+  .pace-chart {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .pace-chart-line {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 1200;
+    stroke-dashoffset: 1200;
+    transition: stroke-dashoffset 1.6s cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  .pace-chart-line.draw { stroke-dashoffset: 0; }
+  .pace-chart-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    fill: var(--fg-soft);
+    text-transform: uppercase;
+  }
+  .pace-chart-axis {
+    stroke: rgba(245,245,242,0.06);
+    stroke-width: 1;
+  }
+
+  /* ── Pace Rotation (3-phase) ──────────────── */
+  .pace-stage {
+    height: 350vh;
+    position: relative;
+    background:
+      radial-gradient(ellipse 50% 80% at 70% 50%, rgba(194,165,107,0.06), transparent 60%),
+      var(--bg);
+  }
+  .pace-sticky {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 3rem max(1.5rem, 5vw);
+    overflow: hidden;
+  }
+  /* Centered weighting card with copy above — breaks the left-copy / right-visual
+     pattern that otherwise repeats across Hero, Coach. The Pace Rotation becomes
+     its own compositional beat in the middle of the page. */
+  .pace-inner {
+    width: 100%;
+    max-width: 62rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(2rem, 4vh, 3rem);
+    position: relative;
+  }
+  .pace-left {
+    text-align: center;
+    max-width: 42rem;
+    width: 100%;
+  }
+  .pace-left .eyebrow { margin-bottom: 1rem; justify-content: center; display: inline-block; }
+  .pace-left h2 { margin-bottom: 1.25rem; max-width: 22ch; margin-left: auto; margin-right: auto; }
+  .pace-caption { margin: 0 auto; }
+  .pace-viz {
+    width: 100%;
+    max-width: 46rem;
+  }
+  .pace-caption {
+    font-size: clamp(1.05rem, 1.3vw, 1.25rem);
+    color: var(--fg-mute);
+    max-width: 32em;
+    line-height: 1.55;
+    min-height: 3.2em;
+    transition: opacity 0.4s ease;
+  }
+  .pace-caption strong { color: var(--fg); font-weight: 500; }
+
+  .pace-viz {
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    border-radius: 1.5rem;
+    padding: clamp(1.5rem, 3vw, 2.5rem);
+    position: relative;
+  }
+  .pace-viz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 2rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .pace-viz-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--fg-mute);
+    transition: color 0.4s ease;
+  }
+  .pace-viz-position {
+    font-family: var(--mono);
+    font-size: clamp(0.85rem, 1.2vw, 1.05rem);
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    transition: opacity 0.3s ease;
+  }
+  .pace-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .pace-bar-row {
+    display: grid;
+    grid-template-columns: 6.5rem 1fr 3rem;
+    gap: 0.9rem;
+    align-items: center;
+  }
+  @media (max-width: 500px) {
+    .pace-bar-row { grid-template-columns: 5rem 1fr 2.4rem; gap: 0.6rem; }
+  }
+  .pace-bar-label {
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-mute);
+    transition: color 0.4s ease;
+  }
+  .pace-bar-track {
+    height: 6px;
+    background: rgba(245,245,242,0.05);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+  .pace-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent-hover) 100%);
+    border-radius: 999px;
+    width: 50%;
+    transition: width 0.55s cubic-bezier(0.25, 0.1, 0.25, 1);
+    box-shadow: 0 0 16px rgba(194,165,107,0.25);
+  }
+  .pace-bar-pct {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--fg);
+    text-align: right;
+  }
+  .pace-bar-row.dominant .pace-bar-label { color: var(--fg); }
+  .pace-bar-row.dominant .pace-bar-pct { color: var(--accent); }
+
+  /* Ghost bar: absolute sibling that holds previous width for 400ms */
+  .pace-bar-ghost {
+    position: absolute;
+    top: 0; left: 0;
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent-hover) 100%);
+    border-radius: 999px;
+    opacity: 0.15;
+    pointer-events: none;
+    transition: opacity 300ms ease 100ms;
+  }
+  .pace-bar-ghost.fading { opacity: 0; }
+
+  /* Number snap: old digit blurs out upward, new enters from below */
+  .pace-bar-pct.snap-out {
+    animation: pctSnapOut 180ms ease-in forwards;
+  }
+  .pace-bar-pct.snap-in {
+    animation: pctSnapIn 220ms cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+  }
+  @keyframes pctSnapOut {
+    from { opacity: 1; transform: translateY(0); filter: blur(0); }
+    to   { opacity: 0; transform: translateY(-0.4em); filter: blur(2px); }
+  }
+  @keyframes pctSnapIn {
+    from { opacity: 0; transform: translateY(0.4em); filter: blur(2px); }
+    to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+  }
+
+  .pace-viz-footer {
+    margin-top: 2.25rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .pace-viz-footer-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--fg-mute);
+  }
+  .pace-viz-footer-note {
+    font-size: 0.85rem;
+    color: var(--fg-soft);
+    font-family: var(--sans);
+  }
+
+  /* ── Pace Payoff ── the ONE light moment on the page ─────────── */
+  /* Dark → ivory background transition is visually intrinsic to this chapter;
+     the <hr> separator just before takes the dark tone so the ch-pace-payoff
+     section itself appearing in viewport creates the contrast moment. */
+  .ch-pace-payoff {
+    background: #F2EDE4;   /* warm ivory/stone */
+    color: #1A1614;        /* near-black on ivory */
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(5rem, 10vh, 8rem) max(1.5rem, 5vw);
+    position: relative;
+    transition: background-color 0.4s ease;
+  }
+  /* Subtle paper-grain shadow framing — one scoped glow rule, not everywhere */
+  .ch-pace-payoff::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 45% at 50% 50%, rgba(255,255,255,0.6), transparent 70%),
+      radial-gradient(ellipse 100% 100% at 50% 0%, rgba(26,22,20,0.04), transparent 60%);
+    pointer-events: none;
+  }
+  .payoff-inner {
+    max-width: 46rem;
+    width: 100%;
+    margin: 0 auto;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2.25rem;
+    position: relative;
+  }
+  .payoff-eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.28em;
+    color: #8B7A5E;        /* brass, shifted darker for ivory background */
+    text-transform: uppercase;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s;
+  }
+  .ch-pace-payoff.visible .payoff-eyebrow { opacity: 1; transform: translateY(0); }
+  .payoff-eyebrow-dot { opacity: 0.5; margin: 0 0.35em; }
+
+  .payoff-artifact {
+    position: relative;
+    width: clamp(18rem, 36vw, 26rem);
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .payoff-ring-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+  .payoff-ring-track {
+    fill: none;
+    stroke: rgba(26,22,20,0.08);
+    stroke-width: 2;
+  }
+  .payoff-ring-fill {
+    fill: none;
+    stroke: #2E7D50;       /* green = ACCELERATING */
+    stroke-width: 2;
+    stroke-linecap: round;
+    /* 12.4% arc, initially 0 so we can draw it in on entry */
+    stroke-dasharray: 0 100;
+    transition: stroke-dasharray 1.2s cubic-bezier(0.2, 0.8, 0.3, 1) 0.25s;
+  }
+  .ch-pace-payoff.visible .payoff-ring-fill {
+    stroke-dasharray: 12.4 100;
+  }
+  .payoff-center {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    text-align: center;
+  }
+  .payoff-pct-wrap {
+    display: inline-flex;
+    align-items: baseline;
+    font-family: var(--sans);
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    color: #1A1614;
+    line-height: 0.95;
+  }
+  .payoff-pct-sign {
+    font-size: clamp(2rem, 4.2vw, 3rem);
+    color: #2E7D50;
+    margin-right: 0.08em;
+  }
+  .payoff-pct {
+    font-size: clamp(3.4rem, 7vw, 5.25rem);
+    font-variant-numeric: tabular-nums;
+    color: #2E7D50;
+  }
+  .payoff-pct-unit {
+    font-size: clamp(1.4rem, 2.6vw, 1.9rem);
+    font-weight: 500;
+    color: #2E7D50;
+    margin-left: 0.05em;
+  }
+  .payoff-position {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    letter-spacing: 0.28em;
+    color: #8B7A5E;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-top: 0.3rem;
+    opacity: 0;
+    transition: opacity 0.6s ease 0.9s;
+  }
+  .payoff-status {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.32em;
+    color: #2E7D50;
+    font-weight: 700;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 0.6s ease 1.15s;
+  }
+  .ch-pace-payoff.visible .payoff-position,
+  .ch-pace-payoff.visible .payoff-status { opacity: 1; }
+
+  .payoff-quote {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(1.15rem, 1.7vw, 1.5rem);
+    line-height: 1.5;
+    color: #3A332C;
+    max-width: 34em;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.7s ease 1.35s, transform 0.7s ease 1.35s;
+  }
+  .ch-pace-payoff.visible .payoff-quote {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* The <hr> exiting the payoff chapter — keep ivory-to-dark visual hint */
+  hr.payoff-out-rule { background: rgba(139,122,94,0.25); }
+
+  /* ── Video → Proof: one wide analysis board (Redesign 3) ────────── */
+  .video-stage {
+    height: 280vh;
+    position: relative;
+    background: var(--bg-cool);  /* no radial glow — scoped to hero/payoff only */
+  }
+  .video-sticky {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem max(1.5rem, 5vw);
+    overflow: hidden;
+  }
+  .video-shell {
+    width: 100%;
+    max-width: 78rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(2rem, 3.5vh, 3rem);
+  }
+  /* Copy above the board — breaks the left-copy/right-visual pattern */
+  .video-intro {
+    max-width: 52rem;
+    text-align: left;
+    align-self: flex-start;
+    padding: 0 clamp(0.5rem, 3vw, 2rem);
+  }
+  .video-intro .eyebrow { margin-bottom: 1rem; }
+  .video-intro-headline { margin-bottom: 1rem; max-width: 14ch; }
+  .video-intro-lede { margin-top: 0.25rem; max-width: 42em; }
+
+  /* The persistent dark analysis workbench */
+  .analysis-board {
+    width: 100%;
+    max-width: 68rem;
+    background: linear-gradient(180deg, #0B0B0D 0%, #0D0D10 100%);
+    border: 1px solid var(--line);
+    border-radius: 1.25rem;
+    padding: clamp(1.25rem, 2.5vw, 2rem);
+    display: grid;
+    grid-template-rows: auto auto auto;
+    gap: clamp(1.5rem, 3vw, 2.25rem);
+    box-shadow:
+      0 24px 60px rgba(0,0,0,0.4),
+      inset 0 1px 0 rgba(245,245,242,0.04);
+    position: relative;
+  }
+  /* Subtle grid texture on the board background — reads as a workbench */
+  .analysis-board::before {
+    content: "";
+    position: absolute;
+    inset: 1.25rem;
+    background-image:
+      linear-gradient(rgba(245,245,242,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245,245,242,0.015) 1px, transparent 1px);
+    background-size: 32px 32px;
+    border-radius: 0.75rem;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  .board-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    position: relative;
+    z-index: 1;
+  }
+  .board-zone {
+    transition: transform 500ms cubic-bezier(0.2, 0.8, 0.3, 1), opacity 500ms ease;
+    transform-origin: left center;
+  }
+
+  /* ── Capture indicator (top-left) ── */
+  .board-capture {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+  .capture-phone {
+    position: relative;
+    width: 2.6rem;
+    height: 3.8rem;
+    color: rgba(245,245,242,0.45);
+  }
+  .capture-phone svg { width: 100%; height: 100%; display: block; }
+  .capture-lens { fill: rgba(245,245,242,0.4); }
+  .capture-rec {
+    position: absolute;
+    top: 0.7rem;
+    right: 0.35rem;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: #C94B4B;
+    box-shadow: 0 0 8px rgba(201,75,75,0.5);
+  }
+  .analysis-board.state-1 .board-capture {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  .analysis-board.state-1 .capture-rec {
+    animation: recPulse 1.4s ease-in-out infinite;
+  }
+  @keyframes recPulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(201,75,75,0.5); }
+    50%      { opacity: 0.55; box-shadow: 0 0 14px rgba(201,75,75,0.75); }
+  }
+
+  /* ── Frame counter (top-right, integrated into the board) ── */
+  .board-frame-counter {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.22em;
+    color: var(--fg-soft);
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding-top: 0.2rem;
+  }
+  .counter-label { font-weight: 600; }
+  .counter-dot { opacity: 0.45; }
+  .counter-value {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.03em;
+    font-variant-numeric: tabular-nums;
+    min-width: 3.2em;
+    text-align: right;
+  }
+
+  /* ── Zone labels (small brass kickers inside each zone) ── */
+  .zone-label {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.26em;
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+  .board-zone:not(.board-capture) { transform-origin: center center; }
+
+  /* ── Filmstrip (center) ── */
+  .board-filmstrip {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    opacity: 0.4;
+    transform: scale(0.94);
+    position: relative;
+    z-index: 1;
+  }
+  .filmstrip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0.1rem;
+  }
+  .filmstrip-arc { width: 3rem; height: 0.5rem; display: block; }
+  .filmstrip-arc svg { width: 100%; height: 100%; display: block; }
+  .filmstrip-arc-track {
+    stroke: rgba(194,165,107,0.2);
+    stroke-width: 1;
+    stroke-linecap: round;
+  }
+  .filmstrip-arc-fill {
+    stroke: var(--accent);
+    stroke-width: 1;
+    stroke-linecap: round;
+    stroke-dasharray: 0 100;
+    transition: stroke-dasharray 280ms linear;
+  }
+  .filmstrip-frames {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 0.4rem;
+  }
+  @media (max-width: 720px) {
+    .filmstrip-frames { grid-template-columns: repeat(5, 1fr); gap: 0.3rem; }
+  }
+  .filmstrip-frame {
+    aspect-ratio: 9 / 12;
+    background: linear-gradient(140deg, #141820 0%, #1b2028 100%);
+    border: 1px solid rgba(194,165,107,0.15);
+    border-radius: 0.3rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 260ms ease, background 260ms ease, box-shadow 260ms ease;
+  }
+  .filmstrip-frame::after {
+    content: "";
+    position: absolute;
+    bottom: 28%;
+    left: 34%;
+    width: 22%;
+    height: 26%;
+    border-radius: 50%;
+    background: rgba(194,165,107,0.25);
+    transition: background 260ms ease;
+  }
+  .filmstrip-frame.lit {
+    border-color: rgba(194,165,107,0.55);
+    background: linear-gradient(140deg, #1f2028 0%, #272834 100%);
+    box-shadow: 0 0 12px rgba(194,165,107,0.18);
+  }
+  .filmstrip-frame.lit::after { background: rgba(194,165,107,0.6); }
+  .analysis-board.state-2 .board-filmstrip {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+
+  /* ── Results panel (bottom) ── */
+  .board-results {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    opacity: 0.4;
+    transform: scale(0.95);
+    position: relative;
+    z-index: 1;
+  }
+  .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0.1rem 0.4rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .results-tag {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--fg-soft);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .results-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+  }
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0.5rem 0.1rem;
+    border-bottom: 1px solid var(--line-soft);
+    opacity: 0.35;
+    transform: translateY(3px);
+    transition: opacity 400ms ease, transform 400ms ease;
+  }
+  .result-row:last-child { border-bottom: none; }
+  .result-label {
+    font-size: 0.88rem;
+    color: var(--fg-mute);
+  }
+  .result-value {
+    font-family: var(--mono);
+    font-size: 1rem;
+    color: var(--fg);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .result-value-accent .result-num { color: var(--accent); }
+  .analysis-board.state-3 .board-results {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+  /* Stagger row entry when state-3 activates — 60ms per row */
+  .analysis-board.state-3 .result-row {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .analysis-board.state-3 .result-row[data-idx="0"] { transition-delay: 0ms; }
+  .analysis-board.state-3 .result-row[data-idx="1"] { transition-delay: 60ms; }
+  .analysis-board.state-3 .result-row[data-idx="2"] { transition-delay: 120ms; }
+  .analysis-board.state-3 .result-row[data-idx="3"] { transition-delay: 180ms; }
+  .analysis-board.state-3 .result-row[data-idx="4"] { transition-delay: 240ms; }
+
+  /* Confirm button with drawing brass border */
+  .board-confirm {
+    position: relative;
+    margin-top: 0.8rem;
+    padding: 0.7rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    font-weight: 600;
+    text-transform: uppercase;
+    cursor: default;
+    text-align: center;
+  }
+  .board-confirm .confirm-label { position: relative; z-index: 2; }
+  .confirm-border {
+    position: absolute;
+    inset: 0;
+    border-radius: 0.5rem;
+    pointer-events: none;
+    /* draws around the perimeter as state-3 activates */
+    background:
+      linear-gradient(90deg, var(--accent) 50%, transparent 50%) top / 100% 1px no-repeat,
+      linear-gradient(0deg,  var(--accent) 50%, transparent 50%) right / 1px 100% no-repeat,
+      linear-gradient(90deg, var(--accent) 50%, transparent 50%) bottom / 100% 1px no-repeat,
+      linear-gradient(0deg,  var(--accent) 50%, transparent 50%) left / 1px 100% no-repeat;
+    background-color: transparent;
+    clip-path: inset(0 100% 100% 0);
+    transition: clip-path 900ms cubic-bezier(0.2, 0.8, 0.3, 1);
+    opacity: 0.55;
+  }
+  .analysis-board.state-3 .confirm-border {
+    clip-path: inset(0 0 0 0);
+  }
+
+  /* ── Coach chapter ─────────────────────── */
+  .ch-coach {
+    background: var(--bg);
+    min-height: 90vh;
+    display: flex;
+    align-items: center;
+  }
+  .coach-grid {
+    width: 100%;
+    max-width: 80rem;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 0.95fr 1.05fr;
+    gap: clamp(2.5rem, 6vw, 6rem);
+    align-items: center;
+  }
+  @media (max-width: 900px) {
+    .coach-grid { grid-template-columns: 1fr; gap: 3rem; }
+  }
+  .coach-text .eyebrow { margin-bottom: 1.2rem; }
+  .coach-text h2 { margin-bottom: 1.75rem; max-width: 16ch; }
+  .coach-text .pain {
+    font-size: clamp(1.1rem, 1.4vw, 1.35rem);
+    color: var(--fg-mute);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+  }
+  .coach-text .solution {
+    font-size: clamp(1rem, 1.2vw, 1.15rem);
+    color: var(--fg-mute);
+    line-height: 1.6;
+    margin-bottom: 2rem;
+  }
+  .coach-text .invite {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(1rem, 1.2vw, 1.15rem);
+    color: var(--accent);
+    margin-top: 1.5rem;
+  }
+
+  /* Coach roster mockup */
+  .roster {
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    border-radius: 1.4rem;
+    padding: 1.4rem;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+  }
+  .roster-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: 1rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .roster-title {
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--fg-mute);
+  }
+  .roster-count {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+  }
+  .roster-row {
+    display: grid;
+    grid-template-columns: 2rem 1fr auto auto;
+    gap: 0.9rem;
+    align-items: center;
+    padding: 0.9rem 0.4rem;
+    border-bottom: 1px solid var(--line-soft);
+    transition: background 0.2s ease;
+  }
+  .roster-row:last-child { border-bottom: none; }
+  .roster-row.flagged {
+    background: rgba(194,165,107,0.05);
+    margin: 0 -0.4rem;
+    padding-left: 0.8rem;
+    padding-right: 0.8rem;
+    border-radius: 0.4rem;
+  }
+  .roster-avatar {
+    width: 1.9rem; height: 1.9rem;
+    border-radius: 50%;
+    background: rgba(194,165,107,0.18);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 0.92rem;
+    font-weight: 500;
+  }
+  .roster-name {
+    font-size: 0.95rem;
+    color: var(--fg);
+    font-weight: 500;
+  }
+  .roster-meta {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--fg-mute);
+    letter-spacing: 0.03em;
+  }
+  .roster-pill {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.18rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--fg-mute);
+  }
+  .roster-pill.active { color: var(--accent); border-color: rgba(194,165,107,0.4); }
+  .roster-pill.stalling { color: #d97777; border-color: rgba(217,119,119,0.4); }
+
+  /* ── Parent chapter (calmer) ──────────────── */
+  .ch-parent {
+    background: var(--bg-soft);
+    min-height: 90vh;
+    display: flex;
+    align-items: center;
+    padding-top: clamp(8rem, 18vh, 14rem);
+    padding-bottom: clamp(8rem, 18vh, 14rem);
+  }
+  .parent-grid {
+    width: 100%;
+    max-width: 64rem;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3rem;
+    align-items: start;
+  }
+  .parent-text { max-width: 38em; }
+  .parent-text .eyebrow { margin-bottom: 1.2rem; }
+  .parent-text h2 { margin-bottom: 1.75rem; max-width: 14ch; }
+  .parent-text p {
+    font-size: clamp(1rem, 1.25vw, 1.2rem);
+    color: var(--fg-mute);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+  .parent-text p strong { color: var(--fg); font-weight: 500; }
+  .parent-text .closer {
+    margin-top: 2.5rem;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(1.1rem, 1.4vw, 1.35rem);
+    color: var(--fg);
+    line-height: 1.5;
+    padding-top: 2rem;
+    border-top: 1px solid var(--line);
+    max-width: 36em;
+  }
+
+  /* Parent toggles mockup */
+  .toggles-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    border-radius: 1.4rem;
+    padding: 1.6rem;
+    max-width: 28rem;
+    margin-top: 2rem;
+  }
+  .toggles-title {
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--fg-mute);
+    margin-bottom: 0.4rem;
+  }
+  .toggles-sub {
+    font-size: 0.85rem;
+    color: var(--fg-soft);
+    font-family: var(--mono);
+    letter-spacing: 0.03em;
+    margin-bottom: 1.4rem;
+  }
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 0;
+    border-top: 1px solid var(--line-soft);
+  }
+  .toggle-row:first-of-type { border-top: none; }
+  .toggle-name {
+    font-size: 0.95rem;
+    color: var(--fg);
+    font-weight: 500;
+  }
+  .toggle-switch {
+    width: 2.4rem;
+    height: 1.35rem;
+    border-radius: 999px;
+    background: rgba(245,245,242,0.08);
+    position: relative;
+    transition: background 0.25s ease;
+    flex-shrink: 0;
+  }
+  .toggle-switch::after {
+    content: "";
+    position: absolute;
+    top: 2px; left: 2px;
+    width: calc(1.35rem - 4px);
+    height: calc(1.35rem - 4px);
+    background: var(--fg-mute);
+    border-radius: 50%;
+    transition: all 0.25s ease;
+  }
+  .toggle-switch.on { background: rgba(194,165,107,0.3); }
+  .toggle-switch.on::after {
+    left: calc(2.4rem - 1.35rem + 2px);
+    background: var(--accent);
+  }
+
+  /* ── Built With ─────────────────────────── */
+  .built-with {
+    background: var(--bg);
+    padding: clamp(6rem, 14vh, 11rem) max(1.5rem, 5vw);
+  }
+  .built-with .intro { max-width: 42rem; margin-bottom: 3rem; }
+  .built-with h2 { margin-bottom: 1rem; }
+  .built-with .intro p { margin-bottom: 0; }
+  .stack-list {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--line);
+    max-width: 80rem;
+    margin: 0 auto;
+  }
+  .stack-row {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr auto;
+    gap: 2rem;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--line);
+    align-items: baseline;
+    transition: background 0.2s ease;
+  }
+  .stack-row:hover { background: rgba(245,245,242,0.015); padding-left: 0.5rem; padding-right: 0.5rem; }
+  @media (max-width: 720px) {
+    .stack-row {
+      grid-template-columns: 1fr auto;
+      grid-template-areas: "name version" "note note";
+      gap: 0.3rem 1rem;
+    }
+    .stack-row .s-name { grid-area: name; }
+    .stack-row .s-version { grid-area: version; }
+    .stack-row .s-note { grid-area: note; margin-top: 0.4rem; }
+  }
+  .stack-row .s-name {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    color: var(--fg);
+    font-weight: 500;
+  }
+  .stack-row .s-note {
+    font-size: 0.95rem;
+    color: var(--fg-mute);
+    line-height: 1.5;
+  }
+  .stack-row .s-version {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--fg-soft);
+    white-space: nowrap;
+  }
+
+  /* ── Closing CTA ────────────────────────── */
+  .ch-close {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    padding: 6rem max(1.5rem, 5vw);
+    background: var(--bg-deep);
+  }
+  .ch-close::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 50%, rgba(194,165,107,0.07), transparent 60%);
+    pointer-events: none;
+  }
+  .close-inner {
+    position: relative;
+    text-align: center;
+    max-width: 56rem;
+    margin: 0 auto;
+  }
+  .close-kicker {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(1.05rem, 1.35vw, 1.4rem);
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.02em;
+  }
+  .close-headline {
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 0.96;
+    font-size: clamp(3rem, 9vw, 7rem);
+    margin-bottom: 2rem;
+    color: var(--fg);
+  }
+  .close-headline .accent-it {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    color: var(--fg);
+  }
+  .close-pitch {
+    font-size: clamp(1.05rem, 1.35vw, 1.35rem);
+    color: var(--fg-mute);
+    max-width: 38em;
+    margin: 0 auto 3rem;
+    line-height: 1.6;
+  }
+  .close-pitch strong { color: var(--fg); font-weight: 500; }
+  .close-cta-row {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .close-signature {
+    margin-top: 4.5rem;
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    color: var(--accent);
+    font-size: clamp(1.4rem, 2.4vw, 2rem);
+    letter-spacing: -0.01em;
+  }
+
+  /* ── Footer ─────────────────────────────── */
+  footer {
+    padding: 3rem max(1.5rem, 5vw) 4rem;
+    border-top: 1px solid var(--line);
+    background: var(--bg);
+  }
+  footer .f-inner {
+    max-width: 80rem;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  footer .f-logo {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--fg);
+  }
+  footer .f-logo em { font-style: italic; color: var(--accent); }
+  footer .f-note {
+    font-size: 0.8rem;
+    color: var(--fg-soft);
+  }
+
+  /* ── Reveal animations ───────────────────── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.9s cubic-bezier(0.2, 0.8, 0.3, 1), transform 0.9s cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+    .eyebrow { opacity: 1; transform: none; transition: none; }
+    .hero h1 .line1, .hero h1 .line2, .hero .tagline, .hero .lede, .cta-row {
+      opacity: 1; transform: none; animation: none;
+    }
+    .pace-chart-line { stroke-dashoffset: 0; transition: none; }
+    .vs-ring-fill { animation: none; }
+    /* Editorial hero phone + payoff + rotation mechanics: degrade to end-states */
+    .payoff-eyebrow, .payoff-quote { opacity: 1; transform: none; transition: none; }
+    .payoff-position, .payoff-status { opacity: 1; transition: none; }
+    .payoff-ring-fill { stroke-dasharray: 12.4 100; transition: none; }
+    .pace-bar-ghost { display: none; }
+    .pace-bar-pct.snap-out, .pace-bar-pct.snap-in { animation: none; opacity: 1; transform: none; filter: none; }
+    .hero-ticker { opacity: 1; animation: none; }
+    /* Video analysis board: degrade to end-state (state-3 final view) */
+    .board-zone, .capture-rec, .result-row, .confirm-border { transition: none; animation: none; }
+    .analysis-board .result-row { opacity: 1; transform: none; }
+    .analysis-board .filmstrip-frame { border-color: rgba(194,165,107,0.35); }
+    .analysis-board .filmstrip-arc-fill { stroke-dasharray: 100 100; transition: none; }
+    /* Threading line + handoffs: static end-states only */
+    .threading-path { stroke-dashoffset: 0; transition: none; }
+    .mask-sweep, body.handoff-1-active header.hero, body.handoff-1-active .hero-phone {
+      transition: none;
+    }
+    body.payoff-lit { transition: none; }
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+
+<!-- Threading pace line: single brass SVG curve fixed to left edge, scroll-bound dashoffset -->
+<svg class="threading-line" id="threadingLine" aria-hidden="true" viewBox="0 0 40 1200" preserveAspectRatio="none">
+  <path class="threading-path" id="threadingPath"
+    d="M 20 0 C 12 160, 28 320, 18 480 S 8 800, 22 960 S 14 1120, 20 1200"
+    fill="none" pathLength="1000"/>
+</svg>
+
+<!-- Handoff 1: Mask-sweep hairline hero→wrong (fixed overlay) -->
+<div class="mask-sweep" id="maskSweep" aria-hidden="true">
+  <span class="mask-sweep-line"></span>
+</div>
+
+<nav class="top" id="topNav" aria-label="Primary">
+  <a href="#top" class="logo"><em>C</em>omposed</a>
+  <a href="#contact" class="nav-cta">Contact</a>
+</nav>
+
+<header class="hero" id="top">
+  <div class="hero-grid container">
+    <div>
+      <div class="tagline">Stay Composed.</div>
+      <h1 class="display">
+        <span class="line1">Stop Guessing.</span>
+        <span class="line2 serif-it">Start Proving.</span>
+      </h1>
+      <p class="lede">
+        The hours you put in alone — in the backyard, on the wall, in the empty park — <strong>finally count.</strong>
+        Real measurement for youth players who train between team sessions.
+      </p>
+      <div class="cta-row">
+        <a href="#pace" class="cta primary">See how it works <span class="arrow">→</span></a>
+        <a href="#contact" class="cta secondary">For coaches</a>
+      </div>
+      <div class="hero-ticker" aria-hidden="true">
+        <span class="hero-ticker-label">Training minutes counted this week</span>
+        <span class="hero-ticker-dot">·</span>
+        <span class="hero-ticker-value" id="heroTickerValue">0</span>
+      </div>
+    </div>
+    <div class="hero-phone" id="heroPhone" aria-hidden="true">
+      <!-- Editorial CSS/SVG dashboard render — no external image. Previewing the Pace concept
+           that pays off in the Pace Payoff chapter later in the page. -->
+      <div class="phone-screen ph-screen-editorial">
+        <div class="ph-status-bar" aria-hidden="true">
+          <span class="ph-status-time">9:41</span>
+          <span class="ph-status-icons">
+            <svg viewBox="0 0 14 8" width="14" height="8"><rect x="0" y="2" width="2" height="4" fill="currentColor"/><rect x="3" y="1" width="2" height="5" fill="currentColor"/><rect x="6" y="0" width="2" height="6" fill="currentColor" opacity="0.7"/><rect x="9" y="0" width="2" height="6" fill="currentColor" opacity="0.4"/></svg>
+            <svg viewBox="0 0 12 8" width="12" height="8" class="ph-battery"><rect x="0" y="1" width="10" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="0.8"/><rect x="1" y="2" width="7" height="4" fill="currentColor"/><rect x="10" y="3" width="1" height="2" fill="currentColor"/></svg>
+          </span>
+        </div>
+        <div class="ph-top">
+          <span class="ph-wordmark"><em>C</em>omposed</span>
+          <span class="ph-today">TODAY</span>
+        </div>
+        <div class="ph-hero-ring">
+          <svg class="ph-ring-svg" viewBox="0 0 140 140" aria-hidden="true">
+            <circle cx="70" cy="70" r="60" class="ph-ring-track"/>
+            <circle cx="70" cy="70" r="60" class="ph-ring-fill" pathLength="100"/>
+          </svg>
+          <div class="ph-ring-label">
+            <div class="ph-ring-pct">&minus;33.7<span class="ph-ring-unit">%</span></div>
+            <div class="ph-ring-state">STALLING</div>
+          </div>
+        </div>
+        <div class="ph-kicker-row">
+          <span class="ph-kicker">SCORER'S PACE</span>
+          <span class="ph-kicker-dot">•</span>
+          <span class="ph-kicker-week">WEEK 3</span>
+        </div>
+        <div class="ph-coach-note">
+          Volume is high but shot quality dropped. Shorter, sharper sessions this week.
+        </div>
+        <div class="ph-tabs" aria-hidden="true">
+          <span class="ph-tab active" title="Home">
+            <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 10 L11 3 L19 10 V19 H3 Z"/></svg>
+          </span>
+          <span class="ph-tab" title="Sessions">
+            <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 15 L8 11 L12 13 L18 6"/></svg>
+          </span>
+          <span class="ph-tab" title="Record">
+            <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><circle cx="11" cy="11" r="3" fill="currentColor"/></svg>
+          </span>
+          <span class="ph-tab" title="Drills">
+            <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M11 4 V18 M4 11 H18"/></svg>
+          </span>
+          <span class="ph-tab" title="Profile">
+            <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="8" r="3.5"/><path d="M4 19 C5 15 8 13 11 13 C14 13 17 15 18 19"/></svg>
+          </span>
+        </div>
+      </div>
+    </div><!-- /hero-phone -->
+  </div>
+</header>
+
+<hr class="chapter-rule" aria-hidden="true" />
+
+<section class="ch-wrong">
+  <div class="narrow reveal">
+    <div class="eyebrow">The wrong metric</div>
+    <h2 class="h2">
+      Most training apps give every player <span class="brass-shift">the same score.</span>
+    </h2>
+    <p class="follow">
+      A striker and a holding midfielder are not the same player. A goalkeeper is not a winger.
+      When every position chases the same number, the number stops meaning anything.
+    </p>
+  </div>
+</section>
+
+<hr class="chapter-rule" aria-hidden="true" />
+
+<section class="ch-pace-intro" id="pace">
+  <div class="container">
+    <div class="pace-intro-grid">
+      <div class="pace-intro-text reveal">
+        <div class="eyebrow">What is Pace</div>
+        <h2 class="h2">
+          Pace isn't a score. It's <span class="brass-shift">velocity.</span>
+        </h2>
+        <p>
+          Pace measures the rate of your improvement — week over week, session over session — weighted to the position you play.
+          Two players can have the same Training Score but very different Paces. The score tells you where you are. Pace tells you where you're going.
+        </p>
+      </div>
+      <div class="pace-chart-wrap reveal" aria-hidden="true">
+        <svg class="pace-chart" id="paceChart" viewBox="0 0 600 220" preserveAspectRatio="none">
+          <line x1="20" y1="200" x2="580" y2="200" class="pace-chart-axis" />
+          <path id="paceChartLine" class="pace-chart-line"
+            d="M 20 180 C 80 175, 130 168, 180 152 S 280 110, 340 88 S 460 50, 580 28" />
+          <text x="20" y="218" class="pace-chart-label">Your Pace · 12 weeks</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="pace-stage" id="paceRotation">
+  <div class="pace-sticky">
+    <div class="pace-inner">
+      <div class="pace-left">
+        <div class="eyebrow" id="paceEyebrow">The default model</div>
+        <h2 class="h2" id="paceHeadline">
+          Most apps treat every player the same way.
+        </h2>
+        <p class="pace-caption" id="paceCaption">
+          Five metrics. Equal weights. One number for everyone.
+        </p>
+      </div>
+      <div class="pace-viz" aria-hidden="true">
+        <div class="pace-viz-header">
+          <span class="pace-viz-label" id="paceVizLabel">Default · equal weights</span>
+          <span class="pace-viz-position" id="paceVizPosition">All positions</span>
+        </div>
+        <div class="pace-bars" id="paceBars"></div>
+        <div class="pace-viz-footer">
+          <span class="pace-viz-footer-label">Sums to 100%</span>
+          <span class="pace-viz-footer-note">5 metrics · 6 positions</span>
+        </div>
+      </div>
+    </div>
+    <!-- Pagination dots removed (anti-AI cleanup) — copy + bars signal progress -->
+  </div>
+</div>
+
+<!-- ══ Pace Payoff — the single light moment on the page ══════════════════════════ -->
+<section class="ch-pace-payoff" id="pacePayoff" aria-label="Pace payoff">
+  <div class="payoff-inner">
+    <div class="payoff-eyebrow">Your Pace <span class="payoff-eyebrow-dot">·</span> This week</div>
+    <div class="payoff-artifact" id="payoffArtifact">
+      <svg class="payoff-ring-svg" viewBox="0 0 280 280" aria-hidden="true">
+        <circle cx="140" cy="140" r="120" class="payoff-ring-track"/>
+        <circle cx="140" cy="140" r="120" class="payoff-ring-fill" pathLength="100"/>
+      </svg>
+      <div class="payoff-center">
+        <div class="payoff-pct-wrap">
+          <span class="payoff-pct-sign">+</span><span class="payoff-pct" id="payoffPct">0.0</span><span class="payoff-pct-unit">%</span>
+        </div>
+        <div class="payoff-position">SCORER</div>
+        <div class="payoff-status">ACCELERATING</div>
+      </div>
+    </div>
+    <p class="payoff-quote serif-it">
+      Shot accuracy up six points in the last two weeks. Same volume, better contact &mdash; keep this momentum.
+    </p>
+  </div>
+</section>
+
+<hr class="chapter-rule payoff-out-rule" aria-hidden="true" />
+
+<!-- ══ Video → Proof (Redesign 3): one wide analysis board ══════════════════ -->
+<div class="video-stage" id="videoStage">
+  <div class="video-sticky">
+    <div class="video-shell">
+      <div class="video-intro">
+        <div class="eyebrow">Video → Proof</div>
+        <h2 class="h2 video-intro-headline">
+          From phone video to <span class="brass-underline">real stats.</span>
+        </h2>
+        <p class="body video-intro-lede">
+          No smart ball. No tripod. No subscription to a device ecosystem.
+          Compression and analysis happen <span class="brass-underline">inside the app</span> before the video ever leaves the phone.
+        </p>
+      </div>
+
+      <div class="analysis-board state-1" id="analysisBoard" aria-hidden="true">
+        <div class="board-top">
+          <div class="board-zone board-capture" data-zone="capture">
+            <div class="capture-phone">
+              <svg viewBox="0 0 24 36" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true">
+                <rect x="2" y="2" width="20" height="32" rx="3"/>
+                <rect x="5" y="6" width="14" height="22" rx="1" fill="rgba(194,165,107,0.06)"/>
+                <circle class="capture-lens" cx="12" cy="31" r="1.5"/>
+              </svg>
+              <span class="capture-rec" aria-hidden="true"></span>
+            </div>
+            <div class="zone-label">Capture</div>
+          </div>
+
+          <div class="board-frame-counter" aria-hidden="true">
+            <span class="counter-label">Frames analyzed</span>
+            <span class="counter-dot">·</span>
+            <span class="counter-value" id="frameCount">0</span>
+          </div>
+        </div>
+
+        <div class="board-zone board-filmstrip" data-zone="extract">
+          <div class="filmstrip-header">
+            <span class="zone-label">Extract</span>
+            <div class="filmstrip-arc" aria-hidden="true">
+              <svg viewBox="0 0 60 10">
+                <path class="filmstrip-arc-track" d="M 3 8 Q 30 -2 57 8" fill="none"/>
+                <path class="filmstrip-arc-fill"  d="M 3 8 Q 30 -2 57 8" fill="none" pathLength="100"/>
+              </svg>
+            </div>
+          </div>
+          <div class="filmstrip-frames">
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+            <span class="filmstrip-frame"></span>
+          </div>
+        </div>
+
+        <div class="board-zone board-results" data-zone="analyze">
+          <div class="results-header">
+            <span class="zone-label">Analyze</span>
+            <span class="results-tag">Counted from frames</span>
+          </div>
+          <div class="results-rows" id="resultsRows">
+            <div class="result-row" data-idx="0">
+              <span class="result-label">Shots taken</span>
+              <span class="result-value"><span class="result-num" data-target="14">0</span></span>
+            </div>
+            <div class="result-row" data-idx="1">
+              <span class="result-label">On target</span>
+              <span class="result-value"><span class="result-num" data-target="8">0</span></span>
+            </div>
+            <div class="result-row" data-idx="2">
+              <span class="result-label">Goals</span>
+              <span class="result-value"><span class="result-num" data-target="3">0</span></span>
+            </div>
+            <div class="result-row" data-idx="3">
+              <span class="result-label">Left / right foot</span>
+              <span class="result-value"><span class="result-num" data-target="5">0</span> / <span class="result-num" data-target="9">0</span></span>
+            </div>
+            <div class="result-row" data-idx="4">
+              <span class="result-label">Pass accuracy</span>
+              <span class="result-value result-value-accent"><span class="result-num" data-target="68">0</span>%</span>
+            </div>
+          </div>
+          <button class="board-confirm" type="button" aria-hidden="true" tabindex="-1">
+            <span class="confirm-label">Confirm &amp; save</span>
+            <span class="confirm-border" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="chapter-rule" aria-hidden="true" />
+
+<section class="ch-coach" id="coach">
+  <div class="coach-grid">
+    <div class="coach-text reveal">
+      <div class="eyebrow">For coaches</div>
+      <h2 class="h2">
+        See who's <span class="bold-italic">actually</span> doing the work between sessions.
+      </h2>
+      <p class="pain">
+        You can't tell who trained and who didn't.
+      </p>
+      <p class="solution">
+        Squad Pulse shows sessions logged, compliance with assigned plans, and who's stalling.
+        One scannable roster — three batched queries on the back end, regardless of squad size.
+      </p>
+      <p class="invite">A pilot cohort opens later this season — see the closing card.</p>
+    </div>
+    <div class="reveal" aria-hidden="true">
+      <div class="roster">
+        <div class="roster-header">
+          <div class="roster-title">Squad Pulse · this week</div>
+          <div class="roster-count">6 of 8 training</div>
+        </div>
+        <div class="roster-row">
+          <div class="roster-avatar">A</div>
+          <div class="roster-name">Ava</div>
+          <div class="roster-meta">5 sessions</div>
+          <div class="roster-pill active">Accelerating</div>
+        </div>
+        <div class="roster-row">
+          <div class="roster-avatar">J</div>
+          <div class="roster-name">Jordan</div>
+          <div class="roster-meta">4 sessions</div>
+          <div class="roster-pill active">Steady</div>
+        </div>
+        <div class="roster-row flagged">
+          <div class="roster-avatar">T</div>
+          <div class="roster-name">Theo</div>
+          <div class="roster-meta">1 session</div>
+          <div class="roster-pill stalling">Stalling</div>
+        </div>
+        <div class="roster-row">
+          <div class="roster-avatar">M</div>
+          <div class="roster-name">Maya</div>
+          <div class="roster-meta">4 sessions</div>
+          <div class="roster-pill active">Steady</div>
+        </div>
+        <div class="roster-row">
+          <div class="roster-avatar">J</div>
+          <div class="roster-name">Jamal</div>
+          <div class="roster-meta">3 sessions</div>
+          <div class="roster-pill active">Steady</div>
+        </div>
+        <div class="roster-row">
+          <div class="roster-avatar">N</div>
+          <div class="roster-name">Noa</div>
+          <div class="roster-meta">2 sessions</div>
+          <div class="roster-pill">Quiet week</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="ch-parent">
+  <div class="parent-grid">
+    <div class="parent-text reveal">
+      <div class="eyebrow">For parents</div>
+      <h2 class="h2">
+        <span class="serif-it">Observation</span>, not direction.
+      </h2>
+      <p>
+        The player holds the toggles. <strong>Not the parent. Not the coach.</strong>
+      </p>
+      <p>
+        A youth product only earns its place at the family table if the kid has the controls.
+        Composed gives the player three switches — ratings, coach feedback, development goals — and the parent dashboard shows only what's been turned on.
+      </p>
+      <p>
+        Coaches stay coaches. Parents stay supportive. The training conversation stays inside the app.
+      </p>
+      <div class="closer">
+        The parent sees what the player <strong>allows them</strong> to see — not the other way around.
+      </div>
+    </div>
+
+    <div class="reveal" aria-hidden="true">
+      <div class="toggles-card">
+        <div class="toggles-title">Privacy · player controls</div>
+        <div class="toggles-sub">parent_visibility_settings</div>
+        <div class="toggle-row">
+          <span class="toggle-name">Share ratings</span>
+          <span class="toggle-switch on" role="img" aria-label="On"></span>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-name">Share coach feedback</span>
+          <span class="toggle-switch on" role="img" aria-label="On"></span>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-name">Share development goals</span>
+          <span class="toggle-switch" role="img" aria-label="Off"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="chapter-rule" aria-hidden="true" />
+
+<section class="built-with">
+  <div class="container">
+    <div class="intro reveal">
+      <div class="eyebrow">Built with</div>
+      <h2 class="h2">Real stack. No smoke.</h2>
+      <p class="body">
+        Every dependency below ships with the app, pulling its weight. Versions are exact.
+      </p>
+    </div>
+
+    <div class="stack-list reveal">
+      <div class="stack-row">
+        <span class="s-name">React</span>
+        <span class="s-note">One codebase. Three roles. Conditional routing instead of three apps.</span>
+        <span class="s-version">19.2</span>
+      </div>
+      <div class="stack-row">
+        <span class="s-name">Vite</span>
+        <span class="s-note">Fast dev server; tight, code-split production build.</span>
+        <span class="s-version">7.3</span>
+      </div>
+      <div class="stack-row">
+        <span class="s-name">Tailwind CSS</span>
+        <span class="s-note">Utility-first styling. No runtime, no CSS-in-JS tax.</span>
+        <span class="s-version">4.2</span>
+      </div>
+      <div class="stack-row">
+        <span class="s-name">Express</span>
+        <span class="s-note">Thin API surface. Helmet, rate limiting, CORS — nothing extra.</span>
+        <span class="s-version">5.2</span>
+      </div>
+      <div class="stack-row">
+        <span class="s-name">better-sqlite3</span>
+        <span class="s-note">Synchronous SQLite. Zero-latency reads. Single-file portability.</span>
+        <span class="s-version">12.6</span>
+      </div>
+      <div class="stack-row">
+        <span class="s-name">@ffmpeg/ffmpeg</span>
+        <span class="s-note">H.264 encoding inside the app — the video never leaves the phone raw.</span>
+        <span class="s-version">0.12</span>
+      </div>
+      <div class="stack-row">
+        <span class="s-name">tus-js-client</span>
+        <span class="s-note">Resumable uploads. Survives the subway tunnel.</span>
+        <span class="s-version">4.3</span>
+      </div>
+      <div class="stack-row">
+        <span class="s-name">@google/genai</span>
+        <span class="s-note">Multimodal model that reads the extracted frames — shots, passes, foot usage.</span>
+        <span class="s-version">1.47</span>
+      </div>
+      <div class="stack-row">
+        <span class="s-name">vite-plugin-pwa</span>
+        <span class="s-note">Installable from a link. Offline-capable. No app store.</span>
+        <span class="s-version">1.2</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="chapter-rule" aria-hidden="true" />
+
+<section class="ch-close" id="contact">
+  <div class="close-inner reveal">
+    <div class="close-kicker">Stay Composed.</div>
+    <h2 class="close-headline">
+      Run a 4-week <span class="serif-it">pilot.</span>
+    </h2>
+    <p class="close-pitch">
+      Composed is pre-launch. We're onboarding a small cohort of competitive youth teams for the first pilot block.
+      Tell us your roster, your age group, and what you're <strong>actually</strong> trying to improve.
+    </p>
+    <div class="close-cta-row">
+      <a href="mailto:hello@composed.soccer?subject=Pilot%20interest%20%E2%80%94%20%5BClub%20%2F%20Team%20name%5D&body=Club%20or%20team%3A%0A%0AAge%20group%3A%0A%0ARoster%20size%3A%0A%0AHow%20you%20currently%20handle%20between-session%20training%3A%0A%0AWhat%20you%27re%20trying%20to%20actually%20improve%3A%0A%0A(Anything%20else%20you%20want%20us%20to%20know%3A)%0A"
+         class="cta primary">
+        Bring Composed to your squad <span class="arrow">→</span>
+      </a>
+      <button id="copyBtn" class="cta secondary" type="button">
+        Copy outreach template
+      </button>
+    </div>
+    <div class="close-signature serif-it">Stay Composed.</div>
+  </div>
+</section>
+
+<footer>
+  <div class="f-inner">
+    <div class="f-logo"><em>C</em>omposed</div>
+    <div class="f-note">A soccer training companion · Pre-launch</div>
+  </div>
+</footer>
+
+<script>
+  (function() {
+    'use strict';
+
+    // ── Scroll progress bar ─────────────────────
+    const scrollProgress = document.getElementById('scrollProgress');
+    function updateScrollProgress() {
+      const total = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = total > 0 ? (window.scrollY / total) * 100 : 0;
+      scrollProgress.style.width = pct + '%';
+    }
+
+    // ── Nav scroll state ───────────────────────
+    const nav = document.getElementById('topNav');
+    function updateNav() {
+      if (window.scrollY > 30) nav.classList.add('scrolled');
+      else nav.classList.remove('scrolled');
+    }
+
+    // ── Reveal on scroll ────────────────────────
+    const revealIO = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          revealIO.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -5% 0px' });
+    document.querySelectorAll('.reveal').forEach(el => revealIO.observe(el));
+
+    // ── Eyebrow stagger (120ms before headline) ────
+    const eyebrowIO = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          eyebrowIO.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.6, rootMargin: '0px 0px -20% 0px' });
+    document.querySelectorAll('.eyebrow').forEach(el => eyebrowIO.observe(el));
+
+    // ── Pace Intro chart draw ─────────────────────
+    const chartLine = document.getElementById('paceChartLine');
+    const chartIO = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          chartLine.classList.add('draw');
+          chartIO.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.4 });
+    chartIO.observe(document.getElementById('paceChart'));
+
+    // ── Hero ticker: count up to 847 on mount ────
+    (function heroTicker() {
+      const el = document.getElementById('heroTickerValue');
+      if (!el) return;
+      const prefersReduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const target = 847;
+      if (prefersReduce) { el.textContent = target.toLocaleString(); return; }
+      const start = performance.now();
+      const dur = 1600;
+      function tick(now) {
+        const t = Math.min(1, (now - start) / dur);
+        const eased = 1 - Math.pow(1 - t, 2.6);
+        el.textContent = Math.round(target * eased).toLocaleString();
+        if (t < 1) requestAnimationFrame(tick);
+      }
+      // small delay so it feels like it lands after the rest of the hero
+      setTimeout(() => requestAnimationFrame(tick), 600);
+    })();
+
+    // ── Hero cursor-tilt phone (desktop only) ─────
+    const heroPhone = document.getElementById('heroPhone');
+    const heroEl = document.querySelector('header.hero');
+    if (matchMedia('(hover: hover)').matches && heroPhone && heroEl) {
+      let rafTilt = false;
+      let pendingX = 0, pendingY = 0;
+      heroEl.addEventListener('mousemove', (e) => {
+        const rect = heroEl.getBoundingClientRect();
+        pendingX = (e.clientX - rect.left) / rect.width - 0.5;
+        pendingY = (e.clientY - rect.top) / rect.height - 0.5;
+        if (!rafTilt) {
+          rafTilt = true;
+          requestAnimationFrame(() => {
+            const rotZ = -1.5 + pendingX * 2;
+            const transY = pendingY * -3;
+            heroPhone.style.transform = `rotate(${rotZ}deg) translateY(${transY}px)`;
+            rafTilt = false;
+          });
+        }
+      });
+      heroEl.addEventListener('mouseleave', () => {
+        heroPhone.style.transform = '';
+      });
+    }
+
+    // ── Pace Payoff: ring draw + synchronized pct count-up ────
+    (function paceoff() {
+      const section = document.getElementById('pacePayoff');
+      const pctEl = document.getElementById('payoffPct');
+      if (!section || !pctEl) return;
+      const target = 12.4;
+      const prefersReduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (prefersReduce) {
+        section.classList.add('visible');
+        pctEl.textContent = target.toFixed(1);
+        return;
+      }
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          section.classList.add('visible');
+          // Synchronize count-up with the 1.2s ring draw (delay 0.25s)
+          const start = performance.now() + 250;
+          const dur = 1200;
+          function tick(now) {
+            const t = Math.max(0, Math.min(1, (now - start) / dur));
+            const eased = 1 - Math.pow(1 - t, 3);
+            pctEl.textContent = (target * eased).toFixed(1);
+            if (t < 1) requestAnimationFrame(tick);
+          }
+          requestAnimationFrame(tick);
+          io.unobserve(entry.target);
+        });
+      }, { threshold: 0.4 });
+      io.observe(section);
+    })();
+
+    // ── Pace Rotation: 3-phase scrollytelling ────
+    // Real position weights from src/utils/pace.js (POSITION_WEIGHTS, including CB)
+    const POSITIONS = [
+      { key: 'Striker', label: 'Striker',
+        weights: { shooting: 0.40, passing: 0.10, consistency: 0.20, duration: 0.10, load: 0.20 },
+        dominant: 'shooting',
+        caption: "Punished harder for missed finishing. <strong>40%</strong> of a striker's Pace comes from shooting." },
+      { key: 'Winger', label: 'Winger',
+        weights: { shooting: 0.25, passing: 0.15, consistency: 0.20, duration: 0.15, load: 0.25 },
+        dominant: 'load',
+        caption: "Measured on volume. A winger's Pace leans on <strong>load</strong> — it's a running position." },
+      { key: 'CAM', label: 'CAM',
+        weights: { shooting: 0.25, passing: 0.30, consistency: 0.20, duration: 0.10, load: 0.15 },
+        dominant: 'passing',
+        caption: "Rewarded for passing first. <strong>30%</strong> passing for a creator, then finishing." },
+      { key: 'CDM', label: 'CDM',
+        weights: { shooting: 0.05, passing: 0.35, consistency: 0.25, duration: 0.15, load: 0.20 },
+        dominant: 'passing',
+        caption: "Not penalized for flat shot accuracy. <strong>35%</strong> passing, <strong>5%</strong> shooting." },
+      { key: 'CB', label: 'Centre-back',
+        weights: { shooting: 0.05, passing: 0.30, consistency: 0.25, duration: 0.20, load: 0.20 },
+        dominant: 'passing',
+        caption: "Distribution and minutes. A CB's Pace tracks <strong>passing</strong> and time on the ball." },
+      { key: 'GK', label: 'Goalkeeper',
+        weights: { shooting: 0.05, passing: 0.15, consistency: 0.30, duration: 0.20, load: 0.30 },
+        dominant: 'load',
+        caption: "Not judged like a shooter. <strong>30%</strong> load, <strong>30%</strong> consistency — show up, do the work." }
+    ];
+
+    const METRIC_LABELS = [
+      { key: 'shooting',    label: 'Shooting' },
+      { key: 'passing',     label: 'Passing' },
+      { key: 'consistency', label: 'Consistency' },
+      { key: 'duration',    label: 'Duration' },
+      { key: 'load',        label: 'Load' }
+    ];
+
+    const paceBars = document.getElementById('paceBars');
+    const paceCaption = document.getElementById('paceCaption');
+    const paceVizPosition = document.getElementById('paceVizPosition');
+    const paceVizLabel = document.getElementById('paceVizLabel');
+    const paceEyebrow = document.getElementById('paceEyebrow');
+    const paceHeadline = document.getElementById('paceHeadline');
+    const paceStage = document.getElementById('paceRotation');
+
+    // Build initial bars (equal 20% each — Phase 1 default)
+    function buildBars() {
+      paceBars.innerHTML = METRIC_LABELS.map(m => `
+        <div class="pace-bar-row" data-metric="${m.key}">
+          <span class="pace-bar-label">${m.label}</span>
+          <div class="pace-bar-track"><div class="pace-bar-fill" style="width: 50%;"></div></div>
+          <span class="pace-bar-pct" data-pct="20">20%</span>
+        </div>
+      `).join('');
+    }
+    buildBars();
+
+    // Number snap: old value blurs out, new enters from below. 40ms stagger
+    // across metric rows top-to-bottom. Scoped to this chapter only.
+    const prefersReduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function snapPct(el, to, staggerIdx = 0) {
+      if (prefersReduceMotion) {
+        el.textContent = to + '%';
+        el.dataset.pct = to;
+        return;
+      }
+      const delay = staggerIdx * 40;
+      // clean up any pending animation state
+      el.classList.remove('snap-in', 'snap-out');
+      // trigger reflow to restart animation
+      void el.offsetWidth;
+      el.classList.add('snap-out');
+      setTimeout(() => {
+        el.textContent = to + '%';
+        el.dataset.pct = to;
+        el.classList.remove('snap-out');
+        el.classList.add('snap-in');
+        setTimeout(() => el.classList.remove('snap-in'), 260);
+      }, 180 + delay);
+    }
+
+    // Ghost bar: captures the previous fill width so the viewer sees delta,
+    // not just the end-state. Fades out 100ms into the new transition.
+    function spawnGhost(track, prevWidthPx) {
+      if (prefersReduceMotion || !prevWidthPx) return;
+      const ghost = document.createElement('span');
+      ghost.className = 'pace-bar-ghost';
+      ghost.style.width = prevWidthPx + 'px';
+      track.appendChild(ghost);
+      // Trigger the fade after the new bar starts animating
+      setTimeout(() => ghost.classList.add('fading'), 100);
+      setTimeout(() => ghost.remove(), 500);
+    }
+
+    // Helper: apply a new set of weights to all bars with ghost-bar + number-snap.
+    // 40ms stagger across metric rows, top-to-bottom, creates the cascading feel.
+    function applyWeights(targets, opts) {
+      const dominantKey = (opts && opts.dominantKey) || null;
+      METRIC_LABELS.forEach((m, idx) => {
+        const row = paceBars.querySelector(`[data-metric="${m.key}"]`);
+        const track = row.querySelector('.pace-bar-track');
+        const fill = row.querySelector('.pace-bar-fill');
+        const pctEl = row.querySelector('.pace-bar-pct');
+        const tgtPct = Math.round(targets[m.key] * 100);
+        const cur = parseInt(pctEl.dataset.pct, 10) || 20;
+        // Capture current fill width (px) BEFORE the new width transition fires
+        const prevWidthPx = fill.getBoundingClientRect().width;
+        fill.style.width = (tgtPct * 2.5) + '%';
+        if (cur !== tgtPct) {
+          spawnGhost(track, prevWidthPx);
+          snapPct(pctEl, tgtPct, idx);
+        }
+        row.classList.toggle('dominant', !!dominantKey && m.key === dominantKey);
+      });
+    }
+
+    const EQUAL = { shooting: 0.20, passing: 0.20, consistency: 0.20, duration: 0.20, load: 0.20 };
+
+    function setPhase1() {
+      paceEyebrow.textContent = 'The default model';
+      paceHeadline.innerHTML = 'Most apps treat every player the same way.';
+      paceCaption.innerHTML = 'Five metrics. Equal weights. One number for everyone.';
+      paceVizLabel.textContent = 'Default · equal weights';
+      paceVizPosition.textContent = 'All positions';
+      applyWeights(EQUAL);
+    }
+
+    function setPhase2() {
+      paceEyebrow.textContent = 'Pace · weighted by position';
+      paceHeadline.innerHTML = 'Composed doesn\u2019t.';
+      paceCaption.innerHTML = 'Each position gets its own weight table. The bars start to differentiate.';
+      paceVizLabel.textContent = 'Weighting · in motion';
+      paceVizPosition.textContent = 'shifting…';
+      applyWeights(POSITIONS[0].weights);  // Striker = most dramatic shift
+    }
+
+    function setPhase3(positionIdx) {
+      paceEyebrow.textContent = 'Pace · weighted by position';
+      paceHeadline.innerHTML = 'Weighted to what the position actually does.';
+      const pos = POSITIONS[positionIdx];
+      paceVizLabel.textContent = 'Position weighting';
+      paceVizPosition.textContent = pos.label.toUpperCase();
+      paceCaption.style.opacity = '0';
+      setTimeout(() => {
+        paceCaption.innerHTML = pos.caption;
+        paceCaption.style.opacity = '1';
+      }, 180);
+      applyWeights(pos.weights, { dominantKey: pos.dominant });
+    }
+
+    // Phase boundaries (out of 1.0):
+    // 0.00 - 0.10  Phase 1 (equal)
+    // 0.10 - 0.22  Phase 2 (differentiating)
+    // 0.22 - 1.00  Phase 3 (cycle 6 positions, equal slices)
+    let lastPhaseState = '';
+    function updatePace() {
+      const rect = paceStage.getBoundingClientRect();
+      const winH = window.innerHeight;
+      const scrollable = paceStage.offsetHeight - winH;
+      const scrolled = -rect.top;
+      const progress = Math.max(0, Math.min(1, scrolled / scrollable));
+
+      let stateKey = '';
+      if (progress < 0.10) {
+        stateKey = 'p1';
+        if (lastPhaseState !== stateKey) setPhase1();
+      } else if (progress < 0.22) {
+        stateKey = 'p2';
+        if (lastPhaseState !== stateKey) setPhase2();
+      } else {
+        const p3progress = (progress - 0.22) / (1 - 0.22);
+        const idx = Math.min(POSITIONS.length - 1, Math.floor(p3progress * POSITIONS.length));
+        stateKey = 'p3-' + idx;
+        if (lastPhaseState !== stateKey) setPhase3(idx);
+      }
+      lastPhaseState = stateKey;
+    }
+
+    // ── Video chapter: wide analysis board (Redesign 3) ──────────
+    const videoStage = document.getElementById('videoStage');
+    const board = document.getElementById('analysisBoard');
+    const frameCountEl = document.getElementById('frameCount');
+    const filmstripFrames = board ? board.querySelectorAll('.filmstrip-frame') : [];
+    const filmstripArcFill = board ? board.querySelector('.filmstrip-arc-fill') : null;
+    const resultNums = board ? board.querySelectorAll('.result-num') : [];
+
+    const FRAME_TOTAL = 1247;
+    let lastBoardState = -1;
+    let lastFrameCount = -1;
+    const resultAnims = {};  // track count-up rAF per row
+    let resultsAnimatedFor = null;
+
+    function animateResultNum(el, target) {
+      const key = el;
+      cancelAnimationFrame(resultAnims.get && resultAnims.get(key));
+      const start = performance.now();
+      const dur = 850;
+      function tick(now) {
+        const t = Math.min(1, (now - start) / dur);
+        const eased = 1 - Math.pow(1 - t, 3);
+        el.textContent = Math.round(target * eased);
+        if (t < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function updateVideo() {
+      if (!videoStage || !board) return;
+      const rect = videoStage.getBoundingClientRect();
+      const winH = window.innerHeight;
+      const scrollable = videoStage.offsetHeight - winH;
+      const scrolled = -rect.top;
+      const progress = Math.max(0, Math.min(1, scrolled / scrollable));
+
+      // ── Frame counter: scroll-bound, counts up or down as scroll moves ──
+      const targetFrames = Math.round(FRAME_TOTAL * progress);
+      if (targetFrames !== lastFrameCount) {
+        frameCountEl.textContent = targetFrames.toLocaleString();
+        lastFrameCount = targetFrames;
+      }
+
+      // ── State mapping: 1 (capture) / 2 (extract) / 3 (analyze) ──
+      let state = 1;
+      if (progress >= 0.66) state = 3;
+      else if (progress >= 0.33) state = 2;
+
+      // ── Filmstrip: light frames sequentially within state 2's range ──
+      if (state === 2 && filmstripFrames.length) {
+        const innerProgress = Math.max(0, Math.min(1, (progress - 0.33) / 0.33));
+        const litCount = Math.floor(innerProgress * filmstripFrames.length);
+        filmstripFrames.forEach((f, i) => f.classList.toggle('lit', i < litCount));
+        if (filmstripArcFill) {
+          filmstripArcFill.style.strokeDasharray = `${Math.round(innerProgress * 100)} 100`;
+        }
+      } else if (state === 3) {
+        // State 3: all frames stay lit
+        filmstripFrames.forEach(f => f.classList.add('lit'));
+        if (filmstripArcFill) filmstripArcFill.style.strokeDasharray = '100 100';
+      } else {
+        // State 1: all dim
+        filmstripFrames.forEach(f => f.classList.remove('lit'));
+        if (filmstripArcFill) filmstripArcFill.style.strokeDasharray = '0 100';
+      }
+
+      if (state === lastBoardState) return;
+      lastBoardState = state;
+
+      board.classList.remove('state-1', 'state-2', 'state-3');
+      board.classList.add('state-' + state);
+
+      // ── Count-up numbers once, when state 3 first activates ──
+      if (state === 3 && resultsAnimatedFor !== 3) {
+        resultNums.forEach(num => {
+          const target = parseInt(num.dataset.target, 10) || 0;
+          const prefersReduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+          if (prefersReduce) { num.textContent = target; return; }
+          animateResultNum(num, target);
+        });
+        resultsAnimatedFor = 3;
+      }
+      // Reset count-up if the user scrolls back out of state 3 so it can replay
+      if (state !== 3) resultsAnimatedFor = null;
+      // In state 1, reset numbers to zero so the effect is authored
+      if (state === 1) resultNums.forEach(num => num.textContent = '0');
+    }
+
+    // ── Threading pace line (scroll-bound dashoffset) ──
+    const threadingPath = document.getElementById('threadingPath');
+    const paceRotationEl = document.getElementById('paceRotation');
+    const pacePayoffEl = document.getElementById('pacePayoff');
+    const videoStageEl = document.getElementById('videoStage');
+    const wrongMetricEl = document.querySelector('.ch-wrong');
+
+    function updateThreading() {
+      if (!threadingPath) return;
+      const totalScrollable = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = totalScrollable > 0 ? window.scrollY / totalScrollable : 0;
+      threadingPath.style.strokeDashoffset = String(Math.round(1000 * (1 - progress)));
+    }
+
+    // ── Thread-quiet scoping: fade threading line during scrollytelling zones ──
+    function updateThreadQuiet() {
+      if (!paceRotationEl || !pacePayoffEl || !videoStageEl) return;
+      const winH = window.innerHeight;
+      const rects = {
+        rotation: paceRotationEl.getBoundingClientRect(),
+        payoff: pacePayoffEl.getBoundingClientRect(),
+        video: videoStageEl.getBoundingClientRect(),
+      };
+      const inQuiet =
+        (rects.rotation.top < winH * 0.9 && rects.rotation.bottom > winH * 0.1) ||
+        (rects.payoff.top < winH * 0.9 && rects.payoff.bottom > winH * 0.1) ||
+        (rects.video.top < winH * 0.9 && rects.video.bottom > winH * 0.1);
+      document.body.classList.toggle('thread-quiet', inQuiet);
+    }
+
+    // ── Handoff 1: mask-sweep hero → wrong metric (fires around the seam) ──
+    const maskSweep = document.getElementById('maskSweep');
+    const maskLine = maskSweep ? maskSweep.querySelector('.mask-sweep-line') : null;
+    let handoff1State = 'idle';  // idle | sweeping | done
+    function updateHandoff1() {
+      if (!maskSweep || !maskLine || !wrongMetricEl) return;
+      const heroRect = document.querySelector('header.hero').getBoundingClientRect();
+      const wrongRect = wrongMetricEl.getBoundingClientRect();
+      const winH = window.innerHeight;
+      // Fire when hero is exiting (bottom near top of viewport) and wrong metric is below
+      const heroExiting = heroRect.bottom < winH * 0.6 && heroRect.bottom > 0;
+      if (heroExiting && handoff1State === 'idle') {
+        handoff1State = 'sweeping';
+        document.body.classList.add('handoff-active', 'handoff-1-active');
+        maskSweep.classList.add('active');
+        // Animate the hairline from top to bottom over 600ms
+        maskLine.animate(
+          [{ transform: 'translateY(0)' }, { transform: `translateY(${winH}px)` }],
+          { duration: 600, easing: 'cubic-bezier(0.4, 0.0, 0.2, 1)', fill: 'forwards' }
+        );
+        setTimeout(() => {
+          maskSweep.classList.remove('active');
+          document.body.classList.remove('handoff-active', 'handoff-1-active');
+          handoff1State = 'done';
+        }, 650);
+      } else if (heroRect.bottom >= winH * 0.6 && handoff1State === 'done') {
+        // If user scrolls back up, reset so the handoff can fire again
+        handoff1State = 'idle';
+      }
+    }
+
+    // ── Handoff 2: dark → light as Pace Rotation ends and Payoff enters ──
+    // Background transition is CSS-driven via body.payoff-lit class toggle.
+    // Bars-collapse choreography: when the rotation's end is near the viewport top,
+    // fade the rotation's weighting bars to zero width so the Payoff ring can "rise."
+    function updateHandoff2() {
+      if (!paceRotationEl || !pacePayoffEl) return;
+      const rotationRect = paceRotationEl.getBoundingClientRect();
+      const payoffRect = pacePayoffEl.getBoundingClientRect();
+      const winH = window.innerHeight;
+      // "In Payoff zone" = payoff top has crossed 70% of viewport AND payoff bottom still below top
+      const inPayoff = payoffRect.top < winH * 0.7 && payoffRect.bottom > 0;
+      document.body.classList.toggle('payoff-lit', inPayoff);
+      // Bar collapse: when we're in the last 10% of the rotation, collapse bars
+      const rotationScrollable = paceRotationEl.offsetHeight - winH;
+      const rotationScrolled = -rotationRect.top;
+      const rotationProgress = Math.max(0, Math.min(1, rotationScrolled / rotationScrollable));
+      const bars = document.querySelectorAll('.pace-bar-fill');
+      if (rotationProgress > 0.92) {
+        const shrink = Math.max(0, Math.min(1, (rotationProgress - 0.92) / 0.08));
+        bars.forEach(b => b.style.opacity = String(1 - shrink * 0.85));
+      } else {
+        bars.forEach(b => b.style.opacity = '');
+      }
+    }
+
+    // ── Handoff 3: light → dark when exiting Payoff toward Video Stage ──
+    function updateHandoff3() {
+      if (!pacePayoffEl) return;
+      const payoffRect = pacePayoffEl.getBoundingClientRect();
+      const winH = window.innerHeight;
+      // Exiting: payoff bottom is approaching viewport top
+      const exiting = payoffRect.bottom < winH * 0.5 && payoffRect.bottom > -winH * 0.3;
+      document.body.classList.toggle('payoff-exiting', exiting);
+    }
+
+    // ── Combined scroll handler (rAF-throttled) ──
+    let ticking = false;
+    function onScrollAll() {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          updateScrollProgress();
+          updateNav();
+          updatePace();
+          updateVideo();
+          updateThreading();
+          updateThreadQuiet();
+          updateHandoff1();
+          updateHandoff2();
+          updateHandoff3();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    }
+    window.addEventListener('scroll', onScrollAll, { passive: true });
+    window.addEventListener('resize', onScrollAll, { passive: true });
+    onScrollAll();
+
+    // ── Copy outreach template (clipboard) ────
+    const copyBtn = document.getElementById('copyBtn');
+    const TEMPLATE = `Subject: Pilot interest — [Club / Team name]
+
+Club or team:
+Age group:
+Roster size:
+How you currently handle between-session training:
+What you're trying to actually improve:
+
+(Anything else you want us to know:)`;
+    copyBtn.addEventListener('click', () => {
+      const orig = copyBtn.textContent;
+      const showResult = (text) => {
+        copyBtn.textContent = text;
+        setTimeout(() => { copyBtn.textContent = orig; }, 2200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(TEMPLATE)
+          .then(() => showResult('Copied — paste anywhere'))
+          .catch(() => showResult('Copy failed — long-press to copy'));
+      } else {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = TEMPLATE;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); showResult('Copied — paste anywhere'); }
+        catch { showResult('Copy failed'); }
+        document.body.removeChild(ta);
+      }
+    });
+
+  })();
+</script>
+
+</body>
+</html>

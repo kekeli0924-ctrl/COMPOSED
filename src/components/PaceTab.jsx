@@ -7,6 +7,7 @@ import { BENCHMARKS, calculatePercentile } from '../utils/benchmarks';
 import { getPaceLabel, getPaceNarrative, getPeerPrefix } from '../utils/identity';
 import { gatherCoachReportData } from '../utils/paceReport';
 import { renderCoachReportCard, shareCanvas } from '../utils/shareCard';
+import { emit } from '../hooks/useEmit';
 
 const PACE_COLORS = {
   accelerating: '#16A34A',
@@ -414,6 +415,12 @@ export function PaceTab({ sessions = [], onViewMetric, ageGroup, skillLevel, pla
               const data = gatherCoachReportData({ sessions, settings, idpGoals, parentVisibility });
               const canvas = renderCoachReportCard(data);
               await shareCanvas(canvas);
+              // Pilot telemetry: coach report is a high-signal "aha" moment — tells
+              // us whether the player is taking the app into the coach conversation.
+              emit('coach_report_generated', {
+                sessionCount: sessions?.length || 0,
+                paceLabel: data?.pace?.label || null,
+              });
             } catch (err) {
               console.error('Coach Report generation failed:', err);
               // Inline fallback — no error screen, no modal

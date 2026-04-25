@@ -32,6 +32,10 @@ import aiChatRouter from './routes/aiChat.js';
 import parentRouter from './routes/parent.js';
 import scoutingRouter from './routes/scouting.js';
 import leaderboardRouter from './routes/leaderboard.js';
+import eventsRouter from './routes/events.js';
+import blocksRouter from './routes/blocks.js';
+import benchmarksRouter from './routes/benchmarks.js';
+import { coachDigestsRouter, publicDigestsRouter } from './routes/digests.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -177,6 +181,12 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth/password', passwordChangeLimiter);
 app.use('/api/auth', authLimiter, authRouter);
 
+// ── Public routes (NO AUTH) ─────────────────────────────
+// Mounted BEFORE authMiddleware so unauthenticated viewers can open a shared
+// digest link. Scope is one router, exactly one namespace (/api/public/*).
+// The global /api rate limiter still applies.
+app.use('/api/public', publicDigestsRouter);
+
 // Protected API routes — auth required in production
 if (isProd) {
   app.use('/api', authMiddleware);
@@ -241,6 +251,10 @@ app.use('/api/ai', aiChatRouter);
 app.use('/api/parent', parentRouter);
 app.use('/api/scouting', scoutingRouter);
 app.use('/api/leaderboard', leaderboardRouter);
+app.use('/api/events', eventsRouter);
+app.use('/api/blocks', blocksRouter);
+app.use('/api/blocks/:blockId/digests', coachDigestsRouter);
+app.use('/api/benchmarks', benchmarksRouter);
 
 // ── API 404 ─────────────────────────────────────────────
 app.use('/api', (req, res) => {

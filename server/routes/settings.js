@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getDb } from '../db.js';
 import { settingsSchema, validate } from '../validation.js';
+import { emit } from '../events.js';
 
 const router = Router();
 
@@ -99,6 +100,11 @@ router.put('/', validate(settingsSchema), (req, res) => {
     if (!row) {
       db.prepare(`INSERT INTO settings (user_id) VALUES (?)`).run(req.userId);
     }
+    // Capture prior onboarding state so we can emit onboarding_completed on the 0→1
+    // transition. Settings PUT fires many times per session; we only want the once-per-user
+    // signal. Reading `row` here is pre-update, which is exactly the edge we want.
+    const wasOnboarded = row ? row.onboarding_complete === 1 : false;
+
     db.prepare(`UPDATE settings SET
       distance_unit = COALESCE(@distance_unit, distance_unit),
       weekly_goal = COALESCE(@weekly_goal, weekly_goal),
@@ -125,6 +131,20 @@ router.put('/', validate(settingsSchema), (req, res) => {
       user_id: req.userId,
     });
     row = db.prepare('SELECT * FROM settings WHERE user_id = ?').get(req.userId);
+    // Fire onboarding_completed only on the 0→1 edge. Subsequent settings edits
+    // (changing weekly goal, position, etc.) won't re-emit.
+    if (!wasOnboarded && row.onboarding_complete === 1) {
+      emit('onboarding_completed', {
+        userId: req.userId,
+        role: req.userRole,
+        properties: {
+          position: rowToSettings(row).position,
+          playerIdentity: rowToSettings(row).playerIdentity,
+          skillLevel: row.skill_level || '',
+          ageGroup: row.age_group || '',
+        },
+      });
+    }
     res.json(rowToSettings(row));
   } catch (err) {
     res.status(500).json({ error: err.message });
